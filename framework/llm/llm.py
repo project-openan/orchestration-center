@@ -97,8 +97,8 @@ class DeepSeekLLM:
         except Exception as e:
             error_msg = f"LLM API调用失败: {str(e)}"
             logger.error(error_msg)
-            logger.error(f"错误类型: {type(e).__name__}")
-            raise Exception(f"LLM调用失败: {str(e)}")
+            logger.error(f"wrong type: {type(e).__name__}")
+            raise Exception(f"LLM call failed: {str(e)}")
 
 
 def get_or_create_deepseek_llm_instance():

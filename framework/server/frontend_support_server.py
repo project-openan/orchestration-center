@@ -237,7 +237,7 @@ def generate_psop_from_intent():
         try:
             storage.save_psop(psop)
         except Exception as save_error:
-            logger.warning(f"PSOP保存失败（不影响返回）: {save_error}")
+            logger.warning(f"Failed to save PSOP (does not affect response): {save_error}")
         
         return jsonify({
             "status": "success",
@@ -246,29 +246,29 @@ def generate_psop_from_intent():
         }), 200
         
     except Exception as e:
-        logger.error(f"根据意图生成PSOP失败: {e}")
+        logger.error(f"Failed to generate PSOP based on intent: {e}")
         return jsonify({"error": f"生成PSOP失败: {str(e)}"}), 500
 
 
 if __name__ == '__main__':
     logger.info("=" * 50)
-    logger.info("  PSOP 服务器接口")
+    logger.info(" PSOP Server Interface")
     logger.info("=" * 50)
-    logger.info("  POST /parse-pdf     -  上传 PDF 文件并解析")
-    logger.info("  POST /plan          -  提交任务和步骤，获取规划结果")
+    logger.info(" POST /parse-pdf - Upload PDF file and parse")
+    logger.info(" POST /plan - Submit task and steps, get planning result")
     logger.info("")
-    logger.info("  PSOP 管理接口:")
-    logger.info("  GET  /psops         -  获取PSOP列表")
-    logger.info("  GET  /psops/<id>    -  根据ID获取PSOP详情")
-    logger.info("  POST /psops         -  保存PSOP")
+    logger.info(" PSOP Management Endpoints:")
+    logger.info(" GET /psops - Get PSOP list")
+    logger.info(" GET /psops/<id> - Get PSOP details by ID")
+    logger.info(" POST /psops - Save PSOP")
     logger.info("")
-    logger.info("  AgentCard 管理接口:")
-    logger.info("  GET  /agent-cards   -  获取全量AgentCard列表")
+    logger.info(" AgentCard Management Endpoints:")
+    logger.info(" GET /agent-cards - Get full list of AgentCards")
     logger.info("")
-    logger.info("  意图生成接口:")
-    logger.info("  POST /generate-from-intent - 根据自然语言意图生成PSOP")
+    logger.info(" Intent Generation Endpoint:")
+    logger.info(" POST /generate-from-intent - Generate PSOP from natural language intent")
     logger.info("")
-    logger.info("  服务器启动在: http://localhost:60000")
-    logger.info("  详细文档请参考: PSOP_API_DOCUMENTATION.md")
+    logger.info(" Server running at: http://localhost:60000")
+    logger.info(" For detailed documentation, please refer to: PSOP_API_DOCUMENTATION.md")
     logger.info("=" * 50)
     app.run(host='localhost', port=60000, debug=True)

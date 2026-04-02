@@ -31,13 +31,13 @@ def get_pre_workflow():
         description='Workflow for Energy Saving in Wireless Networks',
         steps_md=pre_md
     )
-    logger.info(f"[STEP 1] 预工作流 (PreFlow) 构建完成，名称：{preflow.name}")
+    logger.info(f"[STEP 1] PreFlow construction completed, name: {preflow.name}")
     return preflow
 
 
 async def agent_communication_simulation():
     start_time = time.time()
-    logger.info(">>> 启动 A2A 通信模拟任务 >>>")
+    logger.info(">>> Starting A2A communication simulation task >>>")
     try:
         # 获取预工作流
         preflow = _get_and_validate_preflow()
@@ -46,7 +46,7 @@ async def agent_communication_simulation():
         # 获取Agent列表
         agent_cards = _load_agents_and_get_cards()
         if not agent_cards:
-            logger.error("无法获取Agent列表，终止流程")
+            logger.error("Unable to retrieve agent list, terminating the process")
             return
         # 生成给工作流
         workflow = _generate_workflow(preflow, agent_cards)
@@ -55,7 +55,7 @@ async def agent_communication_simulation():
         # 执行工作流
         await _execute_workflow(workflow, agent_cards)
     except Exception as e:
-        logger.critical(f"[ERROR] 任务运行过程中发生未捕获异常 : {e}")
+        logger.critical(f"[ERROR] Uncaught exception occurred during task execution: {e}")
         raise
     finally:
         _log_completion(start_time)
@@ -64,7 +64,7 @@ async def agent_communication_simulation():
 def _get_and_validate_preflow():
     preflow = get_pre_workflow()
     if not preflow.steps_md:
-        logger.error("[STEP 2] 错误: PreFlow缺少必要的步骤描述，无法继续生成工作流。")
+        logger.error("[STEP 2] Error: PreFlow is missing the necessary step description, cannot proceed with workflow generation.")
         return None
     return preflow
 
@@ -74,11 +74,11 @@ def _load_agents_and_get_cards():
     return agent_lib.get_all_agent_cards()
 
 def _generate_workflow(preflow, agent_cards):
-    logger.info("[STEP 3] 正在生成 PSOP 工作流...")
+    logger.info("[STEP 3] Generating PSOP workflow...")
     generator = PsopGenerator()
 
     workflow = generator.generate_psop_workflow(preflow, agent_cards)
-    logger.info(f"[STEP 3] 工作流生成完成，ID : {workflow.name}, 包含{len(workflow.steps)} 个步骤")
+    logger.info(f"[STEP 3] Workflow generation completed, ID: {workflow.name}, contains {len(workflow.steps)} steps")
 
     for i, step in enumerate(workflow.steps, 1):
         logger.info(f"  Step {i}: {step.name} ({step.subtasks})")
@@ -86,29 +86,29 @@ def _generate_workflow(preflow, agent_cards):
 
 
 async def _execute_workflow(workflow, agent_cards):
-    logger.info("[STEP 4] 初始化 DynamicWorkflowEngine...")
+    logger.info("[STEP 4] Initializing DynamicWorkflowEngine...")
     engine = DynamicWorkflowEngine(workflow, agent_cards)
-    logger.info(f"[STEP 4] 开始执行工作流...")
+    logger.info("[STEP 4] Starting workflow execution...")
     execution_start = time.time()
 
     try:
         history = await engine.run()
         _log_execution_results(history, execution_start)
     except Exception as e:
-        logger.critical(f"[STEP 4] 工作流执行过程中发生严重错误 : {e}")
+        logger.critical(f"[STEP 4] Critical error occurred during workflow execution: {e}")
         raise
 
 
 def _log_execution_results(history, start_time):
     duration = time.time() - start_time
     if not history:
-        logger.warning("[STEP 4] 执行完成，但历史记录为空。")
+        logger.warning("[STEP 4] Execution completed, but history is empty.")
         return
-    logger.info(f"[STEP 4] 执行成功！耗时:{duration:.2f} 秒")
-    logger.info(f"[STEP 4] 共产生 {len(history)} 条执行记录")
+    logger.info(f"[STEP 4] Execution successful! Time taken: {duration:.2f} seconds")
+    logger.info(f"[STEP 4] Total execution records generated: {len(history)}")
 
     logger.info("_" * 30)
-    logger.info("执行记录摘要:")
+    logger.info("Execution Record Summary:")
     for idx, log_entry in enumerate(history):
         content = str(log_entry)
         if len(content) > 200:
@@ -119,14 +119,14 @@ def _log_execution_results(history, start_time):
 
 def _log_completion(start_time):
     total_time = time.time() - start_time
-    logger.info(f">>> 任务执行完毕 <<<")
-    logger.info(f"总耗时: {total_time:.2f} 秒")
+    logger.info(f">>> Task execution completed <<<")
+    logger.info(f"Total time taken: {total_time:.2f} seconds")
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(agent_communication_simulation())
     except KeyboardInterrupt:
-        logger.info("用户手动中断了程序")
+        logger.info("User manually interrupted the program")
     except Exception as e:
-        logger.error(f"程序因异常退出 ： {e}")
+        logger.error(f"Program exited due to exception: {e}")
