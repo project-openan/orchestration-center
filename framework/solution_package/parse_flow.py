@@ -100,7 +100,7 @@ class SolutionPackageParser:
         """Extract text for a specific chapter from PDF."""
         path = Path(pdf_path)
         if not path.exists():
-            raise PDFParsingError(f'PDF file does not exist： {pdf_path}')
+            raise PDFParsingError(f'PDF file does not exist: {pdf_path}')
         try:
             doc = fitz.open(pdf_path)
         except Exception as e:
@@ -117,7 +117,7 @@ class SolutionPackageParser:
         """Extract all level-1 chapters from PDF as a dictionary."""
         path = Path(pdf_path)
         if not path.exists():
-            raise PDFParsingError(f'PDF file does not exist： {pdf_path}')
+            raise PDFParsingError(f'PDF file does not exist: {pdf_path}')
         
         try:
             doc = fitz.open(pdf_path)

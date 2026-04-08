@@ -22,9 +22,33 @@ from framework.orchestration.persistence import WorkflowStorage
 
 
 class WorkflowSearchResult:
+    """Workflow search result.
+    
+    Represents the result of a workflow search query, containing basic workflow information and match score.
+    
+    Attributes:
+        workflow_id: Workflow ID
+        workflow_type: Workflow type ("psop" or "preflow")
+        name: Workflow name
+        description: Workflow description
+        tags: Workflow tags list
+        created_at: Creation timestamp
+        score: Match score, default 1.0
+    """
     def __init__(self, workflow_id: str, workflow_type: str, name: str,
                  description: Optional[str], tags: Optional[List[str]],
                  created_at: datetime, score: float = 1.0):
+        """Initialize workflow search result.
+        
+        Args:
+            workflow_id: Workflow ID
+            workflow_type: Workflow type ("psop" or "preflow")
+            name: Workflow name
+            description: Workflow description
+            tags: Workflow tags list
+            created_at: Creation timestamp
+            score: Match score, default 1.0
+        """
         self.workflow_id = workflow_id
         self.workflow_type = workflow_type
         self.name = name
@@ -34,6 +58,11 @@ class WorkflowSearchResult:
         self.score = score
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert search result to dictionary format.
+        
+        Returns:
+            Dictionary containing all fields of the search result
+        """
         return {
             "workflow_id": self.workflow_id,
             "workflow_type": self.workflow_type,
@@ -46,16 +75,54 @@ class WorkflowSearchResult:
 
 
 class WorkflowRetrieval:
+    """Workflow retrieval manager.
+    
+    Provides various workflow retrieval functionalities, including search by ID, name, tags, description, etc.
+    Supports retrieval of both PSOP and PreFlow workflow types.
+    
+    Attributes:
+        storage: Workflow storage manager instance
+    """
     def __init__(self, storage: WorkflowStorage):
+        """Initialize workflow retrieval manager.
+        
+        Args:
+            storage: Workflow storage manager instance
+        """
         self.storage = storage
 
     def get_psop_by_id(self, workflow_id: str) -> Optional[PSOP]:
+        """Get PSOP workflow by ID.
+        
+        Args:
+            workflow_id: PSOP workflow ID
+            
+        Returns:
+            PSOP workflow object, or None if not found
+        """
         return self.storage.load_psop(workflow_id)
 
     def get_preflow_by_id(self, workflow_id: str) -> Optional[PreFlow]:
+        """Get PreFlow workflow by ID.
+        
+        Args:
+            workflow_id: PreFlow workflow ID
+            
+        Returns:
+            PreFlow workflow object, or None if not found
+        """
         return self.storage.load_preflow(workflow_id)
 
     def search_by_name(self, name_pattern: str, workflow_type: str = "all") -> List[WorkflowSearchResult]:
+        """Search workflows by name pattern.
+        
+        Args:
+            name_pattern: Name pattern (case-insensitive)
+            workflow_type: Workflow type, optional values: "all", "psop", "preflow"
+            
+        Returns:
+            List of matching workflow search results
+        """
         results = []
         name_lower = name_pattern.lower()
         if workflow_type in ("all", "psop"):
@@ -86,6 +153,16 @@ class WorkflowRetrieval:
 
     def search_by_tags(self, tags: List[str], match_all: bool = False, workflow_type: str = "all") -> List[
         WorkflowSearchResult]:
+        """Search workflows by tags.
+        
+        Args:
+            tags: List of tags
+            match_all: Whether to match all tags (True) or any tag (False)
+            workflow_type: Workflow type, optional values: "all", "psop", "preflow"
+            
+        Returns:
+            List of matching workflow search results
+        """
         results = []
         search_tags_lower = [t.lower() for t in tags]
 
@@ -125,6 +202,15 @@ class WorkflowRetrieval:
         return results
 
     def search_by_description(self, keyword: str, workflow_type: str = "all") -> List[WorkflowSearchResult]:
+        """Search workflows by description keyword.
+        
+        Args:
+            keyword: Keyword (case-insensitive)
+            workflow_type: Workflow type, optional values: "all", "psop", "preflow"
+            
+        Returns:
+            List of matching workflow search results
+        """
         results = []
         keyword_lower = keyword.lower()
         if workflow_type in ("all", "psop"):
@@ -154,6 +240,14 @@ class WorkflowRetrieval:
         return results
 
     def get_psop_by_preflow(self, preflow_id: str) -> List[PSOP]:
+        """Get related PSOP workflows by PreFlow ID.
+        
+        Args:
+            preflow_id: PreFlow workflow ID
+            
+        Returns:
+            List of related PSOP workflows
+        """
         results = []
         for wf_id in self.storage.list_preflows():
             psop = self.storage.load_psop(wf_id)
@@ -162,6 +256,15 @@ class WorkflowRetrieval:
         return results
 
     def list_recent_workflows(self, limit: int = 10, workflow_type: str = "all") -> List[WorkflowSearchResult]:
+        """List recent workflows.
+        
+        Args:
+            limit: Maximum number of results to return
+            workflow_type: Workflow type, optional values: "all", "psop", "preflow"
+            
+        Returns:
+            List of recent workflow search results, sorted by creation time descending
+        """
         results = []
         if workflow_type in ("all", "psop"):
             for wf_id in self.storage.list_psops():

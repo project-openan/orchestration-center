@@ -39,20 +39,20 @@ async def agent_communication_simulation():
     start_time = time.time()
     logger.info(">>> Starting A2A communication simulation task >>>")
     try:
-        # 获取预工作流
+        # Get pre-workflow
         preflow = _get_and_validate_preflow()
         if not preflow:
             return
-        # 获取Agent列表
+        # Get agent list
         agent_cards = _load_agents_and_get_cards()
         if not agent_cards:
             logger.error("Unable to retrieve agent list, terminating the process")
             return
-        # 生成给工作流
+        # Generate workflow
         workflow = _generate_workflow(preflow, agent_cards)
         if not workflow:
             return
-        # 执行工作流
+        # Execute workflow
         await _execute_workflow(workflow, agent_cards)
     except Exception as e:
         logger.critical(f"[ERROR] Uncaught exception occurred during task execution: {e}")

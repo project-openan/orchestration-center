@@ -95,7 +95,7 @@ class DeepSeekLLM:
             return reasoning, content
 
         except Exception as e:
-            error_msg = f"LLM API调用失败: {str(e)}"
+            error_msg = f"LLM API call failed: {str(e)}"
             logger.error(error_msg)
             logger.error(f"wrong type: {type(e).__name__}")
             raise Exception(f"LLM call failed: {str(e)}")

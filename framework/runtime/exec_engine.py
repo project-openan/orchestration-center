@@ -27,7 +27,25 @@ from framework.orchestration.model.psop import PSOP, Step, TaskStatus
 
 
 class DynamicWorkflowEngine:
+    """Execution engine responsible for driving PSOP workflow execution.
+    
+    This class encapsulates workflow execution logic, including step execution, task distribution, status tracking, and LLM decision making.
+    It coordinates collaboration among agents, executing tasks step by step according to workflow definition.
+    
+    Attributes:
+        workflow: PSOP workflow definition
+        current_step_idx: Current step index being executed
+        execution_history: Execution history records
+        llm_client: LLM client instance for decision routing
+        agent_cards: List of available agent cards
+    """
     def __init__(self, psop: PSOP, agent_cards):
+        """Initialize execution engine.
+        
+        Args:
+            psop: PSOP workflow definition
+            agent_cards: List of available agent cards
+        """
         self.workflow = psop
         self.current_step_idx = 0
         self.execution_history = []
@@ -35,16 +53,39 @@ class DynamicWorkflowEngine:
         self.agent_cards = agent_cards
 
     async def run(self):
+        """Execute the entire PSOP workflow.
+        
+        Iterates through all steps of the workflow, executing each step sequentially until all steps complete or an error occurs.
+        
+        Returns:
+            List of execution history records
+            
+        Raises:
+            Exception: Unexpected error during execution
+        """
         logger.info(f"Starting PSOP workflow with {len(self.workflow.steps)} steps")
         try:
             while self.current_step_idx < len(self.workflow.steps):
                 await self._execute_single_step()
         except Exception as e:
-            logger.critical(f"unexpected exception occurred in engine：{e}", exc_info=True)
+            logger.critical(f"unexpected exception occurred in engine: {e}", exc_info=True)
             raise
         return self.execution_history
 
     async def send_message_to_agent(self, agent_name: str, task: str, httpx_client=None):
+        """Send message to specified agent and execute task.
+        
+        Args:
+            agent_name: Agent name
+            task: Task description
+            httpx_client: Optional HTTP client instance
+            
+        Returns:
+            Text response from agent
+            
+        Raises:
+            RuntimeError: Agent call timeout, connection failure, or execution failure
+        """
         agent_card = None
         for card in self.agent_cards:
             if card.name == agent_name:
@@ -74,12 +115,18 @@ class DynamicWorkflowEngine:
         except httpx.TimeoutException as e:
             raise RuntimeError(f"Agent call timed out") from e
         except httpx.ConnectError as e:
-            raise RuntimeError(f"Faild to connect to Agent : {e}") from e
+            raise RuntimeError(f"Failed to connect to Agent: {e}") from e
         except Exception as e:
-            logger.error(f"Communicate with agent failed : {e}", exc_info=True)
+            logger.error(f"Communicate with agent failed: {e}", exc_info=True)
             raise
 
     async def _execute_single_step(self):
+        """Execute a single step.
+        
+        Execute all subtasks of the current step, determine next action based on execution results.
+        If step execution fails, stops the entire workflow.
+        If step execution succeeds, calls LLM to decide next jump.
+        """
         current_step = self.workflow.steps[self.current_step_idx]
         logger.info(f"--- Executing step: {current_step.name} ---")
 
@@ -92,6 +139,17 @@ class DynamicWorkflowEngine:
         await self._process_llm_decision(current_step, step_result)
 
     async def _process_llm_decision(self, current_step, step_result):
+        """Process LLM decision result.
+        
+        Based on LLM returned decision, determine next action:
+        - "end": End workflow
+        - "retry": Retry (not supported by current logic, will terminate workflow)
+        - Other step names: Jump to specified step
+        
+        Args:
+            current_step: Current step object
+            step_result: Step execution result
+        """
         next_step_name = self._llm_route_decision(current_step, step_result)
         if next_step_name == "end":
             logger.info(f"Process is normal (as determined by LLM).")
@@ -108,6 +166,12 @@ class DynamicWorkflowEngine:
                 logger.error(f"Target step '{next_step_name}' does not exist, terminating the process.")
 
     def _record_stop_event(self, reason, details):
+        """Record workflow stop event.
+        
+        Args:
+            reason: Stop reason
+            details: Detailed information
+        """
         self.execution_history.append({
             "event": "STOPPED",
             "reason": reason,
@@ -115,6 +179,16 @@ class DynamicWorkflowEngine:
         })
 
     async def _execute_subtasks(self, step: Step) -> tuple[Dict[str, Any], bool]:
+        """Execute all subtasks in a step.
+        
+        Args:
+            step: Step object
+            
+        Returns:
+            Tuple containing execution results and overall success status
+            - Result dictionary: Mapping from task description to execution result
+            - Success status: Whether all tasks executed successfully
+        """
         results = {}
         overall_success = True
         for task in step.subtasks:
@@ -133,7 +207,7 @@ class DynamicWorkflowEngine:
             except Exception as e:
                 task.status = TaskStatus.FAILED
                 overall_success = False
-                error_msg = f"Agent call failed : {str(e)}"
+                error_msg = f"Agent call failed: {str(e)}"
                 results[task.skill] = {"error": error_msg}
                 logger.error(f" > Task failed: {task.description} | Error: {error_msg}")
                 self.execution_history.append({
@@ -146,14 +220,28 @@ class DynamicWorkflowEngine:
         return results, overall_success
 
     def _llm_route_decision(self, current_step: Step, task_result: Dict[str, Any]) -> str:
+        """Use LLM to decide next step jump.
+        
+        Based on current step execution results and predefined jump conditions, call LLM to decide next action.
+        
+        Args:
+            current_step: Current step object
+            task_result: Task execution result dictionary
+            
+        Returns:
+            Decision result: "end", "retry", or target step name
+            
+        Raises:
+            ValueError: LLM client not initialized
+        """
         results_context = []
         for skill, res in task_result.items():
             if isinstance(res, dict) and "error" in res:
-                results_context.append(f"[{skill}]: 执行失败 - {res['error']}")
+                results_context.append(f"[{skill}]: Execution failed - {res['error']}")
             else:
                 text_res = res if isinstance(res, str) else str(res)
                 text_res = text_res[:500] if len(text_res) > 500 else text_res
-                results_context.append(f"[{skill}]:执行成功 - 输出摘要：{text_res}")
+                results_context.append(f"[{skill}]: Execution successful - output summary: {text_res}")
         results_text = "\n".join(results_context)
         prompt_template = f"""
 # Role
@@ -201,6 +289,14 @@ class DynamicWorkflowEngine:
             return "end"
 
     def _find_step_index(self, step_name: str) -> Optional[int]:
+        """Find step index by step name.
+        
+        Args:
+            step_name: Step name
+            
+        Returns:
+            Step index, or None if not found
+        """
         for i, step in enumerate(self.workflow.steps):
             if step.name == step_name:
                 return i

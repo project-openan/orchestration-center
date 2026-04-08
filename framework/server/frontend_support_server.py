@@ -41,12 +41,12 @@ agent_lib = AgentCardLib()
 @app.route('/parse-pdf', methods=['POST'])
 def parse_pdf():
     if 'file' not in request.files:
-        return jsonify({'error': '未提供文件'}), 400
+        return jsonify({'error': 'No file provided'}), 400
     file = request.files['file']
     if file.filename == '':
-        return jsonify({"error": "文件名为空"}), 400
+        return jsonify({"error": "File name is empty"}), 400
     if not file.filename or not file.filename.lower().endswith('.pdf'):
-        return jsonify({"error": "仅支持 PDF 文件"}), 400
+        return jsonify({"error": "Only PDF files are supported"}), 400
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
         file.save(tmp.name)
         tmp_file_path = tmp.name
@@ -58,20 +58,20 @@ def parse_pdf():
             "5. Interaction Flow"
         )
         if not pre_md:
-            return jsonify({"error": "PDF解析失败，未找到指定章节"}), 400
+            return jsonify({"error": "PDF parsing failed, specified chapter not found"}), 400
         
         preflow = PreFlow(
             name=file.filename,
-            description=f"从PDF文件 {file.filename} 解析的工作流",
+            description=f"Workflow parsed from PDF file {file.filename}",
             steps_md=pre_md
         )
         return {
             "status": "success",
-            "message": "PDF文件解析成功",
+            "message": "PDF file parsed successfully",
             "content": preflow.model_dump_json()
         }, 200
     except Exception as e:
-        return jsonify({"error": f"解析失败：{str(e)}"}), 500
+        return jsonify({"error": f"Parsing failed: {str(e)}"}), 500
     finally:
         if os.path.exists(tmp_file_path):
             os.unlink(tmp_file_path)
@@ -82,13 +82,13 @@ def plan():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"error": "请求体为空"}), 400
+            return jsonify({"error": "Request body is empty"}), 400
         preflow_dict = data.get("preflow")
         agent_cards_list = data.get("agent_cards")
 
         if not preflow_dict or not agent_cards_list:
             return jsonify({
-                "error": "缺少必要字段: task 和 steps 必须提供"
+                "error": "Missing required fields: task and steps must be provided"
             }), 400
         generator = PsopGenerator()
         workflow = generator.generate_psop_workflow(PreFlow.model_validate(preflow_dict),
@@ -98,7 +98,7 @@ def plan():
             "data": workflow.model_dump_json()
         }), 200
     except Exception as e:
-        return jsonify({"error": f"规划失败 : {str(e)}"}), 500
+        return jsonify({"error": f"Planning failed: {str(e)}"}), 500
 
 
 @app.route('/psops', methods=['GET'])
@@ -115,7 +115,7 @@ def get_all_psops():
             "data": [wf.to_dict() for wf in recent_workflows]
         }), 200
     except Exception as e:
-        return jsonify({"error": f"获取PSOP列表失败: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to get PSOP list: {str(e)}"}), 500
 
 
 @app.route('/psops/<workflow_id>', methods=['GET'])
@@ -123,14 +123,14 @@ def get_psop_by_id(workflow_id):
     try:
         psop = retrieval.get_psop_by_id(workflow_id)
         if not psop:
-            return jsonify({"error": f"未找到ID为 {workflow_id} 的PSOP"}), 404
+            return jsonify({"error": f"PSOP with ID {workflow_id} not found"}), 404
         
         return jsonify({
             "status": "success",
             "data": psop.model_dump()
         }), 200
     except Exception as e:
-        return jsonify({"error": f"获取PSOP详情失败: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to get PSOP details: {str(e)}"}), 500
 
 
 @app.route('/psops', methods=['POST'])
@@ -138,38 +138,38 @@ def save_psop():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"error": "请求体为空"}), 400
+            return jsonify({"error": "Request body is empty"}), 400
         
         psop = PSOP.model_validate(data)
         saved_id = storage.save_psop(psop)
         
         return jsonify({
             "status": "success",
-            "message": "PSOP保存成功",
+            "message": "PSOP saved successfully",
             "workflow_id": saved_id
         }), 201
     except Exception as e:
-        return jsonify({"error": f"保存PSOP失败: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to save PSOP: {str(e)}"}), 500
 
 
 @app.route('/agent-cards', methods=['GET'])
 def get_all_agent_cards():
     """
-    获取全量AgentCard列表。
+    Get full list of AgentCards.
     
-    逻辑：
-    1. 读取配置文件 config/agent_cards.yaml
-    2. 如果配置文件中包含 source_url 字段，则从该URL获取AgentCard
-    3. 否则，使用配置文件中的 agents 字段
+    Logic:
+    1. Read configuration file config/agent_cards.yaml
+    2. If the configuration file contains source_url field, fetch AgentCards from that URL
+    3. Otherwise, use the agents field in the configuration file
     
     Returns:
-        JSON响应，包含AgentCard列表和来源信息
+        JSON response containing AgentCard list and source information
     """
     try:
-        # 获取所有AgentCard
+        # Get all AgentCards
         agent_cards = agent_lib.get_all_agent_cards()
         
-        # 将AgentCard转换为字典格式
+        # Convert AgentCards to dictionary format
         agent_cards_data = []
         for card in agent_cards:
             card_dict = card.model_dump()
@@ -183,47 +183,47 @@ def get_all_agent_cards():
         
     except FileNotFoundError as e:
         return jsonify({
-            "error": f"配置文件不存在: {str(e)}"
+            "error": f"Configuration file not found: {str(e)}"
         }), 404
     except ValueError as e:
         return jsonify({
-            "error": f"数据格式错误: {str(e)}"
+            "error": f"Data format error: {str(e)}"
         }), 400
     except Exception as e:
         return jsonify({
-            "error": f"获取AgentCard失败: {str(e)}"
+            "error": f"Failed to get AgentCard: {str(e)}"
         }), 500
 
 
 @app.route('/generate-from-intent', methods=['POST'])
 def generate_psop_from_intent():
     """
-    根据自然语言意图生成PSOP工作流。
+    Generate PSOP workflow from natural language intent.
     
-    请求体格式:
+    Request body format:
     {
-        "user_intent": "自然语言描述的业务意图",
-        "workflow_name": "可选的工作流名称"
+        "user_intent": "Business intent described in natural language",
+        "workflow_name": "Optional workflow name"
     }
     
-    返回:
-        JSON响应，包含生成的PSOP工作流
+    Returns:
+        JSON response containing the generated PSOP workflow
     """
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"error": "请求体为空"}), 400
+            return jsonify({"error": "Request body is empty"}), 400
         
         user_intent = data.get("user_intent")
         workflow_name = data.get("workflow_name")
         
         if not user_intent:
-            return jsonify({"error": "缺少必要字段: user_intent"}), 400
+            return jsonify({"error": "Missing required field: user_intent"}), 400
         
-        # 获取AgentCards（复用agent-cards接口的逻辑）
+        # Get AgentCards (reuse logic from agent-cards endpoint)
         agent_cards = agent_lib.get_all_agent_cards()
         if not agent_cards:
-            return jsonify({"error": "未找到可用的AgentCard"}), 404
+            return jsonify({"error": "No available AgentCard found"}), 404
         
         # 使用IntentPsopGenerator生成PSOP
         generator = IntentPsopGenerator()
@@ -233,7 +233,7 @@ def generate_psop_from_intent():
             workflow_name=workflow_name
         )
         
-        # 可选：自动保存生成的PSOP
+        # Optional: automatically save the generated PSOP
         try:
             storage.save_psop(psop)
         except Exception as save_error:
@@ -241,13 +241,13 @@ def generate_psop_from_intent():
         
         return jsonify({
             "status": "success",
-            "message": "PSOP生成成功",
+            "message": "PSOP generated successfully",
             "data": psop.model_dump()
         }), 200
         
     except Exception as e:
         logger.error(f"Failed to generate PSOP based on intent: {e}")
-        return jsonify({"error": f"生成PSOP失败: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to generate PSOP: {str(e)}"}), 500
 
 
 if __name__ == '__main__':
