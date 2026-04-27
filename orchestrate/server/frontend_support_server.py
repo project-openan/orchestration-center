@@ -19,6 +19,8 @@ import json
 import asyncio
 import threading
 import queue
+import time
+import uuid
 from typing import Optional, List, Any
 
 import anyio
@@ -68,6 +70,30 @@ config = get_conf()
 app.add_middleware(ConnectionLimitMiddleware, max_connections=int(config.get(CONN_MAX)))
 
 app.add_middleware(TimeoutMiddleware, timeout_seconds=int(config.get(CONN_TIMEOUT)))
+
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())[:8]
+
+    client_ip = request.client.host if request.client else "unknown"
+    query_params = dict(request.query_params)
+    logger.info(f"[{request_id}] --> {request.method} {request.url.path} "
+                f"client={client_ip}"
+                f"{' params=' + str(query_params) if query_params else ''}")
+
+    start_time = time.time()
+    try:
+        response = await call_next(request)
+        duration = time.time() - start_time
+        logger.info(f"[{request_id}] <-- {request.method} {request.url.path} "
+                    f"status={response.status_code} duration={duration:.3f}s")
+        return response
+    except Exception as e:
+        duration = time.time() - start_time
+        logger.error(f"[{request_id}] <-- {request.method} {request.url.path} "
+                     f"ERROR={e} duration={duration:.3f}s")
+        raise
 
 
 @app.middleware("http")
@@ -176,12 +202,17 @@ async def parse_pdf(file: UploadFile = File(...), _: Any = Depends(RateLimiter(c
     解析PDF文件，提取工作流定义
     """
     acquired = False
+    tmp_file_path = None
     try:
         parse_pdf_semaphore.acquire_nowait()
         acquired = True
 
+        filename = file.filename or "unknown"
+        logger.info(f"Parsing PDF file: {filename}, size: {file.size or 'unknown'}")
+
         # 验证文件类型
         if not file.filename or not file.filename.lower().endswith('.pdf'):
+            logger.warning(f"Invalid file type: {file.filename}")
             raise HTTPException(status_code=400, detail="仅支持 PDF 文件")
 
         # 保存临时文件
@@ -196,6 +227,7 @@ async def parse_pdf(file: UploadFile = File(...), _: Any = Depends(RateLimiter(c
             "5. Interaction Flow"
         )
         if not pre_md:
+            logger.warning(f"No '5. Interaction Flow' chapter found in PDF: {filename}")
             raise HTTPException(status_code=400, detail="PDF解析失败，未找到指定章节")
 
         preflow = PreFlow(
@@ -203,18 +235,22 @@ async def parse_pdf(file: UploadFile = File(...), _: Any = Depends(RateLimiter(c
             description=f"从PDF文件 {file.filename} 解析的工作流",
             steps_md=pre_md
         )
+        logger.info(f"PDF parsed successfully: {filename}, preflow_id={preflow.id}")
         return ParsePDFResponse(
             status="success",
             message="PDF文件解析成功",
             content=preflow.model_dump_json()
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"PDF parse server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"PDF parsing failed: {e}")
         raise HTTPException(status_code=500, detail=f"解析失败：{str(e)}")
     finally:
-        if os.path.exists(tmp_file_path):
+        if tmp_file_path and os.path.exists(tmp_file_path):
             os.unlink(tmp_file_path)
         if acquired:
             parse_pdf_semaphore.release()
@@ -229,12 +265,17 @@ async def plan(request: PlanRequest, _: Any = Depends(RateLimiter(config, "plan"
     try:
         plan_semaphore.acquire_nowait()
         acquired = True
+        preflow_name = request.preflow.get("name", "unknown")
+        agent_count = len(request.agent_cards)
+        logger.info(f"Planning workflow from PreFlow: {preflow_name}, agent_cards={agent_count}")
+
         generator = PsopGenerator()
         workflow = generator.generate_psop_workflow(
             PreFlow.model_validate(request.preflow),
             [Parse(json.dumps(card), AgentCard()) for card in request.agent_cards]
         )
         save_handle.handle(workflow)
+        logger.info(f"Workflow planned and saved: id={workflow.id}, name={workflow.name}, steps={len(workflow.steps)}")
         audit_logger.audit({
             'object_name': OperationObject.PSOP,
             'operation_name': OperationName.SAVE_PSOP,
@@ -247,9 +288,10 @@ async def plan(request: PlanRequest, _: Any = Depends(RateLimiter(config, "plan"
             data=workflow.model_dump_json()
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"Plan server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
     except Exception as e:
+        logger.error(f"Workflow planning failed: {e}")
         audit_logger.audit({
             'object_name': OperationObject.PSOP,
             'operation_name': OperationName.SAVE_PSOP,
@@ -276,7 +318,9 @@ async def get_all_psops(limit: int = 10, workflow_type: str = 'psop',
     try:
         all_psop_semaphore.acquire_nowait()
         acquired = True
+        logger.info(f"Listing PSOPs: limit={limit}, type={workflow_type}")
         recent_workflows = retrieval.list_recent_workflows(limit=limit, workflow_type=workflow_type)
+        logger.info(f"Retrieved {len(recent_workflows)} PSOPs")
 
         return PSOPListResponse(
             status="success",
@@ -284,9 +328,10 @@ async def get_all_psops(limit: int = 10, workflow_type: str = 'psop',
             data=[wf.to_dict() for wf in recent_workflows]
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"List PSOPs server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
     except Exception as e:
+        logger.error(f"Failed to list PSOPs: {e}")
         raise HTTPException(status_code=500, detail=f"获取PSOP列表失败: {str(e)}")
     finally:
         if acquired:
@@ -305,20 +350,24 @@ async def get_psop_by_id(workflow_id: str, _: Any = Depends(RateLimiter(config, 
     try:
         one_psop_semaphore.acquire_nowait()
         acquired = True
+        logger.info(f"Getting PSOP by ID: {workflow_id}")
         psop = retrieval.get_psop_by_id(workflow_id)
         if not psop:
+            logger.warning(f"PSOP not found: {workflow_id}")
             raise HTTPException(status_code=404, detail=f"未找到ID为 {workflow_id} 的PSOP")
 
+        logger.info(f"PSOP retrieved: id={workflow_id}, name={psop.name}")
         return PSOPDetailResponse(
             status="success",
             data=psop.model_dump()
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"Get PSOP server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to get PSOP {workflow_id}: {e}")
         raise HTTPException(status_code=500, detail=f"获取PSOP详情失败: {str(e)}")
     finally:
         if acquired:
@@ -338,7 +387,10 @@ async def save_psop(request: SavePSOPRequest, _: Any = Depends(RateLimiter(confi
         save_psop_semaphore.acquire_nowait()
         acquired = True
         psop = PSOP.model_validate(request.psop)
+        psop_name = psop.name or "unknown"
+        logger.info(f"Saving PSOP: name={psop_name}, id={psop.id}")
         saved_id = save_handle.handle(psop)
+        logger.info(f"PSOP saved successfully: id={saved_id}, name={psop_name}")
         audit_logger.audit({
             'object_name': OperationObject.PSOP,
             'operation_name': OperationName.SAVE_PSOP,
@@ -355,9 +407,10 @@ async def save_psop(request: SavePSOPRequest, _: Any = Depends(RateLimiter(confi
             }
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"Save PSOP server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
     except Exception as e:
+        logger.error(f"Failed to save PSOP: {e}")
         audit_logger.audit({
             'object_name': OperationObject.PSOP,
             'operation_name': OperationName.SAVE_PSOP,
@@ -383,9 +436,11 @@ async def delete_psop(workflow_id: str, _: Any = Depends(RateLimiter(config, "de
     try:
         delete_psop_semaphore.acquire_nowait()
         acquired = True
+        logger.info(f"Deleting PSOP: {workflow_id}")
         # 先检查PSOP是否存在
         psop = retrieval.get_psop_by_id(workflow_id)
         if not psop:
+            logger.warning(f"PSOP not found for deletion: {workflow_id}")
             raise HTTPException(status_code=404, detail=f"未找到ID为 {workflow_id} 的PSOP")
 
         # 删除PSOP
@@ -393,16 +448,32 @@ async def delete_psop(workflow_id: str, _: Any = Depends(RateLimiter(config, "de
         if not deleted:
             raise HTTPException(status_code=500, detail="删除PSOP失败: 文件可能不存在")
 
+        logger.info(f"PSOP deleted successfully: {workflow_id}")
+        audit_logger.audit({
+            'object_name': OperationObject.PSOP,
+            'operation_name': OperationName.DELETE_PSOP,
+            'level': LogLevel.MINOR,
+            'result': OperationResult.SUCCESS,
+            'details': {"workflow_id": workflow_id, "name": psop.name},
+        })
         return PSOPDeleteResponse(
             status="success",
             message=f"PSOP {workflow_id} 删除成功"
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"Delete PSOP server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to delete PSOP {workflow_id}: {e}")
+        audit_logger.audit({
+            'object_name': OperationObject.PSOP,
+            'operation_name': OperationName.DELETE_PSOP,
+            'level': LogLevel.MINOR,
+            'result': OperationResult.FAILURE,
+            'details': {"workflow_id": workflow_id, "error": str(e)},
+        })
         raise HTTPException(status_code=500, detail=f"删除PSOP失败: {str(e)}")
     finally:
         if acquired:
@@ -421,9 +492,11 @@ async def get_all_agent_cards(_: Any = Depends(RateLimiter(config, "get_all_agen
     try:
         agent_cards_semaphore.acquire_nowait()
         acquired = True
+        logger.info("Fetching agent cards")
         # 获取所有AgentCard
         agent_registry_factory = AgentRegistryClientFactory()
         agent_cards = agent_registry_factory.create_from_env().list_exact()
+        logger.info(f"Retrieved {len(agent_cards)} agent cards")
 
         return AgentCardResponse(
             status="success",
@@ -431,13 +504,16 @@ async def get_all_agent_cards(_: Any = Depends(RateLimiter(config, "get_all_agen
             data=agent_cards
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"List agent cards server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
     except FileNotFoundError as e:
+        logger.error(f"Agent card config not found: {e}")
         raise HTTPException(status_code=404, detail=f"配置文件不存在: {str(e)}")
     except ValueError as e:
+        logger.error(f"Agent card data format error: {e}")
         raise HTTPException(status_code=400, detail=f"数据格式错误: {str(e)}")
     except Exception as e:
+        logger.error(f"Failed to fetch agent cards: {e}")
         raise HTTPException(status_code=500, detail=f"获取AgentCard失败: {str(e)}")
     finally:
         if acquired:
@@ -457,10 +533,14 @@ async def generate_psop_from_intent(request: IntentRequest,
     try:
         generate_semaphore.acquire_nowait()
         acquired = True
+        intent_preview = request.user_intent[:80] + "..." if len(request.user_intent) > 80 else request.user_intent
+        logger.info(f"Generating PSOP from intent: {intent_preview}")
+
         # 获取AgentCards
         agent_registry_factory = AgentRegistryClientFactory()
         agent_cards = agent_registry_factory.create_from_env().list_exact()
         if not agent_cards:
+            logger.warning("No agent cards available for intent generation")
             raise HTTPException(status_code=404, detail="未找到可用的AgentCard")
 
         # 使用IntentPsopGenerator生成PSOP
@@ -470,10 +550,12 @@ async def generate_psop_from_intent(request: IntentRequest,
             agent_cards=[Parse(json.dumps(agent), AgentCard()) for agent in agent_cards],
             workflow_name=request.workflow_name
         )
+        logger.info(f"PSOP generated from intent: id={psop.id}, name={psop.name}, steps={len(psop.steps)}")
 
         # 可选：自动保存生成的PSOP
         try:
             save_handle.handle(psop)
+            logger.info(f"PSOP auto-saved: id={psop.id}")
             audit_logger.audit({
                 'object_name': OperationObject.PSOP,
                 'operation_name': OperationName.SAVE_PSOP,
@@ -482,7 +564,7 @@ async def generate_psop_from_intent(request: IntentRequest,
                 'details': psop.model_dump(),
             })
         except Exception as save_error:
-            logger.warning(f"PSOP save failed (does not affect response): {save_error}")
+            logger.warning(f"PSOP auto-save failed (does not affect response): {save_error}")
             audit_logger.audit({
                 'object_name': OperationObject.PSOP,
                 'operation_name': OperationName.SAVE_PSOP,
@@ -496,7 +578,7 @@ async def generate_psop_from_intent(request: IntentRequest,
             data=psop.model_dump()
         )
     except anyio.WouldBlock as e:
-        logger.error(f"Server is busy: {str(e)}")
+        logger.error(f"Generate PSOP from intent server busy: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Server is busy: {str(e)}")
     except HTTPException:
         raise
@@ -557,16 +639,21 @@ async def start_process_stream(psop_id: str):
     SSE流式执行工作流
     """
     if not psop_id:
+        logger.warning("start_process_stream called without psop_id")
         raise HTTPException(status_code=400, detail="缺少psop_id参数")
 
+    logger.info(f"Starting workflow execution stream: psop_id={psop_id}")
     psop = retrieval.get_psop_by_id(psop_id)
     if not psop:
+        logger.warning(f"PSOP not found for execution: {psop_id}")
         raise HTTPException(status_code=404, detail=f"未找到ID为 {psop_id} 的PSOP")
 
+    logger.info(f"Workflow loaded: name={psop.name}, steps={len(psop.steps)}")
     agent_registry_factory = AgentRegistryClientFactory()
     all_agent_cards = agent_registry_factory.create_from_env().list_exact()
     agent_cards = [Parse(json.dumps(agent), AgentCard())  for agent in all_agent_cards]
     if not agent_cards:
+        logger.warning("No agent cards available for workflow execution")
         raise HTTPException(status_code=404, detail="未找到可用的AgentCard")
 
     async def event_generator():

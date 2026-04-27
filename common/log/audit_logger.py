@@ -36,6 +36,8 @@ class LogLevel:
 class OperationName:
     START_SERVER = "Start Server"
     SAVE_PSOP = "Save PSOP"
+    DELETE_PSOP = "Delete PSOP"
+    EXECUTE_PSOP = "Execute PSOP"
 
 
 class OperationObject:
