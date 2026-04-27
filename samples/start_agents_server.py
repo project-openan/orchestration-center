@@ -25,7 +25,7 @@ from loguru import logger
 from typing import List
 from urllib.parse import urlparse
 
-from common.custom.psop_processor import custom_save_psop
+from common.custom import HandlerRegistry, InterfaceType
 from orchestrate.registry_client.client_factory import AgentRegistryClientFactory
 from orchestrate import AgentCardLoader
 from orchestrate.workflow_storage_instance import get_workflow_storage
@@ -40,7 +40,8 @@ def pre_insert_psop():
     storage = get_workflow_storage()
     for wf_id in storage.list_psops():
         psop = storage.load_psop(wf_id)
-        custom_save_psop(psop)
+        save_handle = HandlerRegistry.get_handler(InterfaceType.SAVE_PSOP)
+        save_handle.handle(psop)
 
 
 async def start_server(agent_card: AgentCard, port: int, host: str = "127.0.0.1") -> None:
