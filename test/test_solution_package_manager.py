@@ -26,7 +26,7 @@ from orchestrate.solution_package.manager import SolutionPackageManager
 
 @pytest.fixture
 def temp_storage_dir():
-    """Create temporary storage directory"""
+    """创建临时存储目录"""
     temp_dir = tempfile.mkdtemp()
     yield temp_dir
     shutil.rmtree(temp_dir, ignore_errors=True)
@@ -34,77 +34,77 @@ def temp_storage_dir():
 
 @pytest.fixture
 def manager(temp_storage_dir):
-    """Create manager instance"""
+    """创建管理器实例"""
     return SolutionPackageManager(storage_dir=temp_storage_dir)
 
 
 @pytest.fixture
 def sample_chapters():
-    """Sample chapter data"""
+    """示例章节数据"""
     return {
-        "Chapter 1": "This is the content of chapter 1",
-        "Chapter 2": "This is the content of chapter 2, containing keyword test",
-        "Chapter 3": "This is chapter 3"
+        "Chapter 1": "这是第一章的内容",
+        "Chapter 2": "这是第二章的内容，包含关键词 test",
+        "Chapter 3": "这是第三章"
     }
 
 
 class TestSolutionPackageManagerInit:
-    """Test initialization method"""
+    """测试初始化方法"""
 
     @patch('orchestrate.solution_package.manager.Path')
     def test_init_with_default_path(self, mock_path_class):
-        """Test using default storage path"""
+        """测试使用默认存储路径"""
         mock_current_file = MagicMock(spec=Path)
         mock_framework_dir = MagicMock(spec=Path)
         mock_project_root = MagicMock(spec=Path)
 
-        # Set up path relationship: current_file.parent.parent = project_root
+        # 设置路径关系: current_file.parent.parent = project_root
         mock_current_file.parent.parent = mock_project_root
         mock_path_class.return_value.resolve.return_value = mock_current_file
 
-        # Set up the constructed storage_dir
+        # 设置 storage_dir 的构建结果
         expected_storage = mock_project_root / "data" / "solution_packages"
 
-        # Instantiate manager
+        # 实例化管理器
         manager = SolutionPackageManager()
 
-        # Assertions
+        # 断言
         assert manager.storage_dir == expected_storage
-        # Verify directory was created
+        # 验证创建了目录
         expected_storage.mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
 
     def test_init_with_custom_path(self, temp_storage_dir):
-        """Test using custom storage path"""
+        """测试使用自定义存储路径"""
         manager = SolutionPackageManager(storage_dir=temp_storage_dir)
         assert manager.storage_dir == Path(temp_storage_dir)
         assert manager.storage_dir.exists()
 
 
 class TestGetStoragePath:
-    """Test _get_storage_path method"""
+    """测试 _get_storage_path 方法"""
 
     def test_get_storage_path_with_extension(self, manager):
-        """Test filename with extension"""
+        """测试带扩展名的文件名"""
         result = manager._get_storage_path("document.pdf")
         assert result == manager.storage_dir / "document.json"
 
     def test_get_storage_path_without_extension(self, manager):
-        """Test filename without extension"""
+        """测试不带扩展名的文件名"""
         result = manager._get_storage_path("document")
         assert result == manager.storage_dir / "document.json"
 
     def test_get_storage_path_nested_path(self, manager):
-        """Test filename with nested path"""
+        """测试嵌套路径的文件名"""
         result = manager._get_storage_path("/path/to/file.pdf")
         assert result == manager.storage_dir / "file.json"
 
 
 class TestStoreSolutionPackage:
-    """Test store_solution_package method"""
+    """测试 store_solution_package 方法"""
 
     def test_store_success(self, manager, sample_chapters):
-        """Test successful storage"""
+        """测试成功存储"""
         pdf_name = "test.pdf"
         result = manager.store_solution_package(pdf_name, sample_chapters)
 
@@ -121,17 +121,17 @@ class TestStoreSolutionPackage:
         assert data["chapter_titles"] == list(sample_chapters.keys())
 
     def test_store_write_error(self, manager, sample_chapters):
-        """Test error when writing file"""
+        """测试写入文件时出错"""
         with patch('builtins.open', side_effect=IOError("Write error")):
             result = manager.store_solution_package("test.pdf", sample_chapters)
             assert result is False
 
     def test_store_overwrite_existing(self, manager, sample_chapters):
-        """Test overwriting existing file"""
-        # Store once
+        """测试覆盖已存在的文件"""
+        # 先存储一次
         manager.store_solution_package("test.pdf", sample_chapters)
-        # Store again with modified data
-        new_chapters = {"New Chapter": "New content"}
+        # 修改数据后再次存储
+        new_chapters = {"New Chapter": "新内容"}
         manager.store_solution_package("test.pdf", new_chapters)
 
         storage_file = manager.storage_dir / "test.json"
@@ -143,10 +143,10 @@ class TestStoreSolutionPackage:
 
 
 class TestRetrieveByFilename:
-    """Test retrieve_by_filename method"""
+    """测试 retrieve_by_filename 方法"""
 
     def test_retrieve_existing(self, manager, sample_chapters):
-        """Test retrieving existing data"""
+        """测试检索已存在的数据"""
         manager.store_solution_package("test.pdf", sample_chapters)
         result = manager.retrieve_by_filename("test.pdf")
 
@@ -155,12 +155,12 @@ class TestRetrieveByFilename:
         assert result["chapters"] == sample_chapters
 
     def test_retrieve_nonexistent(self, manager):
-        """Test retrieving non-existent data"""
+        """测试检索不存在的数据"""
         result = manager.retrieve_by_filename("nonexistent.pdf")
         assert result is None
 
     def test_retrieve_read_error(self, manager):
-        """Test error when reading file"""
+        """测试读取文件时出错"""
         manager.store_solution_package("test.pdf", sample_chapters)
 
         with patch('builtins.open', side_effect=IOError("Read error")):
@@ -169,15 +169,15 @@ class TestRetrieveByFilename:
 
 
 class TestRetrieveAll:
-    """Test retrieve_all method"""
+    """测试 retrieve_all 方法"""
 
     def test_retrieve_all_empty(self, manager):
-        """Test empty storage directory"""
+        """测试空存储目录"""
         result = manager.retrieve_all()
         assert result == []
 
     def test_retrieve_all_with_data(self, manager, sample_chapters):
-        """Test retrieving all data"""
+        """测试检索所有数据"""
         manager.store_solution_package("test1.pdf", sample_chapters)
         manager.store_solution_package("test2.pdf", {"Ch1": "content"})
 
@@ -188,28 +188,28 @@ class TestRetrieveAll:
         assert "test2.pdf" in filenames
 
     def test_retrieve_all_skip_corrupted(self, manager, sample_chapters):
-        """Test skipping corrupted files"""
+        """测试跳过损坏的文件"""
         manager.store_solution_package("test.pdf", sample_chapters)
-        # Create a corrupted JSON file
+        # 创建一个损坏的JSON文件
         corrupted = manager.storage_dir / "corrupted.json"
         corrupted.write_text("{ invalid json }")
 
         result = manager.retrieve_all()
-        # Should only return valid files
+        # 应该只返回有效的文件
         assert len(result) == 1
         assert result[0]["pdf_filename"] == "test.pdf"
 
 
 class TestGetAllFilenames:
-    """Test get_all_filenames method"""
+    """测试 get_all_filenames 方法"""
 
     def test_get_filenames_empty(self, manager):
-        """Test empty storage directory"""
+        """测试空存储目录"""
         result = manager.get_all_filenames()
         assert result == []
 
     def test_get_filenames_with_data(self, manager, sample_chapters):
-        """Test getting filename list"""
+        """测试获取文件名列表"""
         manager.store_solution_package("doc1.pdf", sample_chapters)
         manager.store_solution_package("doc2.pdf", {"Ch": "content"})
 
@@ -218,10 +218,10 @@ class TestGetAllFilenames:
 
 
 class TestDeleteByFilename:
-    """Test delete_by_filename method"""
+    """测试 delete_by_filename 方法"""
 
     def test_delete_existing(self, manager, sample_chapters):
-        """Test deleting existing file"""
+        """测试删除已存在的文件"""
         manager.store_solution_package("test.pdf", sample_chapters)
         storage_file = manager.storage_dir / "test.json"
         assert storage_file.exists()
@@ -231,37 +231,37 @@ class TestDeleteByFilename:
         assert not storage_file.exists()
 
     def test_delete_nonexistent(self, manager):
-        """Test deleting non-existent file"""
+        """测试删除不存在的文件"""
         result = manager.delete_by_filename("nonexistent.pdf")
         assert result is False
 
 
 class TestGetChapterContent:
-    """Test get_chapter_content method"""
+    """测试 get_chapter_content 方法"""
 
     def test_get_existing_chapter(self, manager, sample_chapters):
-        """Test getting existing chapter"""
+        """测试获取已存在的章节"""
         manager.store_solution_package("test.pdf", sample_chapters)
         content = manager.get_chapter_content("test.pdf", "Chapter 1")
-        assert content == "This is the content of chapter 1"
+        assert content == "这是第一章的内容"
 
     def test_get_nonexistent_chapter(self, manager, sample_chapters):
-        """Test getting non-existent chapter"""
+        """测试获取不存在的章节"""
         manager.store_solution_package("test.pdf", sample_chapters)
         content = manager.get_chapter_content("test.pdf", "Nonexistent")
         assert content is None
 
     def test_get_nonexistent_file(self, manager):
-        """Test getting chapter from non-existent file"""
+        """测试获取不存在文件的章节"""
         content = manager.get_chapter_content("nonexistent.pdf", "Chapter 1")
         assert content is None
 
 
 class TestSearchChaptersByKeyword:
-    """Test search_chapters_by_keyword method"""
+    """测试 search_chapters_by_keyword 方法"""
 
     def test_search_found(self, manager, sample_chapters):
-        """Test search found results"""
+        """测试搜索到结果"""
         manager.store_solution_package("test.pdf", sample_chapters)
         results = manager.search_chapters_by_keyword("test")
 
@@ -270,13 +270,13 @@ class TestSearchChaptersByKeyword:
         assert "Chapter 2" in results[0]["matching_chapters"]
 
     def test_search_not_found(self, manager, sample_chapters):
-        """Test search no results"""
+        """测试未搜索到结果"""
         manager.store_solution_package("test.pdf", sample_chapters)
         results = manager.search_chapters_by_keyword("nonexistent")
         assert results == []
 
     def test_search_case_insensitive(self, manager, sample_chapters):
-        """Test search is case insensitive"""
+        """测试搜索不区分大小写"""
         manager.store_solution_package("test.pdf", sample_chapters)
         results_lower = manager.search_chapters_by_keyword("test")
         results_upper = manager.search_chapters_by_keyword("TEST")
@@ -285,10 +285,10 @@ class TestSearchChaptersByKeyword:
 
 
 class TestGetStorageStats:
-    """Test get_storage_stats method"""
+    """测试 get_storage_stats 方法"""
 
     def test_stats_empty(self, manager):
-        """Test stats for empty storage"""
+        """测试空存储的统计信息"""
         stats = manager.get_storage_stats()
 
         assert stats["storage_directory"] == str(manager.storage_dir)
@@ -297,7 +297,7 @@ class TestGetStorageStats:
         assert stats["package_filenames"] == []
 
     def test_stats_with_data(self, manager, sample_chapters):
-        """Test stats with data"""
+        """测试有数据时的统计信息"""
         manager.store_solution_package("test1.pdf", sample_chapters)
         manager.store_solution_package("test2.pdf", {"Ch1": "c1", "Ch2": "c2"})
 

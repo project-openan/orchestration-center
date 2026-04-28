@@ -19,7 +19,7 @@ import json
 from unittest.mock import patch, MagicMock
 from io import BytesIO
 
-# Set test config before importing app
+# 在导入app之前设置测试配置
 import os
 
 os.environ['TESTING'] = 'True'
@@ -29,7 +29,7 @@ from orchestrate.server.frontend_support_server import app
 
 @pytest.fixture
 def client():
-    """Create Flask test client"""
+    """创建Flask测试客户端"""
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
@@ -37,59 +37,59 @@ def client():
 
 @pytest.fixture
 def mock_storage():
-    """Mock WorkflowStorage"""
+    """模拟WorkflowStorage"""
     with patch('orchestrate.server.frontend_support_server.storage') as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_retrieval():
-    """Mock WorkflowRetrieval"""
+    """模拟WorkflowRetrieval"""
     with patch('orchestrate.server.frontend_support_server.retrieval') as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_agent_lib():
-    """Mock AgentCardLib"""
+    """模拟AgentCardLib"""
     with patch('orchestrate.server.frontend_support_server.agent_lib') as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_parser():
-    """Mock SolutionPackageParser"""
+    """模拟SolutionPackageParser"""
     with patch('orchestrate.server.frontend_support_server.SolutionPackageParser') as MockParser:
         mock_instance = MockParser.return_value
         yield mock_instance
 
 
 class TestParsePdfEndpoint:
-    """Test /parse-pdf endpoint"""
+    """测试 /parse-pdf 端点"""
 
     def test_parse_pdf_missing_file(self, client):
-        """Test missing file"""
+        """测试未提供文件"""
         response = client.post('/parse-pdf')
         assert response.status_code == 400
         data = json.loads(response.data)
         assert 'error' in data
 
     def test_parse_pdf_empty_filename(self, client):
-        """Test empty filename"""
+        """测试空文件名"""
         response = client.post('/parse-pdf', data={'file': (BytesIO(), '')})
         assert response.status_code == 400
 
     def test_parse_pdf_wrong_extension(self, client):
-        """Test non-PDF file"""
+        """测试非PDF文件"""
         response = client.post('/parse-pdf', data={
             'file': (BytesIO(b'test'), 'test.txt')
         })
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert 'Only PDF supported' in data['error']
+        assert '仅支持 PDF' in data['error']
 
     def test_parse_pdf_success(self, client, mock_parser):
-        """Test successful PDF parsing"""
+        """测试成功解析PDF"""
         mock_parser.parse_pdf_chapter.return_value = "# Test Markdown"
 
         with patch('orchestrate.server.frontend_support_server.PreFlow') as MockPreFlow:
@@ -101,11 +101,11 @@ class TestParsePdfEndpoint:
                 'file': (BytesIO(b'%PDF-1.4 test'), 'test.pdf')
             })
 
-            # Note: original code returns a dict, not jsonify; testing actual behavior
+            # 注意：原代码返回的是dict而非jsonify，这里测试实际行为
             assert response.status_code == 200
 
     def test_parse_pdf_parse_failure(self, client, mock_parser):
-        """Test parsing failure"""
+        """测试解析失败"""
         mock_parser.parse_pdf_chapter.return_value = None
 
         response = client.post('/parse-pdf', data={
@@ -114,24 +114,24 @@ class TestParsePdfEndpoint:
 
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert 'Parsing failed' in data['error']
+        assert '解析失败' in data['error']
 
 
 class TestPlanEndpoint:
-    """Test /plan endpoint"""
+    """测试 /plan 端点"""
 
     def test_plan_empty_content(self, client):
-        """Test empty request body"""
+        """测试空请求体"""
         response = client.post('/plan', content_type='application/json')
         assert response.status_code == 500
 
     def test_plan_empty_body(self, client):
-        """Test empty request body"""
+        """测试空请求体"""
         response = client.post('/plan', data=json.dumps({}), content_type='application/json')
         assert response.status_code == 400
 
     def test_plan_missing_fields(self, client):
-        """Test missing required fields"""
+        """测试缺少必要字段"""
         response = client.post('/plan',
                                data=json.dumps({"preflow": {}}),
                                content_type='application/json'
@@ -139,7 +139,7 @@ class TestPlanEndpoint:
         assert response.status_code == 400
 
     def test_plan_success(self, client, mock_storage):
-        """Test successful planning"""
+        """测试成功规划"""
         with patch('orchestrate.server.frontend_support_server.PsopGenerator') as MockGen, \
                 patch('orchestrate.server.frontend_support_server.PreFlow') as MockPreFlow, \
                 patch('orchestrate.server.frontend_support_server.AgentCard') as MockCard:
@@ -166,10 +166,10 @@ class TestPlanEndpoint:
 
 
 class TestPsopsEndpoints:
-    """Test /psops related endpoints"""
+    """测试 /psops 相关端点"""
 
     def test_get_psops_list(self, client, mock_retrieval):
-        """Test getting PSOP list"""
+        """测试获取PSOP列表"""
         mock_wf = MagicMock()
         mock_wf.to_dict.return_value = {"id": "123", "name": "test"}
         mock_retrieval.list_recent_workflows.return_value = [mock_wf]
@@ -180,7 +180,7 @@ class TestPsopsEndpoints:
         assert data['count'] == 1
 
     def test_get_psop_by_id_found(self, client, mock_retrieval):
-        """Test getting existing PSOP by ID"""
+        """测试根据ID获取存在的PSOP"""
         mock_psop = MagicMock()
         mock_psop.model_dump.return_value = {"id": "123", "name": "test"}
         mock_retrieval.get_psop_by_id.return_value = mock_psop
@@ -191,14 +191,14 @@ class TestPsopsEndpoints:
         assert data['status'] == 'success'
 
     def test_get_psop_by_id_not_found(self, client, mock_retrieval):
-        """Test getting nonexistent PSOP by ID"""
+        """测试根据ID获取不存在的PSOP"""
         mock_retrieval.get_psop_by_id.return_value = None
 
         response = client.get('/psops/nonexistent')
         assert response.status_code == 404
 
     def test_save_psop_success(self, client, mock_storage):
-        """Test saving PSOP"""
+        """测试保存PSOP"""
         with patch('orchestrate.server.frontend_support_server.PSOP') as MockPSOP:
             mock_psop = MagicMock()
             mock_psop.model_dump.return_value = {"id": "123"}
@@ -213,7 +213,7 @@ class TestPsopsEndpoints:
             assert response.status_code == 201
 
     def test_delete_psop_success(self, client, mock_retrieval, mock_storage):
-        """Test deleting PSOP"""
+        """测试删除PSOP"""
         mock_psop = MagicMock()
         mock_retrieval.get_psop_by_id.return_value = mock_psop
         mock_storage.delete_psop.return_value = True
@@ -224,7 +224,7 @@ class TestPsopsEndpoints:
         assert data['status'] == 'success'
 
     def test_delete_psop_not_found(self, client, mock_retrieval):
-        """Test deleting nonexistent PSOP"""
+        """测试删除不存在的PSOP"""
         mock_retrieval.get_psop_by_id.return_value = None
 
         response = client.delete('/psops/nonexistent')
@@ -232,10 +232,10 @@ class TestPsopsEndpoints:
 
 
 class TestAgentCardsEndpoint:
-    """Test /agent-cards endpoint"""
+    """测试 /agent-cards 端点"""
 
     def test_get_agent_cards_success(self, client, mock_agent_lib):
-        """Test successfully getting AgentCard list"""
+        """测试成功获取AgentCard列表"""
         mock_card = MagicMock()
         mock_card.model_dump.return_value = {"name": "agent1", "url": "http://test"}
         mock_agent_lib.get_all_agent_cards.return_value = [mock_card]
@@ -247,14 +247,14 @@ class TestAgentCardsEndpoint:
         assert data['data'][0]['name'] == 'agent1'
 
     def test_get_agent_cards_config_not_found(self, client, mock_agent_lib):
-        """Test config file not found"""
+        """测试配置文件不存在"""
         mock_agent_lib.get_all_agent_cards.side_effect = FileNotFoundError("config not found")
 
         response = client.get('/agent-cards')
         assert response.status_code == 404
 
     def test_get_agent_cards_value_error(self, client, mock_agent_lib):
-        """Test data format error"""
+        """测试数据格式错误"""
         mock_agent_lib.get_all_agent_cards.side_effect = ValueError("invalid format")
 
         response = client.get('/agent-cards')
@@ -262,10 +262,10 @@ class TestAgentCardsEndpoint:
 
 
 class TestIntentEndpoints:
-    """Test intent-related endpoints"""
+    """测试意图相关端点"""
 
     def test_generate_from_intent_success(self, client, mock_agent_lib):
-        """Test generating PSOP from intent successfully"""
+        """测试根据意图生成PSOP成功"""
         mock_card = MagicMock()
         mock_card.model_dump.return_value = {"name": "agent1"}
         mock_agent_lib.get_all_agent_cards.return_value = [mock_card]
@@ -277,7 +277,7 @@ class TestIntentEndpoints:
             mock_gen.generate_psop_from_intent.return_value = mock_psop
 
             response = client.post('/generate-from-intent',
-                                   data=json.dumps({"user_intent": "Create a workflow for me"}),
+                                   data=json.dumps({"user_intent": "帮我创建一个工作流"}),
                                    content_type='application/json'
                                    )
 
@@ -286,7 +286,7 @@ class TestIntentEndpoints:
             assert data['status'] == 'success'
 
     def test_generate_from_intent_missing_intent(self, client):
-        """Test missing user_intent field"""
+        """测试缺少user_intent字段"""
         response = client.post('/generate-from-intent',
                                data=json.dumps({}),
                                content_type='application/json'
@@ -294,7 +294,7 @@ class TestIntentEndpoints:
         assert response.status_code == 400
 
     def test_retrieve_by_intent_success(self, client, mock_retrieval):
-        """Test successful retrieval by intent"""
+        """测试根据意图检索成功"""
         mock_psop = MagicMock()
         mock_psop.model_dump.return_value = {"id": "123", "name": "matched"}
         mock_psop.id = "123"
@@ -302,7 +302,7 @@ class TestIntentEndpoints:
         mock_retrieval.retrieve_psop_by_intent.return_value = mock_psop
 
         response = client.post('/retrieve-by-intent',
-                               data=json.dumps({"user_intent": "Find workflow"}),
+                               data=json.dumps({"user_intent": "查找工作流"}),
                                content_type='application/json'
                                )
 
@@ -311,11 +311,11 @@ class TestIntentEndpoints:
         assert data['status'] == 'success'
 
     def test_retrieve_by_intent_no_match(self, client, mock_retrieval):
-        """Test retrieval by intent with no match"""
+        """测试根据意图检索无匹配"""
         mock_retrieval.retrieve_psop_by_intent.return_value = None
 
         response = client.post('/retrieve-by-intent',
-                               data=json.dumps({"user_intent": "Not found"}),
+                               data=json.dumps({"user_intent": "找不到"}),
                                content_type='application/json'
                                )
 
@@ -325,22 +325,22 @@ class TestIntentEndpoints:
 
 
 class TestStartProcessStreamEndpoint:
-    """Test /rest/start_process_stream endpoint"""
+    """测试 /rest/start_process_stream 端点"""
 
     def test_stream_missing_psop_id(self, client):
-        """Test missing psop_id parameter"""
+        """测试缺少psop_id参数"""
         response = client.get('/rest/start_process_stream')
         assert response.status_code == 400
 
     def test_stream_psop_not_found(self, client, mock_retrieval):
-        """Test PSOP not found"""
+        """测试PSOP不存在"""
         mock_retrieval.get_psop_by_id.return_value = None
 
         response = client.get('/rest/start_process_stream?psop_id=nonexistent')
         assert response.status_code == 404
 
     def test_stream_no_agent_cards(self, client, mock_retrieval, mock_agent_lib):
-        """Test no available AgentCards"""
+        """测试没有可用的AgentCard"""
         mock_psop = MagicMock()
         mock_retrieval.get_psop_by_id.return_value = mock_psop
         mock_agent_lib.get_all_agent_cards.return_value = []
@@ -349,14 +349,14 @@ class TestStartProcessStreamEndpoint:
         assert response.status_code == 404
 
     def test_stream_response_format(self, client, mock_retrieval, mock_agent_lib):
-        """Test SSE response format"""
+        """测试SSE响应格式"""
         mock_psop = MagicMock()
         mock_retrieval.get_psop_by_id.return_value = mock_psop
 
         mock_card = MagicMock()
         mock_agent_lib.get_all_agent_cards.return_value = [mock_card]
 
-        # Mock engine execution
+        # 模拟引擎执行
         with patch('orchestrate.server.frontend_support_server.DynamicWorkflowEngine') as MockEngine:
             mock_engine = MockEngine.return_value
             mock_engine.run = MagicMock()

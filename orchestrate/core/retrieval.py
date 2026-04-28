@@ -15,16 +15,38 @@
 
 import json
 import re
-from datetime import timezone
-from typing import Optional, List
+from datetime import datetime, timezone
+from typing import Optional, List, Dict, Any
 
-from common.custom import HandlerRegistry, InterfaceType
 from common.llm import get_llm_instance
 from orchestrate.core.model.preflow import PreFlow
 from orchestrate.core.model.psop import PSOP
 from orchestrate.core.persistence import WorkflowStorage
 from orchestrate.core.prompts import get_retrieve_psop_prompt
-from orchestrate.core.workflow_search_result import WorkflowSearchResult
+
+
+class WorkflowSearchResult:
+    def __init__(self, workflow_id: str, workflow_type: str, name: str,
+                 description: Optional[str], tags: Optional[List[str]],
+                 created_at: datetime, score: float = 1.0):
+        self.workflow_id = workflow_id
+        self.workflow_type = workflow_type
+        self.name = name
+        self.description = description
+        self.tags = tags or []
+        self.created_at = created_at
+        self.score = score
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "workflow_id": self.workflow_id,
+            "workflow_type": self.workflow_type,
+            "name": self.name,
+            "description": self.description,
+            "tags": self.tags,
+            "created_at": self.created_at.isoformat(),
+            "score": self.score
+        }
 
 
 class WorkflowRetrieval:
@@ -32,8 +54,7 @@ class WorkflowRetrieval:
         self.storage = storage
 
     def get_psop_by_id(self, workflow_id: str) -> Optional[PSOP]:
-        query_handle = HandlerRegistry.get_handler(InterfaceType.GET_PSOP_BY_ID)
-        return query_handle.handle(workflow_id)
+        return self.storage.load_psop(workflow_id)
 
     def get_preflow_by_id(self, workflow_id: str) -> Optional[PreFlow]:
         return self.storage.load_preflow(workflow_id)
@@ -147,8 +168,17 @@ class WorkflowRetrieval:
     def list_recent_workflows(self, limit: int = 10, workflow_type: str = "all") -> List[WorkflowSearchResult]:
         results = []
         if workflow_type in ("all", "psop"):
-            query_handle = HandlerRegistry.get_handler(InterfaceType.GET_ALL_PSOP)
-            results.extend(query_handle.handle())
+            for wf_id in self.storage.list_psops():
+                psop = self.storage.load_psop(wf_id)
+                if psop:
+                    results.append(WorkflowSearchResult(
+                        workflow_id=psop.id,
+                        workflow_type="psop",
+                        name=psop.name,
+                        description=psop.description,
+                        tags=psop.tags,
+                        created_at=psop.created_at
+                    ))
         if workflow_type in ("all", "preflow"):
             for wf_id in self.storage.list_preflows():
                 preflow = self.storage.load_preflow(wf_id)
@@ -161,26 +191,21 @@ class WorkflowRetrieval:
                         tags=preflow.tags,
                         created_at=preflow.created_at
                     ))
-        # Use timestamp for sorting to avoid offset-naive and offset-aware datetime comparison errors
-        def _sort_key(x):
-            if x.created_at.tzinfo:
-                return x.created_at.timestamp()
-            return x.created_at.replace(tzinfo=timezone.utc).timestamp()
-
-        results.sort(key=_sort_key, reverse=True)
+        # 使用timestamp进行排序，避免offset-naive和offset-aware datetime比较错误
+        results.sort(key=lambda x: x.created_at.timestamp() if x.created_at.tzinfo else x.created_at.replace(tzinfo=timezone.utc).timestamp(), reverse=True)
         return results[:limit]
 
     def _parse_json_response(self, llm_response: str) -> str:
         """Parse JSON response from LLM output.
-
+        
         Extracts JSON from code blocks in LLM responses.
-
+        
         Args:
             llm_response: Raw LLM response string containing JSON code blocks
-
+            
         Returns:
             Parsed string value from JSON
-
+            
         Raises:
             ValueError: If no JSON code block found, empty content, or invalid JSON
         """
@@ -199,20 +224,20 @@ class WorkflowRetrieval:
 
     def retrieve_psop_by_intent(self, user_intent: str) -> Optional[PSOP]:
         """Retrieve the most suitable PSOP based on user's natural language intent.
-
+        
         Uses LLM to analyze user intent and select the most appropriate PSOP
         from all available PSOPs based on their names and descriptions.
-
+        
         Args:
             user_intent: Natural language description of user's intent
-
+            
         Returns:
             The most suitable PSOP object, or None if no suitable PSOP found
-
+            
         Raises:
             Exception: If LLM API call fails or parsing fails
         """
-        # Retrieve all PSOP data
+        # 获取所有PSOP数据
         psop_list = []
         for wf_id in self.storage.list_psops():
             psop = self.storage.load_psop(wf_id)
@@ -222,31 +247,31 @@ class WorkflowRetrieval:
                     "user_intent": psop.user_intent or "",
                     "id": psop.id
                 })
-
+        
         if not psop_list:
             return None
-
-        # Prepare PSOP list as JSON string
+            
+        # 准备PSOP列表字符串
         psop_list_str = json.dumps(psop_list, ensure_ascii=False, indent=2)
-
-        # Get LLM instance and invoke
+        
+        # 获取LLM实例并调用
         llm = get_llm_instance()
         prompt = get_retrieve_psop_prompt(user_intent, psop_list_str)
-
+        
         try:
             _, llm_res = llm.ask_llm(prompt)
             selected_psop_name = self._parse_json_response(llm_res)
-
-            # If LLM returns empty string, no suitable PSOP was found
+            
+            # 如果LLM返回空字符串，表示没有找到合适的PSOP
             if not selected_psop_name:
                 return None
-
-            # Find the PSOP object matching the selected name
+                
+            # 根据选择的PSOP名称查找对应的PSOP对象
             for psop_info in psop_list:
                 if psop_info["name"] == selected_psop_name:
                     return self.storage.load_psop(psop_info["id"])
-
+                    
             return None
-
+            
         except Exception as e:
             raise Exception(f"Failed to retrieve PSOP by intent: {e}")
