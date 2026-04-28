@@ -17,6 +17,7 @@ from typing import Union, Dict, Any, Optional, List
 
 import requests
 from a2a.types import AgentCard
+from google.protobuf.json_format import MessageToDict
 from loguru import logger
 
 
@@ -56,7 +57,7 @@ class AgentRegistryClient:
         :return: True if successful, False if duplicate
         """
         if isinstance(agent, AgentCard):
-            data = agent.model_dump()
+            data = MessageToDict(agent, preserving_proto_field_name=True)
         else:
             data = agent
         resp = self._request('POST', '/rest/a2a-t/v1/agents/register', json=data)
@@ -70,7 +71,7 @@ class AgentRegistryClient:
         :param agent: New AgentCard data
         :return: True if updated, False if not found
         """
-        data = agent.model_dump()
+        data = MessageToDict(agent, preserving_proto_field_name=True)
         resp = self._request('PUT', f'/rest/a2a-t/v1/update_agent/{name}',
                              params={'organization': organization},
                              json=data)
@@ -87,7 +88,7 @@ class AgentRegistryClient:
                              params={'organization': organization})
         return resp.json()
 
-    def get(self, name: str, organization: str) -> Optional[AgentCard]:
+    def get(self, name: str, organization: str) -> dict | None:
         """
         Get an agent by exact name and organization.
         :return: AgentCard if found, else None
@@ -95,7 +96,7 @@ class AgentRegistryClient:
         resp = self._request('GET', f'/rest/a2a-t/v1/agents/{name}',
                              params={'organization': organization})
         if resp.status_code == 200:
-            return AgentCard(**resp.json())
+            return resp.json()
         elif resp.status_code == 404:
             return None
         else:
@@ -103,7 +104,7 @@ class AgentRegistryClient:
             return None
 
     def list_exact(self, name: Optional[str] = None, organization: Optional[str] = None,
-                   provider: Optional[str] = None) -> List[AgentCard]:
+                   provider: Optional[str] = None) -> List[dict]:
         """
         Exact search. All parameters optional.
         :return: List of matching AgentCard instances
@@ -116,19 +117,17 @@ class AgentRegistryClient:
         if provider:
             parms['provider'] = provider
         resp = self._request('GET', f'/rest/a2a-t/v1/agents/query', params=parms)
-        data = resp.json()
-        return [AgentCard(**item) for item in data]
+        return resp.json()
 
-    def search_by_task(self, task: str) -> List[AgentCard]:
+    def search_by_task(self, task: str) -> List[dict]:
         """
         Fuzzy search using task description.
         :param task: Natural language task
         :return: List of relevant AgentCard instances
         """
         resp = self._request('GET', f'/rest/a2a-t/v1/agents/retrieve', params={'task': task})
-        data = resp.json()
-        return [AgentCard(**item) for item in data]
+        return resp.json()
 
-    def list_all(self) -> List[AgentCard]:
+    def list_all(self) -> List[dict]:
         """Return all registered agents."""
         return self.list_exact()

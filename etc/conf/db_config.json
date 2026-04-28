@@ -1,0 +1,7 @@
+{
+  "host": "127.0.0.1",
+  "port": "5432",
+  "database": "orchestration_center",
+  "user": "opena2a_t",
+  "password": "openA2A_T"
+}

@@ -16,21 +16,33 @@
 import asyncio
 
 import uvicorn
-from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.routes import create_rest_routes, create_agent_card_routes
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard
+from fastapi import FastAPI
 from loguru import logger
 from typing import List
 from urllib.parse import urlparse
 
+from common.custom import HandlerRegistry, InterfaceType
 from orchestrate.registry_client.client_factory import AgentRegistryClientFactory
 from orchestrate import AgentCardLoader
+from orchestrate.workflow_storage_instance import get_workflow_storage
 from samples.agents.energy_saving_agent import EnergySavingAgentExecutor
 from samples.agents.energy_saving_intent_agent import EnergySavingIntentAgentExecutor
 from samples.agents.live_streaming_agent import LiveStreamingAgentExecutor
 from samples.agents.assurance_agent import AssuranceAgentExecutor
 from samples.agents.ran_agent import RanAgentExecutor
+
+
+def pre_insert_psop():
+    storage = get_workflow_storage()
+    for wf_id in storage.list_psops():
+        psop = storage.load_psop(wf_id)
+        save_handle = HandlerRegistry.get_handler(InterfaceType.SAVE_PSOP)
+        save_handle.handle(psop)
+
 
 async def start_server(agent_card: AgentCard, port: int, host: str = "127.0.0.1") -> None:
     agent2class = {
@@ -51,24 +63,27 @@ async def start_server(agent_card: AgentCard, port: int, host: str = "127.0.0.1"
     request_handler = DefaultRequestHandler(
         agent_executor=agent_impl,
         task_store=InMemoryTaskStore(),
+        agent_card=agent_card
     )
-    server = A2AStarletteApplication(
-        agent_card=agent_card,
-        http_handler=request_handler
+    rest_routes = create_rest_routes(
+        request_handler=request_handler
     )
 
-    config = uvicorn.Config(
-        server.build(),
-        host=host,
-        port=port,
-        log_level='info'
+    agent_card_routes = create_agent_card_routes(
+        agent_card=agent_card
     )
-    server_instance = uvicorn.Server(config)
-    await server_instance.serve()
-    logger.info(f"Server for {agent_name} stopped")
+
+    app = FastAPI()
+    app.routes.extend(agent_card_routes)
+    app.routes.extend(rest_routes)
+
+    config = uvicorn.Config(app, host=host, port=port)
+    uvicorn_server = uvicorn.Server(config)
+    await uvicorn_server.serve()
 
 
 async def main() -> None:
+    pre_insert_psop()
     agent_lib = AgentCardLoader()
     agent_cards = agent_lib.get_all_agent_cards()
     factory = AgentRegistryClientFactory().create_from_env()
@@ -81,13 +96,13 @@ async def main() -> None:
         except Exception as e:
             logger.error(f"register agent card failed: {e}")
         agent_name = agent_card.name
-        parsed = urlparse(agent_card.url)
+        parsed = urlparse(agent_card.supported_interfaces[0].url)
         task = asyncio.create_task(
             start_server(agent_card, port=parsed.port, host=parsed.hostname),
             name=f"server_{agent_name}"
         )
         tasks.append(task)
-        logger.info(f"Starting server for '{agent_name}' on {agent_card.url}")
+        logger.info(f"Starting server for '{agent_name}' on {agent_card.supported_interfaces[0].url}")
     try:
         await asyncio.gather(*tasks)
     except KeyboardInterrupt:

@@ -15,8 +15,8 @@
 #    under the License.
 
 """
-Persistence和Retrieval模块测试脚本
-测试framework/core/persistence.py和retrieval.py的功能
+Persistence and Retrieval module test script
+Tests for framework/core/persistence.py and retrieval.py
 """
 
 import sys
@@ -24,7 +24,7 @@ import os
 import tempfile
 from datetime import datetime
 
-# 添加项目根目录到Python路径
+# Add project root to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.insert(0, project_root)
@@ -36,7 +36,7 @@ from orchestrate.core.retrieval import WorkflowRetrieval, WorkflowSearchResult
 
 
 def create_test_preflow(name: str = "Test PreFlow", description: str = "Test description") -> PreFlow:
-    """创建测试用的PreFlow对象"""
+    """Create a PreFlow object for testing"""
     return PreFlow(
         name=name,
         description=description,
@@ -46,479 +46,479 @@ def create_test_preflow(name: str = "Test PreFlow", description: str = "Test des
 
 
 def create_test_psop(name: str = "Test PSOP", description: str = "Test PSOP description") -> PSOP:
-    """创建测试用的PSOP对象"""
-    # 创建任务
+    """Create a PSOP object for testing"""
+    # Create tasks
     task1 = Task(
         description="Execute energy saving analysis",
         agent="energy_agent",
         skill="best_effort_energy_saving",
         status=TaskStatus.PENDING
     )
-    
+
     task2 = Task(
         description="Execute backup analysis",
         agent="backup_agent",
         skill="extreme_backup_energy_saving",
         status=TaskStatus.PENDING
     )
-    
-    # 创建步骤
+
+    # Create steps
     step1 = Step(
         name="analysis_step",
         type=StepType.ALL_SUCCESS,
         subtasks=[task1, task2],
-        next=None  # 添加next参数
+        next=None  # Add next parameter
     )
-    
-    # 创建PSOP
+
+    # Create PSOP
     return PSOP(
         name=name,
         description=description,
         steps=[step1],
         tags=["test", "psop-test", "automation"],
         related_preflow="test_preflow_123",
-        user_intent="Test user intent for unit testing"  # 添加user_intent参数
+        user_intent="Test user intent for unit testing"  # Add user_intent parameter
     )
 
 
 def test_storage_initialization():
-    """测试存储初始化"""
-    print("测试存储初始化...")
-    
-    # 测试默认存储目录
+    """Test storage initialization"""
+    print("Testing storage initialization...")
+
+    # Test default storage directory
     storage = WorkflowStorage()
-    print(f"  PSOP目录: {storage.psop_dir}")
-    print(f"  PreFlow目录: {storage.preflow_dir}")
-    
-    # 测试自定义存储目录
+    print(f"  PSOP directory: {storage.psop_dir}")
+    print(f"  PreFlow directory: {storage.preflow_dir}")
+
+    # Test custom storage directory
     with tempfile.TemporaryDirectory() as temp_dir:
         custom_storage = WorkflowStorage(storage_dir=temp_dir)
-        print(f"  自定义PSOP目录: {custom_storage.psop_dir}")
-        print(f"  自定义PreFlow目录: {custom_storage.preflow_dir}")
-        
-        # 验证目录已创建
+        print(f"  Custom PSOP directory: {custom_storage.psop_dir}")
+        print(f"  Custom PreFlow directory: {custom_storage.preflow_dir}")
+
+        # Verify directories were created
         assert custom_storage.psop_dir.exists()
         assert custom_storage.preflow_dir.exists()
-    
-        print("  存储初始化测试通过 [OK]")
+
+        print("  Storage initialization test passed [OK]")
 
 
 def test_save_and_load_preflow():
-    """测试保存和加载PreFlow"""
-    print("测试保存和加载PreFlow...")
-    
+    """Test saving and loading PreFlow"""
+    print("Testing saving and loading PreFlow...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
-        
-        # 创建测试PreFlow
+
+        # Create test PreFlow
         preflow = create_test_preflow()
         preflow_id = preflow.id
-        
-        # 保存PreFlow
+
+        # Save PreFlow
         saved_id = storage.save_preflow(preflow)
         assert saved_id == preflow_id
-        print(f"  PreFlow保存成功: {saved_id}")
-        
-        # 加载PreFlow
+        print(f"  PreFlow saved successfully: {saved_id}")
+
+        # Load PreFlow
         loaded_preflow = storage.load_preflow(preflow_id)
         assert loaded_preflow is not None
         assert loaded_preflow.id == preflow_id
         assert loaded_preflow.name == preflow.name
         assert loaded_preflow.description == preflow.description
-        print(f"  PreFlow加载成功: {loaded_preflow.name}")
-        
-        # 测试加载不存在的PreFlow
+        print(f"  PreFlow loaded successfully: {loaded_preflow.name}")
+
+        # Test loading non-existent PreFlow
         non_existent = storage.load_preflow("non-existent-id")
         assert non_existent is None
-        print("  不存在的PreFlow返回None [OK]")
-    
-        print("  PreFlow保存和加载测试通过 [OK]")
+        print("  Non-existent PreFlow returns None [OK]")
+
+        print("  PreFlow save and load test passed [OK]")
 
 
 def test_save_and_load_psop():
-    """测试保存和加载PSOP"""
-    print("测试保存和加载PSOP...")
-    
+    """Test saving and loading PSOP"""
+    print("Testing saving and loading PSOP...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
-        
-        # 创建测试PSOP
+
+        # Create test PSOP
         psop = create_test_psop()
         psop_id = psop.id
-        
-        # 保存PSOP
+
+        # Save PSOP
         saved_id = storage.save_psop(psop)
         assert saved_id == psop_id
-        print(f"  PSOP保存成功: {saved_id}")
-        
-        # 加载PSOP
+        print(f"  PSOP saved successfully: {saved_id}")
+
+        # Load PSOP
         loaded_psop = storage.load_psop(psop_id)
         assert loaded_psop is not None
         assert loaded_psop.id == psop_id
         assert loaded_psop.name == psop.name
         assert loaded_psop.description == psop.description
         assert len(loaded_psop.steps) == len(psop.steps)
-        print(f"  PSOP加载成功: {loaded_psop.name}")
-        
-        # 测试加载不存在的PSOP
+        print(f"  PSOP loaded successfully: {loaded_psop.name}")
+
+        # Test loading non-existent PSOP
         non_existent = storage.load_psop("non-existent-id")
         assert non_existent is None
-        print("  不存在的PSOP返回None [OK]")
-    
-    print("  PSOP保存和加载测试通过 [OK]")
+        print("  Non-existent PSOP returns None [OK]")
+
+    print("  PSOP save and load test passed [OK]")
 
 
 def test_delete_workflows():
-    """测试删除工作流"""
-    print("测试删除工作流...")
-    
+    """Test deleting workflows"""
+    print("Testing deleting workflows...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
-        
-        # 创建并保存测试数据
+
+        # Create and save test data
         preflow = create_test_preflow()
         psop = create_test_psop()
-        
+
         storage.save_preflow(preflow)
         storage.save_psop(psop)
-        
-        # 测试删除PreFlow
+
+        # Test deleting PreFlow
         delete_result = storage.delete_preflow(preflow.id)
         assert delete_result is True
-        print(f"  PreFlow删除成功: {preflow.id}")
-        
-        # 验证已删除
+        print(f"  PreFlow deleted successfully: {preflow.id}")
+
+        # Verify deleted
         loaded = storage.load_preflow(preflow.id)
         assert loaded is None
-        
-        # 测试删除PSOP
+
+        # Test deleting PSOP
         delete_result = storage.delete_psop(psop.id)
         assert delete_result is True
-        print(f"  PSOP删除成功: {psop.id}")
-        
-        # 验证已删除
+        print(f"  PSOP deleted successfully: {psop.id}")
+
+        # Verify deleted
         loaded = storage.load_psop(psop.id)
         assert loaded is None
-        
-        # 测试删除不存在的workflow
+
+        # Test deleting non-existent workflow
         delete_result = storage.delete_preflow("non-existent-id")
         assert delete_result is False
-        print("  删除不存在的workflow返回False [OK]")
-    
-    print("  工作流删除测试通过 [OK]")
+        print("  Deleting non-existent workflow returns False [OK]")
+
+    print("  Workflow deletion test passed [OK]")
 
 
 def test_list_workflows():
-    """测试列出工作流"""
-    print("测试列出工作流...")
-    
+    """Test listing workflows"""
+    print("Testing listing workflows...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
-        
-        # 创建并保存多个测试数据
+
+        # Create and save multiple test data
         preflow1 = create_test_preflow("PreFlow 1", "Description 1")
         preflow2 = create_test_preflow("PreFlow 2", "Description 2")
         psop1 = create_test_psop("PSOP 1", "PSOP Description 1")
         psop2 = create_test_psop("PSOP 2", "PSOP Description 2")
-        
+
         storage.save_preflow(preflow1)
         storage.save_preflow(preflow2)
         storage.save_psop(psop1)
         storage.save_psop(psop2)
-        
-        # 列出PreFlows
+
+        # List PreFlows
         preflow_list = storage.list_preflows()
         assert len(preflow_list) == 2
         assert preflow1.id in preflow_list
         assert preflow2.id in preflow_list
-        print(f"  PreFlow列表: {preflow_list}")
-        
-        # 列出PSOPs
+        print(f"  PreFlow list: {preflow_list}")
+
+        # List PSOPs
         psop_list = storage.list_psops()
         assert len(psop_list) == 2
         assert psop1.id in psop_list
         assert psop2.id in psop_list
-        print(f"  PSOP列表: {psop_list}")
-    
-    print("  工作流列表测试通过 [OK]")
+        print(f"  PSOP list: {psop_list}")
+
+    print("  Workflow listing test passed [OK]")
 
 
 def test_update_workflows():
-    """测试更新工作流"""
-    print("测试更新工作流...")
-    
+    """Test updating workflows"""
+    print("Testing updating workflows...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
-        
-        # 创建并保存测试PreFlow
+
+        # Create and save test PreFlow
         preflow = create_test_preflow("Original PreFlow", "Original description")
         storage.save_preflow(preflow)
-        
-        # 更新PreFlow
+
+        # Update PreFlow
         preflow.name = "Updated PreFlow"
         preflow.description = "Updated description"
         update_result = storage.update_preflow(preflow)
         assert update_result is True
-        
-        # 验证更新
+
+        # Verify update
         loaded = storage.load_preflow(preflow.id)
         assert loaded is not None
         assert loaded.name == "Updated PreFlow"
         assert loaded.description == "Updated description"
-        print(f"  PreFlow更新成功: {loaded.name}")
-        
-        # 创建并保存测试PSOP
+        print(f"  PreFlow updated successfully: {loaded.name}")
+
+        # Create and save test PSOP
         psop = create_test_psop("Original PSOP", "Original PSOP description")
         storage.save_psop(psop)
-        
-        # 更新PSOP
+
+        # Update PSOP
         psop.name = "Updated PSOP"
         psop.description = "Updated PSOP description"
         update_result = storage.update_psop(psop)
         assert update_result is True
-        
-        # 验证更新
+
+        # Verify update
         loaded = storage.load_psop(psop.id)
         assert loaded is not None
         assert loaded.name == "Updated PSOP"
         assert loaded.description == "Updated PSOP description"
-        print(f"  PSOP更新成功: {loaded.name}")
-        
-        # 测试更新不存在的workflow
+        print(f"  PSOP updated successfully: {loaded.name}")
+
+        # Test updating non-existent workflow
         non_existent_preflow = create_test_preflow("Non-existent", "Test")
         non_existent_preflow.id = "non-existent-id"
         update_result = storage.update_preflow(non_existent_preflow)
         assert update_result is False
-        print("  更新不存在的workflow返回False [OK]")
-    
-    print("  工作流更新测试通过 [OK]")
+        print("  Updating non-existent workflow returns False [OK]")
+
+    print("  Workflow update test passed [OK]")
 
 
 def test_retrieval_by_id():
-    """测试按ID检索"""
-    print("测试按ID检索...")
-    
+    """Test retrieval by ID"""
+    print("Testing retrieval by ID...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
         retrieval = WorkflowRetrieval(storage)
-        
-        # 创建并保存测试数据
+
+        # Create and save test data
         preflow = create_test_preflow("Test PreFlow", "Test description")
         psop = create_test_psop("Test PSOP", "Test PSOP description")
-        
+
         storage.save_preflow(preflow)
         storage.save_psop(psop)
-        
-        # 按ID检索PreFlow
+
+        # Retrieve PreFlow by ID
         retrieved_preflow = retrieval.get_preflow_by_id(preflow.id)
         assert retrieved_preflow is not None
         assert retrieved_preflow.id == preflow.id
-        print(f"  PreFlow按ID检索成功: {retrieved_preflow.name}")
-        
-        # 按ID检索PSOP
+        print(f"  PreFlow retrieved by ID: {retrieved_preflow.name}")
+
+        # Retrieve PSOP by ID
         retrieved_psop = retrieval.get_psop_by_id(psop.id)
         assert retrieved_psop is not None
         assert retrieved_psop.id == psop.id
-        print(f"  PSOP按ID检索成功: {retrieved_psop.name}")
-        
-        # 检索不存在的ID
+        print(f"  PSOP retrieved by ID: {retrieved_psop.name}")
+
+        # Retrieve non-existent ID
         non_existent = retrieval.get_preflow_by_id("non-existent-id")
         assert non_existent is None
-        print("  检索不存在的ID返回None [OK]")
-    
-    print("  按ID检索测试通过 [OK]")
+        print("  Retrieving non-existent ID returns None [OK]")
+
+    print("  Retrieval by ID test passed [OK]")
 
 
 def test_search_by_name():
-    """测试按名称搜索"""
-    print("测试按名称搜索...")
-    
+    """Test search by name"""
+    print("Testing search by name...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
         retrieval = WorkflowRetrieval(storage)
-        
-        # 创建并保存测试数据
+
+        # Create and save test data
         preflow1 = create_test_preflow("Energy Saving Process", "Energy saving description")
         preflow2 = create_test_preflow("Fault Diagnosis Process", "Fault diagnosis description")
         psop1 = create_test_psop("Energy Saving Process PSOP", "Energy saving PSOP")
         psop2 = create_test_psop("Backup Process PSOP", "Backup process PSOP")
-        
+
         storage.save_preflow(preflow1)
         storage.save_preflow(preflow2)
         storage.save_psop(psop1)
         storage.save_psop(psop2)
-        
-        # 搜索包含"energy"的名称
+
+        # Search for names containing "energy"
         results = retrieval.search_by_name("energy")
-        assert len(results) == 2  # 应该找到preflow1和psop1
-        print(f"  搜索'energy'找到 {len(results)} 个结果")
-        
-        # 搜索包含"process"的名称
+        assert len(results) == 2  # Should find preflow1 and psop1
+        print(f"  Search 'energy' found {len(results)} results")
+
+        # Search for names containing "process"
         results = retrieval.search_by_name("process")
-        print(f"  搜索'process'找到 {len(results)} 个结果")
+        print(f"  Search 'process' found {len(results)} results")
         for r in results:
             print(f"    - {r.workflow_type}: {r.name}")
-        # 应该找到preflow1, preflow2, psop1, psop2 (所有4个都包含"process")
+        # Should find preflow1, preflow2, psop1, psop2 (all 4 contain "process")
         assert len(results) == 4
-        
-        # 只搜索PSOP类型
+
+        # Search only PSOP type
         results = retrieval.search_by_name("process", workflow_type="psop")
-        assert len(results) == 2  # 应该只找到psop1和psop2
-        print(f"  只搜索PSOP类型'process'找到 {len(results)} 个结果")
-        
-        # 搜索不存在的名称
+        assert len(results) == 2  # Should only find psop1 and psop2
+        print(f"  Search PSOP type 'process' found {len(results)} results")
+
+        # Search non-existent name
         results = retrieval.search_by_name("nonexistent")
         assert len(results) == 0
-        print("  搜索不存在的名称返回空列表 [OK]")
-    
-    print("  按名称搜索测试通过 [OK]")
+        print("  Searching non-existent name returns empty list [OK]")
+
+    print("  Search by name test passed [OK]")
 
 
 def test_search_by_tags():
-    """测试按标签搜索"""
-    print("测试按标签搜索...")
-    
+    """Test search by tags"""
+    print("Testing search by tags...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
         retrieval = WorkflowRetrieval(storage)
-        
-        # 创建并保存测试数据
+
+        # Create and save test data
         preflow1 = create_test_preflow("PreFlow 1", "Description 1")
         preflow1.tags = ["energy", "saving", "automation"]
-        
+
         preflow2 = create_test_preflow("PreFlow 2", "Description 2")
         preflow2.tags = ["fault", "diagnosis", "automation"]
-        
+
         psop1 = create_test_psop("PSOP 1", "Description 1")
         psop1.tags = ["energy", "backup", "test"]
-        
+
         psop2 = create_test_psop("PSOP 2", "Description 2")
         psop2.tags = ["fault", "recovery", "test"]
-        
+
         storage.save_preflow(preflow1)
         storage.save_preflow(preflow2)
         storage.save_psop(psop1)
         storage.save_psop(psop2)
-        
-        # 搜索包含"automation"标签的（任意匹配）
+
+        # Search for "automation" tag (any match)
         results = retrieval.search_by_tags(["automation"])
-        assert len(results) == 2  # 应该找到preflow1和preflow2
-        print(f"  搜索'automation'标签找到 {len(results)} 个结果")
-        
-        # 搜索包含"test"标签的
+        assert len(results) == 2  # Should find preflow1 and preflow2
+        print(f"  Search 'automation' tag found {len(results)} results")
+
+        # Search for "test" tag
         results = retrieval.search_by_tags(["test"])
-        assert len(results) == 2  # 应该找到psop1和psop2
-        print(f"  搜索'test'标签找到 {len(results)} 个结果")
-        
-        # 搜索同时包含"energy"和"test"标签的（任意匹配）
+        assert len(results) == 2  # Should find psop1 and psop2
+        print(f"  Search 'test' tag found {len(results)} results")
+
+        # Search for "energy" or "test" tag (any match)
         results = retrieval.search_by_tags(["energy", "test"])
-        assert len(results) == 3  # 应该找到preflow1, psop1, psop2
-        print(f"  搜索'energy'或'test'标签找到 {len(results)} 个结果")
-        
-        # 搜索同时包含"energy"和"test"标签的（全部匹配）
+        assert len(results) == 3  # Should find preflow1, psop1, psop2
+        print(f"  Search 'energy' or 'test' tag found {len(results)} results")
+
+        # Search for both "energy" and "test" tags (match all)
         results = retrieval.search_by_tags(["energy", "test"], match_all=True)
-        assert len(results) == 1  # 应该只找到psop1
-        print(f"  搜索同时包含'energy'和'test'标签找到 {len(results)} 个结果")
-        
-        # 只搜索PSOP类型
+        assert len(results) == 1  # Should only find psop1
+        print(f"  Search both 'energy' and 'test' tags found {len(results)} results")
+
+        # Search only PSOP type
         results = retrieval.search_by_tags(["test"], workflow_type="psop")
-        assert len(results) == 2  # 应该只找到psop1和psop2
-        print(f"  只搜索PSOP类型'test'标签找到 {len(results)} 个结果")
-    
-    print("  按标签搜索测试通过 [OK]")
+        assert len(results) == 2  # Should only find psop1 and psop2
+        print(f"  Search PSOP type 'test' tag found {len(results)} results")
+
+    print("  Search by tags test passed [OK]")
 
 
 def test_search_by_description():
-    """测试按描述搜索"""
-    print("测试按描述搜索...")
-    
+    """Test search by description"""
+    print("Testing search by description...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
         retrieval = WorkflowRetrieval(storage)
-        
-        # 创建并保存测试数据
+
+        # Create and save test data
         preflow1 = create_test_preflow("PreFlow 1", "Energy saving process for data centers")
         preflow2 = create_test_preflow("PreFlow 2", "Fault diagnosis and recovery process")
         psop1 = create_test_psop("PSOP 1", "Automated energy saving process workflow")
         psop2 = create_test_psop("PSOP 2", "Backup and recovery process")
-        
+
         storage.save_preflow(preflow1)
         storage.save_preflow(preflow2)
         storage.save_psop(psop1)
         storage.save_psop(psop2)
-        
-        # 搜索包含"process"的描述
+
+        # Search descriptions containing "process"
         results = retrieval.search_by_description("process")
-        assert len(results) == 4  # 所有4个都有"process"
-        print(f"  搜索'process'描述找到 {len(results)} 个结果")
-        
-        # 搜索包含"energy"的描述
+        assert len(results) == 4  # All 4 have "process"
+        print(f"  Search 'process' in descriptions found {len(results)} results")
+
+        # Search descriptions containing "energy"
         results = retrieval.search_by_description("energy")
-        assert len(results) == 2  # 应该找到preflow1和psop1
-        print(f"  搜索'energy'描述找到 {len(results)} 个结果")
-        
-        # 只搜索PreFlow类型
+        assert len(results) == 2  # Should find preflow1 and psop1
+        print(f"  Search 'energy' in descriptions found {len(results)} results")
+
+        # Search only PreFlow type
         results = retrieval.search_by_description("process", workflow_type="preflow")
-        assert len(results) == 2  # 应该只找到preflow1和preflow2
-        print(f"  只搜索PreFlow类型'process'描述找到 {len(results)} 个结果")
-        
-        # 搜索不存在的关键词
+        assert len(results) == 2  # Should only find preflow1 and preflow2
+        print(f"  Search PreFlow type 'process' in descriptions found {len(results)} results")
+
+        # Search non-existent keyword
         results = retrieval.search_by_description("nonexistent")
         assert len(results) == 0
-        print("  搜索不存在的描述返回空列表 [OK]")
-    
-    print("  按描述搜索测试通过 [OK]")
+        print("  Searching non-existent description returns empty list [OK]")
+
+    print("  Search by description test passed [OK]")
 
 
 def test_list_recent_workflows():
-    """测试列出最近的工作流"""
-    print("测试列出最近的工作流...")
-    
+    """Test listing recent workflows"""
+    print("Testing listing recent workflows...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
         retrieval = WorkflowRetrieval(storage)
-        
-        # 创建并保存测试数据
+
+        # Create and save test data
         preflow1 = create_test_preflow("PreFlow 1", "Description 1")
         preflow2 = create_test_preflow("PreFlow 2", "Description 2")
         psop1 = create_test_psop("PSOP 1", "Description 1")
         psop2 = create_test_psop("PSOP 2", "Description 2")
-        
+
         storage.save_preflow(preflow1)
         storage.save_preflow(preflow2)
         storage.save_psop(psop1)
         storage.save_psop(psop2)
-        
-        # 列出所有最近的工作流
+
+        # List all recent workflows
         results = retrieval.list_recent_workflows(limit=10)
         assert len(results) == 4
-        print(f"  列出所有最近工作流: {len(results)} 个结果")
-        
-        # 限制数量
+        print(f"  Listing all recent workflows: {len(results)} results")
+
+        # Limit results
         results = retrieval.list_recent_workflows(limit=2)
         assert len(results) == 2
-        print(f"  限制2个最近工作流: {len(results)} 个结果")
-        
-        # 只列出PSOP类型
+        print(f"  Limit to 2 recent workflows: {len(results)} results")
+
+        # List only PSOP type
         results = retrieval.list_recent_workflows(workflow_type="psop")
         assert len(results) == 2
         assert all(r.workflow_type == "psop" for r in results)
-        print(f"  只列出PSOP类型: {len(results)} 个结果")
-        
-        # 只列出PreFlow类型
+        print(f"  Listing only PSOP type: {len(results)} results")
+
+        # List only PreFlow type
         results = retrieval.list_recent_workflows(workflow_type="preflow")
         assert len(results) == 2
         assert all(r.workflow_type == "preflow" for r in results)
-        print(f"  只列出PreFlow类型: {len(results)} 个结果")
-    
-    print("  列出最近工作流测试通过 [OK]")
+        print(f"  Listing only PreFlow type: {len(results)} results")
+
+    print("  List recent workflows test passed [OK]")
 
 
 def test_workflow_search_result():
-    """测试WorkflowSearchResult类"""
-    print("测试WorkflowSearchResult类...")
-    
-    # 创建测试数据
+    """Test WorkflowSearchResult class"""
+    print("Testing WorkflowSearchResult class...")
+
+    # Create test data
     created_at = datetime.now()
     result = WorkflowSearchResult(
         workflow_id="test-id-123",
@@ -529,8 +529,8 @@ def test_workflow_search_result():
         created_at=created_at,
         score=0.85
     )
-    
-    # 测试属性
+
+    # Test properties
     assert result.workflow_id == "test-id-123"
     assert result.workflow_type == "psop"
     assert result.name == "Test Workflow"
@@ -538,8 +538,8 @@ def test_workflow_search_result():
     assert result.tags == ["test", "unit"]
     assert result.created_at == created_at
     assert result.score == 0.85
-    
-    # 测试to_dict方法
+
+    # Test to_dict method
     result_dict = result.to_dict()
     assert result_dict["workflow_id"] == "test-id-123"
     assert result_dict["workflow_type"] == "psop"
@@ -548,107 +548,107 @@ def test_workflow_search_result():
     assert result_dict["tags"] == ["test", "unit"]
     assert "created_at" in result_dict
     assert result_dict["score"] == 0.85
-    
-    print(f"  WorkflowSearchResult创建成功: {result.name}")
-    print(f"  字典表示: {result_dict}")
-    
-    print("  WorkflowSearchResult测试通过 [OK]")
+
+    print(f"  WorkflowSearchResult created successfully: {result.name}")
+    print(f"  Dict representation: {result_dict}")
+
+    print("  WorkflowSearchResult test passed [OK]")
 
 
 def test_error_handling():
-    """测试错误处理"""
-    print("测试错误处理...")
-    
+    """Test error handling"""
+    print("Testing error handling...")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         storage = WorkflowStorage(storage_dir=temp_dir)
-        
-        # 测试无效的文件路径
+
+        # Test invalid file path
         try:
-            # 尝试使用无效的workflow类型
+            # Try to use invalid workflow type
             storage._get_file_path("test-id", "invalid-type")
-            assert False, "应该抛出WorkflowStorageError"
+            assert False, "Should raise WorkflowStorageError"
         except WorkflowStorageError as e:
-            print(f"  无效workflow类型错误处理: {e}")
+            print(f"  Invalid workflow type error handling: {e}")
             assert "Unknown workflow type" in str(e)
-        
-        # 测试保存时出错（模拟权限错误）
-        # 创建一个只读目录来测试保存错误
+
+        # Test save error (simulate permission error)
+        # Create a read-only directory to test save error
         read_only_dir = os.path.join(temp_dir, "readonly")
         os.makedirs(read_only_dir)
-        
-        # 在Windows上设置只读属性
+
+        # Set read-only attribute on Windows
         if os.name == 'nt':
             import stat
             os.chmod(read_only_dir, stat.S_IREAD)
-        
+
         try:
             readonly_storage = WorkflowStorage(storage_dir=read_only_dir)
             psop = create_test_psop()
             readonly_storage.save_psop(psop)
-            print("  注意: 在Windows上可能无法创建真正的只读目录进行测试")
+            print("  Note: On Windows, may not be able to create a truly read-only directory for testing")
         except Exception as e:
-            print(f"  保存错误处理: {e}")
-    
-    print("  错误处理测试完成 [OK]")
+            print(f"  Save error handling: {e}")
+
+    print("  Error handling test completed [OK]")
 
 
 def main():
-    """主测试函数"""
+    """Main test function"""
     print("=" * 60)
-    print("开始测试Persistence和Retrieval模块")
+    print("Starting Persistence and Retrieval module tests")
     print("=" * 60)
-    
+
     try:
-        # 运行所有测试
+        # Run all tests
         test_storage_initialization()
         print()
-        
+
         test_save_and_load_preflow()
         print()
-        
+
         test_save_and_load_psop()
         print()
-        
+
         test_delete_workflows()
         print()
-        
+
         test_list_workflows()
         print()
-        
+
         test_update_workflows()
         print()
-        
+
         test_retrieval_by_id()
         print()
-        
+
         test_search_by_name()
         print()
-        
+
         test_search_by_tags()
         print()
-        
+
         test_search_by_description()
         print()
-        
+
         test_list_recent_workflows()
         print()
-        
+
         test_workflow_search_result()
         print()
-        
+
         test_error_handling()
         print()
-        
+
         print("=" * 60)
-        print("所有测试通过！ [OK]")
+        print("All tests passed! [OK]")
         print("=" * 60)
-        
+
     except Exception as e:
-        print(f"测试失败: {e}")
+        print(f"Test failed: {e}")
         import traceback
         traceback.print_exc()
         return 1
-    
+
     return 0
 
 

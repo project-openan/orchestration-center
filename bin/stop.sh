@@ -1,50 +1,50 @@
 #!/bin/bash
 
-# 通过进程名停止服务
-# 使用方法: ./stop.sh
+# Stop service by process name
+# Usage: ./stop.sh
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# 进程名
+# Process name
 PROCESS_NAME="orchestrate.start"
 
-echo "正在停止服务..."
+echo "Stopping service..."
 
-# 查找进程
+# Find processes
 PIDS=$(pgrep -f "$PROCESS_NAME" 2>/dev/null)
 
 if [ -z "$PIDS" ]; then
-    echo -e "${YELLOW}未找到运行中的服务${NC}"
+    echo -e "${YELLOW}No running service found${NC}"
     exit 0
 fi
 
-echo "找到进程 PID: $PIDS"
+echo "Found process PID: $PIDS"
 
-# 停止进程
+# Stop processes
 for PID in $PIDS; do
     kill $PID 2>/dev/null
 done
 
 sleep 2
 
-# 检查并强制停止残留进程
+# Check and force stop remaining processes
 PIDS=$(pgrep -f "$PROCESS_NAME" 2>/dev/null)
 if [ -n "$PIDS" ]; then
-    echo -e "${YELLOW}进程未响应，强制停止...${NC}"
+    echo -e "${YELLOW}Process not responding, force stopping...${NC}"
     for PID in $PIDS; do
         kill -9 $PID 2>/dev/null
     done
     sleep 1
 fi
 
-# 检查是否停止
+# Check if stopped
 if ps -p $PID > /dev/null 2>&1; then
-    echo -e "${YELLOW}进程未响应，强制停止...${NC}"
+    echo -e "${YELLOW}Process not responding, force stopping...${NC}"
     kill -9 $PID 2>/dev/null
     sleep 1
 fi
 
-echo -e "${GREEN}服务已停止${NC}"
+echo -e "${GREEN}Service stopped${NC}"

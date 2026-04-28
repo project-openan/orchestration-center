@@ -17,7 +17,7 @@ from common.llm.config.llm_config import get_llm_config_by_type, LLMType
 from common.llm.provider.llm_provider_registry import get_or_create_llm_instance
 
 
-def get_llm_instance(llm_type: LLMType = LLMType.OPENAI_STYLE_LLM):
+def get_llm_instance(llm_type: LLMType = LLMType.AOC_CHAT_LLM):
     """get a LLM instance.
 
     Returns:

@@ -91,14 +91,30 @@ install_service() {
     load_config
     parse_args "$@"
 
+
+    if [ ! -f "$SERVICE_FILE" ]; then
+        echo -e "${RED}Error: Service file not found: $SERVICE_FILE${NC}"
+        exit 1
+    fi
+
+    if [ "$INSTALL_DIR" != "$ROOT_DIR" ]; then
+        echo "Install the project to $INSTALL_DIR..."
+        mkdir -p "$INSTALL_DIR"
+        cp -r "$ROOT_DIR"/* "$INSTALL_DIR/"
+    fi
+
+    if [ -z "$PYTHON_PATH" ]; then
+        PYTHON_PATH="${INSTALL_DIR}/venv/bin/python3"
+    fi
+
     echo -e "${GREEN}Deploy Configuration:${NC}"
     echo "  Install Dir: $INSTALL_DIR"
     echo "  Python Path: ${PYTHON_PATH:-auto detect}"
     echo "  Install Deps: $INSTALL_DEPS"
     echo ""
 
-    if [ ! -f "$SERVICE_FILE" ]; then
-        echo -e "${RED}Error: Service file not found: $SERVICE_FILE${NC}"
+    if [ ! -f "$PYTHON_PATH" ]; then
+        echo -e "${RED}Error: Python not found at $PYTHON_PATH. Please create venv or specify --python=PATH${NC}"
         exit 1
     fi
 
@@ -106,23 +122,9 @@ install_service() {
     CURRENT_UID=$(id -u "$CURRENT_USER")
     CURRENT_GID=$(id -g "$CURRENT_USER")
 
-    if [ -z "$PYTHON_PATH" ]; then
-        PYTHON_PATH=$(which python3 2>/dev/null || which python 2>/dev/null)
-    fi
-
-    if [ -z "$PYTHON_PATH" ]; then
-        echo -e "${RED}Error: Python not found. Please specify --python=PATH or set PYTHON_PATH in config${NC}"
-        exit 1
-    fi
-
     echo "Using Python: $PYTHON_PATH"
     $PYTHON_PATH --version
 
-    if [ "$INSTALL_DIR" != "$ROOT_DIR" ]; then
-        echo "Copying files to $INSTALL_DIR..."
-        mkdir -p "$INSTALL_DIR"
-        cp -r "$ROOT_DIR"/* "$INSTALL_DIR/"
-    fi
 
     if [ "$INSTALL_DEPS" = "true" ]; then
         REQUIREMENTS_FILE="${INSTALL_DIR}/requirements.txt"

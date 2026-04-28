@@ -64,7 +64,7 @@ async def agent_communication_simulation():
 def _get_and_validate_preflow():
     preflow = get_pre_workflow()
     if not preflow.steps_md:
-        logger.error("[STEP 2] Error: PreFlow missing necessary step descriptions, cannot continue workflow generation.")
+        logger.error("[STEP 2] PreFlow missing step descriptions, cannot continue.")
         return None
     return preflow
 

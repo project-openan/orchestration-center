@@ -34,7 +34,7 @@ class ChapterNotFoundError(PDFParsingError):
 
 class SolutionPackageParser:
     """Parser for extracting and converting PDF solution package chapters to markdown."""
-    
+
     def __init__(self):
         self.llm = get_llm_instance()
 
@@ -56,13 +56,13 @@ class SolutionPackageParser:
         """Extract text from PDF pages within the given range."""
         if start >= end:
             return ""
-        
+
         start_idx = max(0, start - 1)
         end_idx = min(end - 1, doc.page_count)
-        
+
         if start_idx >= end_idx:
             return ""
-        
+
         pages = range(start_idx, end_idx)
         texts = []
         for i in pages:
@@ -72,7 +72,7 @@ class SolutionPackageParser:
                     texts.append(text)
             except Exception as e:
                 logger.warning(f"Failed to extract text from page {i+1}: {e}")
-        
+
         return '\n'.join(texts) if texts else ""
 
     @staticmethod
@@ -118,30 +118,30 @@ class SolutionPackageParser:
         path = Path(pdf_path)
         if not path.exists():
             raise PDFParsingError(f'PDF file does not exist： {pdf_path}')
-        
+
         try:
             doc = fitz.open(pdf_path)
         except Exception as e:
             raise PDFParsingError(f"Cannot open pdf file: {e}") from e
-        
+
         chapters_dict = {}
         try:
             toc = doc.get_toc()
             if not toc:
                 logger.warning("PDF has no table of contents")
                 return chapters_dict
-            
+
             for i, (level, title, page) in enumerate(toc):
                 if level == 1:
                     start_page = page
                     end_page = doc.page_count + 1
-                    
+
                     for j in range(i + 1, len(toc)):
                         next_level, _, next_page = toc[j]
                         if next_level <= 1:
                             end_page = next_page
                             break
-                    
+
                     chapter_text = self.extract_text(doc, start_page, end_page)
                     if chapter_text:
                         chapters_dict[title] = chapter_text
@@ -150,7 +150,7 @@ class SolutionPackageParser:
                         logger.warning(f"Chapter '{title}' has no text content")
         finally:
             doc.close()
-        
+
         logger.info(f"Extracted {len(chapters_dict)} chapters with content")
         return chapters_dict
 
@@ -171,27 +171,27 @@ class SolutionPackageParser:
         try:
             if not chapter_text or not chapter_text.strip():
                 logger.warning(f"Chapter '{chapter_title}' has empty text, skipping LLM conversion")
-                return chapter_title, f"# {chapter_title}\n\n*本章节无文本内容*"
-            
+                return chapter_title, f"# {chapter_title}\n\n*This chapter has no text content*"
+
             markdown_content = self.convert_to_markdown(chapter_text)
             return chapter_title, markdown_content
         except Exception as e:
             logger.error(f"Failed to convert chapter '{chapter_title}': {e}")
-            return chapter_title, f"# {chapter_title}\n\n*转换失败: {str(e)}*"
+            return chapter_title, f"# {chapter_title}\n\n*Conversion failed: {str(e)}*"
 
     def convert_all_chapters_to_markdown(self, chapters_dict: Dict[str, str], max_workers: int = 4) -> Dict[str, str]:
         """Convert all chapters to markdown in parallel while preserving order."""
         markdown_dict = {}
-        
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             chapter_titles = list(chapters_dict.keys())
             future_to_index = {
                 executor.submit(self.convert_chapter_to_markdown, (title, chapters_dict[title])): i
                 for i, title in enumerate(chapter_titles)
             }
-            
+
             results: List[Optional[Tuple[str, str]]] = [None] * len(chapter_titles)
-            
+
             for future in concurrent.futures.as_completed(future_to_index):
                 index = future_to_index[future]
                 try:
@@ -201,13 +201,13 @@ class SolutionPackageParser:
                 except Exception as e:
                     chapter_title = chapter_titles[index]
                     logger.error(f"Error processing chapter '{chapter_title}': {e}")
-                    results[index] = (chapter_title, f"# {chapter_title}\n\n*转换失败: {str(e)}*")
-        
+                    results[index] = (chapter_title, f"# {chapter_title}\n\n*Conversion failed: {str(e)}*")
+
         for result in results:
             if result:
                 title, content = result
                 markdown_dict[title] = content
-        
+
         return markdown_dict
 
     def parse_pdf_chapter(self, pdf_path: str, chapter_title: str) -> Optional[str]:
@@ -223,10 +223,10 @@ class SolutionPackageParser:
         try:
             chapters_dict = self.extract_all_chapters(pdf_path)
             logger.info(f"Extracted {len(chapters_dict)} chapters from PDF")
-            
+
             markdown_dict = self.convert_all_chapters_to_markdown(chapters_dict, max_workers)
             logger.info(f"Successfully converted {len(markdown_dict)} chapters to markdown")
-            
+
             return markdown_dict
         except Exception as e:
             logger.error(f"Failed to parse PDF chapters: {e}")

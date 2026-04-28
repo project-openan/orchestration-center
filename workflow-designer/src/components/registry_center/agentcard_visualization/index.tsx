@@ -29,6 +29,12 @@ interface AgentSkill {
     outputModes: string[] | null;
 }
 
+interface SupportedInterface {
+    protocol_binding: string;
+    protocol_version: string;
+    url: string;
+}
+
 interface AgentProvider {
     organization: string;
     url: string;
@@ -46,6 +52,7 @@ interface AgentData {
     defaultInputModes: string[];
     defaultOutputModes: string[];
     skills: AgentSkill[];
+    supported_interfaces?: SupportedInterface[];
     documentationUrl?: string;
     [key: string]: any;
 }
@@ -69,11 +76,11 @@ const getTheme = (isDark: boolean) => ({
     cardBorder: isDark ? 'border-zinc-700/50' : 'border-slate-200/60'
 });
 
-const InfoCard = ({title, icon: Icon, children, className = "", theme}: any) => (
+const InfoCard = ({ title, icon: Icon, children, className = "", theme }: any) => (
     <div className={`p-5 rounded-xl border shadow-sm flex flex-col ${theme.cardBg} ${theme.border} ${className}`}>
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-dashed border-opacity-50"
-             style={{borderColor: theme.border ? undefined : '#e5e7eb'}}>
-            {Icon && <Icon className={`w-5 h-5 ${theme.accent}`}/>}
+             style={{ borderColor: theme.border ? undefined : '#e5e7eb' }}>
+            {Icon && <Icon className={`w-5 h-5 ${theme.accent}`} />}
             <h3 className={`font-semibold text-xxxl ${theme.textPrimary}`}>{title}</h3>
         </div>
         <div className="flex-1">
@@ -82,9 +89,9 @@ const InfoCard = ({title, icon: Icon, children, className = "", theme}: any) => 
     </div>
 );
 
-const StatusRow = ({label, value, theme, mono = false}: any) => (
+const StatusRow = ({ label, value, theme, mono = false }: any) => (
     <div className="flex justify-between items-center py-2 border-b last:border-0 border-dashed border-opacity-50"
-         style={{borderColor: theme.border ? undefined : '#e5e7eb'}}>
+         style={{ borderColor: theme.border ? undefined : '#e5e7eb' }}>
         <span className={`text-sm ${theme.textSecondary}`}>{label}</span>
         <span className={`text-sm font-medium ${theme.textPrimary} ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
@@ -100,22 +107,22 @@ const CapabilityToggle = ({ label, active, icon: Icon, theme }: any) => {
             className={`flex items-center justify-between p-3 rounded-lg border transition-all ${theme.border} ${activeBg}`}>
             <div className="flex items-center gap-3">
                 <div className={`p-1.5 rounded-md ${active ? theme.accentBg : 'bg-zinc-200 dark:bg-zinc-800'}`}>
-                    <Icon className={`w-4 h-4 ${active ? theme.accent : 'text-zinc-500'}`}/>
+                    <Icon className={`w-4 h-4 ${active ? theme.accent : 'text-zinc-500'}`} />
                 </div>
                 <span className={`text-sm font-medium ${theme.textPrimary}`}>{label}</span>
             </div>
             {active ? (
-                <CheckCircle2 className={`w-5 h-5 ${theme.success}`}/>
+                <CheckCircle2 className={`w-5 h-5 ${theme.success}`} />
             ) : (
-                <XCircle className="w-5 h-5 text-zinc-500 opacity-40"/>
+                <XCircle className="w-5 h-5 text-zinc-500 opacity-40" />
             )}
         </div>
     );
 };
 
-const AgentDashboard: React.FC<AgentProfileProps> = ({agent, isDark}) => {
-    console.log('AgentDashboard',agent)
-    const {t} = useTranslation();
+const AgentDashboard: React.FC<AgentProfileProps> = ({ agent, isDark }) => {
+    console.log('AgentDashboard', agent)
+    const { t } = useTranslation();
     const theme = getTheme(isDark);
 
     const renderDescriptionList = (desc: string) => {
@@ -139,6 +146,34 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({agent, isDark}) => {
                             {renderDescriptionList(agent.description)}
                         </ul>
                     </InfoCard>
+
+                    {agent.supported_interfaces && agent.supported_interfaces.length > 0 && (
+                        <InfoCard
+                            title={`${t('agent_profile.supported_interfaces')} (${agent.supported_interfaces.length})`}
+                            icon={Server}
+                            theme={theme}
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {agent.supported_interfaces.map((iface, index) => (
+                                    <div
+                                        key={`interface-${index}`}
+                                        className={`p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
+                                                {iface.protocol_binding}
+                                            </span>
+                                            <span className={`text-[10px] px-1 border rounded ${theme.border} ${theme.textSecondary} opacity-60`}>
+                                                v{iface.protocol_version}
+                                            </span>
+                                        </div>
+                                        <div className={`text-sm ${theme.textSecondary} truncate font-mono`} title={iface.url}>
+                                            {iface.url}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </InfoCard>
+                    )}
                     <InfoCard
                         title={`${t('agent_profile.skills')} (${agent.skills.length})`}
                         icon={Terminal}
@@ -153,9 +188,9 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({agent, isDark}) => {
                                             key={uniqueKey}
                                             className={`group relative p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
                                             <div className="flex justify-between items-start mb-2">
-                    <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
-                      {skill.name}
-                    </span>
+                                                <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
+                                                    {skill.name}
+                                                </span>
                                             </div>
                                             <p className={`text-base ${theme.textSecondary} line-clamp-2 mb-3`}>
                                                 {skill.description}
@@ -172,19 +207,20 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({agent, isDark}) => {
                                                     <div className={`
           absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-b border-r
           ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-slate-200'}
-        `}/>
+        `} />
                                                 </div>
                                             </div>
                                             <div className="flex flex-wrap gap-2 mt-auto">
                                                 {skill.inputModes?.map(m => (
                                                     <span key={m}
                                                           className={`text-[10px] opacity-60 px-1 border rounded ${theme.border} ${theme.textSecondary}`}>
-                        IN: {m}
-                      </span>
+                                                        IN: {m}
+                                                    </span>
                                                 ))}
                                             </div>
                                         </div>
-                                    )})}
+                                    )
+                                })}
                         </div>
                     </InfoCard>
                 </div>
@@ -226,51 +262,43 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({agent, isDark}) => {
                                 value={`v${agent.version}`}
                                 theme={theme}
                             />
-                            <StatusRow
-                                label={"url"}
-                                value={agent.url}
-                                theme={theme}
-                                mono
-                            />
-
                             <div className="pt-4">
-                <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
-                  {t('agent_profile.defaultInputModes')}
-                </span>
+                                <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
+                                    {t('agent_profile.defaultInputModes')}
+                                </span>
                                 <div className="flex flex-wrap gap-2 mt-2 mb-4">
-                                    {agent.defaultInputModes.map(m => (
+                                    {agent.default_input_modes.map(m => (
                                         <span key={m}
                                               className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
-                      {m}
-                    </span>
+                                            {m}
+                                        </span>
                                     ))}
                                 </div>
 
                                 <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
-                  {t('agent_profile.defaultOutputModes')}
-                </span>
+                                    {t('agent_profile.defaultOutputModes')}
+                                </span>
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                    {agent.defaultOutputModes.map(m => (
+                                    {agent.default_output_modes.map(m => (
                                         <span key={m}
                                               className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
-                      {m}
-                    </span>
+                                            {m}
+                                        </span>
                                     ))}
                                 </div>
                             </div>
                         </div>
-                        {agent.documentationUrl && (
+                        {agent.documentation_url && (
                             <a
-                                href={agent.documentationUrl}
+                                href={agent.documentation_url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    isDark
-                                        ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
-                                        : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                                className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDark
+                                    ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
+                                    : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
                                 }`}
                             >
-                                <Globe className="w-4 h-4"/>
+                                <Globe className="w-4 h-4" />
                                 {t('agent_profile.documentationUrl')}
                             </a>
                         )}

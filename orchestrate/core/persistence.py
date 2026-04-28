@@ -30,7 +30,7 @@ class WorkflowStorage:
     def __init__(self, storage_dir: Optional[str] = None):
         """
         Initialize workflow storage.
-        
+
         Args:
             storage_dir: Storage directory path, defaults to data/workflow_storage under project root
         """
@@ -47,13 +47,13 @@ class WorkflowStorage:
     def save_psop(self, psop: PSOP) -> str:
         """
         Save PSOP to storage.
-        
+
         Args:
             psop: PSOP object to save
-            
+
         Returns:
             str: PSOP ID
-            
+
         Raises:
             WorkflowStorageError: If save fails
         """
@@ -70,13 +70,13 @@ class WorkflowStorage:
     def save_preflow(self, preflow: PreFlow) -> str:
         """
         Save PreFlow to storage.
-        
+
         Args:
             preflow: PreFlow object to save
-            
+
         Returns:
             str: PreFlow ID
-            
+
         Raises:
             WorkflowStorageError: If save fails
         """
@@ -93,10 +93,10 @@ class WorkflowStorage:
     def load_psop(self, workflow_id: str) -> Optional[PSOP]:
         """
         Load PSOP from storage.
-        
+
         Args:
             workflow_id: PSOP ID
-            
+
         Returns:
             Optional[PSOP]: PSOP object if found, None otherwise
         """
@@ -114,10 +114,10 @@ class WorkflowStorage:
     def load_preflow(self, workflow_id: str) -> Optional[PreFlow]:
         """
         Load PreFlow from storage.
-        
+
         Args:
             workflow_id: PreFlow ID
-            
+
         Returns:
             Optional[PreFlow]: PreFlow object if found, None otherwise
         """
@@ -135,10 +135,10 @@ class WorkflowStorage:
     def delete_psop(self, workflow_id: str) -> bool:
         """
         Delete PSOP from storage.
-        
+
         Args:
             workflow_id: PSOP ID
-            
+
         Returns:
             bool: True if deleted, False if not found
         """
@@ -156,10 +156,10 @@ class WorkflowStorage:
     def delete_preflow(self, workflow_id: str) -> bool:
         """
         Delete PreFlow from storage.
-        
+
         Args:
             workflow_id: PreFlow ID
-            
+
         Returns:
             bool: True if deleted, False if not found
         """
@@ -177,7 +177,7 @@ class WorkflowStorage:
     def list_psops(self) -> List[str]:
         """
         List all PSOP IDs in storage.
-        
+
         Returns:
             List[str]: List of PSOP IDs
         """
@@ -186,7 +186,7 @@ class WorkflowStorage:
     def list_preflows(self) -> List[str]:
         """
         List all PreFlow IDs in storage.
-        
+
         Returns:
             List[str]: List of PreFlow IDs
         """
@@ -195,10 +195,10 @@ class WorkflowStorage:
     def update_psop(self, psop: PSOP) -> bool:
         """
         Update existing PSOP in storage.
-        
+
         Args:
             psop: PSOP object to update
-            
+
         Returns:
             bool: True if updated, False if PSOP not found
         """
@@ -212,10 +212,10 @@ class WorkflowStorage:
     def update_preflow(self, preflow: PreFlow) -> bool:
         """
         Update existing PreFlow in storage.
-        
+
         Args:
             preflow: PreFlow object to update
-            
+
         Returns:
             bool: True if updated, False if PreFlow not found
         """
@@ -238,14 +238,14 @@ class WorkflowStorage:
     def _get_file_path(self, workflow_id: str, workflow_type: str) -> Path:
         """
         Get file path for workflow storage.
-        
+
         Args:
             workflow_id: Workflow ID
             workflow_type: 'psop' or 'preflow'
-            
+
         Returns:
             Path: File path
-            
+
         Raises:
             WorkflowStorageError: If workflow type is unknown
         """

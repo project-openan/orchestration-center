@@ -19,9 +19,8 @@ agents:
     provider:
       organization: "Huawei"
       url: ""
-    protocolVersion: "0.3.0"
+#    protocolVersion: "0.3.0"
     version: "0.1.0"
-    url: "http://127.0.0.1:8899"
     iconUrl: ""
     skills:
       - id: "ran-es-intent-exploration"
@@ -39,18 +38,21 @@ agents:
     capabilities:
       pushNotifications: false
       streaming: false
-      stateTransitionHistory: true
+#      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
+    supported_interfaces:
+      - protocol_binding: "HTTP+JSON"
+        protocol_version: "1.0"
+        url: "http://127.0.0.1:8899"
 
   - name: "Energy Saving Intent Agent"
     description: "负责设置节能意图，与RAN能效优化智能体交互，进行意图预评估、意图生成与交付，并对节能效果进行评估与调整。"
     provider:
       organization: "Huawei"
       url: ""
-    protocolVersion: "0.3.0"
+#    protocolVersion: "0.3.0"
     version: "0.1.0"
-    url: "http://127.0.0.1:8900"
     iconUrl: ""
     skills:
       - id: "intent-exploration-request"
@@ -72,17 +74,21 @@ agents:
     capabilities:
       pushNotifications: false
       streaming: false
-      stateTransitionHistory: true
+#      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
+    supported_interfaces:
+      - protocol_binding: "HTTP+JSON"
+        protocol_version: "1.0"
+        url: "http://127.0.0.1:8900"
+
   - name: "Live Streaming Agent"
     description: "负责赛事需求的解析与监控。"
     provider:
       organization: "Huawei"
       url: ""
-    protocolVersion: "0.3.0"
+#    protocolVersion: "0.3.0"
     version: "0.1.0"
-    url: "http://127.0.0.1:8901"
     iconUrl: ""
     skills:
       - id: "info-parsing"
@@ -96,18 +102,21 @@ agents:
     capabilities:
       pushNotifications: false
       streaming: false
-      stateTransitionHistory: true
+#      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
+    supported_interfaces:
+      - protocol_binding: "HTTP+JSON"
+        protocol_version: "1.0"
+        url: "http://127.0.0.1:8901"
 
   - name: "Assurance Agent"
     description: "负责保障策略及其恢复策略的生成。"
     provider:
       organization: "Huawei"
       url: ""
-    protocolVersion: "0.3.0"
+#    protocolVersion: "0.3.0"
     version: "0.1.0"
-    url: "http://127.0.0.1:8902"
     iconUrl: ""
     skills:
       - id: "strategy-generation"
@@ -121,18 +130,21 @@ agents:
     capabilities:
       pushNotifications: false
       streaming: false
-      stateTransitionHistory: true
+#      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
+    supported_interfaces:
+      - protocol_binding: "HTTP+JSON"
+        protocol_version: "1.0"
+        url: "http://127.0.0.1:8902"
 
   - name: "RAN Agent"
     description: "负责无线网络的分析、规划与策略执行。"
     provider:
       organization: "Huawei"
       url: ""
-    protocolVersion: "0.3.0"
+#    protocolVersion: "0.3.0"
     version: "0.1.0"
-    url: "http://127.0.0.1:8903"
     iconUrl: ""
     skills:
       - id: "analysis-eval"
@@ -150,6 +162,10 @@ agents:
     capabilities:
       pushNotifications: false
       streaming: false
-      stateTransitionHistory: true
+#      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
+    supported_interfaces:
+      - protocol_binding: "HTTP+JSON"
+        protocol_version: "1.0"
+        url: "http://127.0.0.1:8903"

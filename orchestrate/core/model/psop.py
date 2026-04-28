@@ -55,10 +55,12 @@ class JumpCondition(BaseModel):
 
 class Step(BaseModel):
     name: str = Field(..., description="Step identifier", examples=['step1', 'step2'])
-    type: StepType = Field(StepType.ALL_SUCCESS,
-                           description="Step success condition "
-                                       "- can be AllSuccess (all subtasks succeed) or AndSuccess (any subtask succeeds)",
-                           examples=[StepType.ALL_SUCCESS, StepType.ANY_SUCCESS])
+    type: StepType = Field(
+        StepType.ALL_SUCCESS,
+        description="Step success condition - "
+        "AllSuccess (all subtasks succeed) or AndSuccess (any subtask succeeds)",
+        examples=[StepType.ALL_SUCCESS, StepType.ANY_SUCCESS],
+    )
     subtasks: List[Task] = Field(..., description="List of subtasks within the step"
                                                   "no dependencies between subtasks, can be executed in parallel")
     next: Optional[List[JumpCondition]] = Field(None,

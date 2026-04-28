@@ -40,11 +40,23 @@ port=60000
 目标系统需提供一套完整证书用于启动端口，后续接受REST请求时会建立TLS传输通道，并根据配置校验对端证书。
 配置文件：{安装目录}/etc/conf/server.conf
 默认配置如下，可按需修改：
+
 ssl_certfile=etc/ssl/server.cer
+
 ssl_keyfile=etc/ssl/server_key.pem
+
 ssl_keyfile_password=etc/ssl/cert_pwd
+
 ssl_ca_certs=etc/ssl/trust.cer
+
 verify_client=true
+
+enable_https=true
+如果沒有证书或者不想校验证书，将enable_https字段设置为false即可
+
+persistence_mode=postgresql
+
+数据的保存目前有两种：postgresql和file，如果设置为postgresql，则需要修改{安装目录}/etc/conf/db_config.json中的配置为你当前环境的postgresql的配置，如果只是想简单使用，不想使用数据库保存数据，只需要将该字段修改为file即可，数据会保存在本地{安装目录}/data目录下。
 
 证书要求：
 server.cer：必选，身份证书，仅支持pem编码格式
@@ -78,91 +90,55 @@ revocationlist.crl:可选，吊销列表，仅支持pem编码格式，仅支持.
 
 本项目仅读取使用这些证书，不提供证书管理能力，例如证书过期告警、备份恢复等。
 
-## 启动和停止服务
-1. **启动后端服务**
+## 启动编排中心服务
+### windows启动方式
+#### 1. 创建虚拟环境
+下载本项目代码后，使用pycharm打开，在pycharm中创建一个虚拟环境
+![photo](docs/images/create_virtual_environment.png)
 
-    **进入项目目录下的`bin`文件夹**
-    ```bash
-      cd /yourPath/orchestration-center/bin
-    ``` 
-   **创建并激活虚拟环境**
-
-    先创建一个项目所需的虚拟环境，比如使用`conda` 创建一个名为`orchestration-center`的虚拟环境(如果尚未创建)：
-   ```bash
-      conda create -n orchestration-center 
-    ```
-    激活虚拟环境
-    ```bash
-      conda activate orchestration-center 
-    ```
-   安装项目所需的python依赖(如果未安装)：
-    ```bash
-      pip install -r ../requirements.txt
-    ```
-   方式一：
-
-   执行启动脚本以运行项目：
-    ```bash
-      ./start.sh
-    ```
-   方式二：
-   ```bash
-      python -m orchestrate.start
-    ```
-2. **停止后端服务**
-
-   **进入项目目录下的`bin`文件夹**
-    ```bash
-      cd /yourPath/orchestration-center/bin
-    ``` 
-   执行脚本文件：
-    ```bash
-      ./stop.sh
-    ```
-### 启动和停止Samples
-1. **启动Samples**
+点击`Add new Interpreter`, 再点击`Add Local Interpreter...`
+![photo](docs/images/create_virtual_environment_1.png)
    
-   方式一:
+选择python版本和路径，点击`ok`即可
 
-   **进入项目目录下的`bin`文件夹**
-    ```bash
-      cd /yourPath/orchestration-center/bin
-    ``` 
-   执行脚本文件：
-    ```bash
-      ./start_samples.sh
-    ```
-   方式二：
-   ```bash
-      python -m samples.start_agents_server
-    ```
-2. **停止Samples**
+#### 2. 安装项目依赖
+等待虚拟环境创建好之后，打开pycharm的终端窗口，执行如下命令：
+```bash
+pip install -r .\requirements.txt
+```
+#### 3. 启动项目
+等待依赖下载完成后，在终端窗口执行如下命令即可启动编排中心后端服务：
+```bash
+python -m orchestrate.start
+```
+或者打开{安装目录}/orchestrate/start.py文件，右键`Run start`即可。
+#### 4.查看是否启动成功
+如下图，表示启动成功，如果没有看到该提示，则按照报错信息提示修改后重新尝试启动。
+![photo](docs/images/run_success.png)
 
-   **进入项目目录下的`bin`文件夹**
-    ```bash
-      cd /yourPath/orchestration-center/bin
-    ``` 
-   执行脚本文件：
-    ```bash
-      ./stop_samples.sh
-    ```
+### linux启动方式
+#### 1. 创建虚拟环境
+进入到项目所在目录，使用如下命令创建并激活虚拟环境：
+```bash
+# 创建虚拟环境
+python3 -m venv myproject_env
 
-### 访问应用
-1. 打开浏览器访问 http://localhost:3003
-2. 使用工作流设计器创建和编辑流程图
-3. 通过 API 接口管理 PSOP 工作流
-
-## API 文档
-
-详细的 API 文档请参考 `framework/server/PSOP_API_DOCUMENTATION.md`，包含以下主要接口：
-
-- `GET /psops` - 获取 PSOP 列表
-- `GET /psops/{workflow_id}` - 获取 PSOP 详情
-- `POST /psops` - 保存 PSOP
-- `DELETE /psops/<workflow_id>` - 删除PSOP
-- `POST /parse-pdf` - 解析 PDF 文件
-- `POST /plan` - 获取工作流规划
-- `GET /agent-cards` - 获取全量AgentCard列表
-- `POST /generate-from-intent` - 根据自然语言意图生成PSOP
-- `POST /retrieve-by-intent` - 根据自然语言意图检索PSOP
-- `GET /rest/start_process_stream?psop_id=<id>` - 启动PSOP执行并推送实时进展
+# 激活虚拟环境
+source myproject_env/bin/activate
+```
+#### 2. 安装项目依赖
+执行如下命令进行项目依赖的安装：
+```bash
+pip install -r ./requirements.txt
+```
+#### 3. 启动项目
+执行如下命令即可启动编排中心后端服务，`nohup`的作用是在用户退出登录或关闭终端后继续运行：
+```bash
+nohup python -m orchestrate.start > orchestrate.log 2>&1 &
+```
+#### 4.查看是否启动成功
+使用如下命令查看启动日志：
+```bash
+tail -f orchestrate.log
+```
+如果可以看到`Uvicorn running on http://127.0.0.1:60000`则表示启动成功，如果没有看到该提示，则按照报错信息提示修改后重新尝试启动。

@@ -140,8 +140,9 @@ class CerContentValidator(CommonContentValidator):
                 if cert_obj.version != x509.Version.v3:
                     return ValidationResult(False, f"Certificate format is not X.509v3! {self.conf_tip}")
                 if not self.validate_public_key_length(cert_obj.public_key):
-                    return ValidationResult(False,
-                                            f"Certificate key algorithm or length does not meet requirements. {self.conf_tip}")
+                    return ValidationResult(
+                        False,
+                        f"Certificate key algorithm or length does not meet requirements. {self.conf_tip}")
             if not self.validate_certificate_validity(x509_obj):
                 return ValidationResult(False, f"Certificate is not valid at current time. {self.conf_tip}")
 
@@ -176,15 +177,17 @@ class PrivateKeyValidator(CommonContentValidator):
     def validate(self) -> ValidationResult:
         try:
             if not self.password_verify(self.password_bytes.decode(DEFAULT_ENCODING)):
-                return ValidationResult(False,
-                                        f"PEM private key password is too week, please check the password complexity!"
-                                        f"Min length is {self.min_length} and must contains at least two of the "
-                                        f"following character types: digits, uppercase, lowercase and special characters"
-                                        f"(`~!@#$%^&*()_=+|[{{}}];:'\",<.>/?), and spaces.")
+                return ValidationResult(
+                    False,
+                    f"PEM private key password is too week, please check the password complexity!"
+                    f"Min length is {self.min_length} and must contains at least two of the "
+                    f"following character types: digits, uppercase, lowercase and special characters"
+                    f"(`~!@#$%^&*()_=+|[{{}}];:'\",<.>/?), and spaces.")
             private_key = cert_parse.parse_pem_files(self.cert_path, self.password_bytes)
             if not self.validate_private_key_length(private_key):
-                return ValidationResult(False,
-                                        f"Certificate key algorithm or length does not meet requirements. {self.conf_tip}")
+                return ValidationResult(
+                    False,
+                    f"Certificate key algorithm or length does not meet requirements. {self.conf_tip}")
             server_obj = cert_parse.parse_cer_certificate(self.server_path)
             if len(server_obj.cert_list) == 0 or server_obj.cert_list[0].public_key != private_key.public_key():
                 return ValidationResult(False,

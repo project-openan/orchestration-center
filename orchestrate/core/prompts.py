@@ -16,13 +16,13 @@
 """
 PSOP (Parallel-Standard Operation Process) Generation Prompt Templates
 
-This module contains prompt templates for generating PSOP workflows from 
+This module contains prompt templates for generating PSOP workflows from
 human-readable business processes. PSOP is a workflow format that enables
 parallel execution of tasks with dependency management.
 
 The prompts are used by LLM to:
 1. Extract concrete tasks from markdown-formatted business steps
-2. Match tasks with available agent skills  
+2. Match tasks with available agent skills
 3. Build PSOP structure based on task dependencies
 4. Generate complete executable workflows
 """
@@ -233,7 +233,7 @@ def get_intent_to_psop_prompt(user_intent: str, agent_cards_json: str, psop_sche
                 }},
                 {{
                     "description": "检查退服基站的软硬件故障",
-                    "agent": "MAE故障Agent", 
+                    "agent": "MAE故障Agent",
                     "skill": "检查基站软硬件故障"
                 }}
             ],
@@ -243,7 +243,7 @@ def get_intent_to_psop_prompt(user_intent: str, agent_cards_json: str, psop_sche
                     "condition": "基站侧未发现明显问题"
                 }},
                 {{
-                    "step": "step3", 
+                    "step": "step3",
                     "condition": "基站侧发现故障原因"
                 }}
             ]

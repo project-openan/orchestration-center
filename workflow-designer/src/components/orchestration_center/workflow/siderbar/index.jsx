@@ -3,6 +3,8 @@ import { getAgentCards } from "../../../../service/api.js";
 import { useTranslation } from "react-i18next";
 import Tooltip from "../../../common/tooltip_component/index.tsx";
 
+import { Bot } from 'lucide-react';
+
 const Sidebar = ({ isDark }) => {
     const { t } = useTranslation();
     const [agentGroups, setAgentGroups] = useState([]);
@@ -127,7 +129,7 @@ const Sidebar = ({ isDark }) => {
                             group-hover:border-blue-500 group-hover:shadow-lg
                             ${styles.icon}
                         `}>
-                                    🤖
+                                    <Bot size={28} />
                                 </div>
 
                                 <div className={`

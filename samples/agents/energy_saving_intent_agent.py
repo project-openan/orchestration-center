@@ -18,7 +18,7 @@ import uuid
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.types import (
-    Task, TaskStatus, TaskState, Artifact, TextPart, Part,
+    Task, TaskStatus, TaskState, Artifact, Part,
 )
 from loguru import logger
 
@@ -40,9 +40,9 @@ class EnergySavingIntentAgentExecutor(AgentExecutor):
         task = Task(
             id=context.task_id,
             context_id=context.context_id,
-            status=TaskStatus(state=TaskState.completed),
+            status=TaskStatus(state=TaskState.TASK_STATE_COMPLETED),
             artifacts=[
-                Artifact(artifact_id=str(uuid.uuid4()), parts=[Part(root=TextPart(text=response))])
+                Artifact(artifact_id=str(uuid.uuid4()), parts=[Part(text=response)])
             ]
         )
         await event_queue.enqueue_event(task)
@@ -50,7 +50,7 @@ class EnergySavingIntentAgentExecutor(AgentExecutor):
     def answer_query(self, user_message: str):
         prompt = f"""
         你是电信领域的无线意图处理agent模拟器，请根据收到的用户任务，模拟一个简短的成功响应。
-        
+
         任务如下: {user_message}
         直接输出中文响应，不用输出其他内容。
         """

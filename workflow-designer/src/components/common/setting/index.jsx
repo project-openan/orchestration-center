@@ -1,20 +1,15 @@
 import {useState} from "react";
-import {defaultIp, defaultPort} from "@/service/api.js";
-import {Server, X, Globe, Terminal, Save} from "lucide-react";
+import {defaultIp, defaultPort, defaultGateway} from "@/service/api.js";
+import {Server, X, Globe, Terminal, Save, Link2, LayoutGrid, Network} from "lucide-react";
 
 const SettingsModal = ({isOpen, onClose, t}) => {
     const [config, setConfig] = useState(() => {
         const saved = localStorage.getItem('server_config');
-        return saved ? JSON.parse(saved) : {ip: defaultIp, port: defaultPort}
+        return saved ? JSON.parse(saved) : {mode: 'ip', ip: defaultIp, port: defaultPort, gatewayUrl: defaultGateway}
     });
 
     const handleSave = () => {
-        const configToSave = {
-            ip: config.ip,
-            port: config.port
-        };
-        localStorage.setItem('server_config', JSON.stringify(configToSave));
-
+        localStorage.setItem('server_config', JSON.stringify(config));
         onClose();
         window.location.reload();
     }
@@ -40,27 +35,62 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                 </div>
 
                 <div className={"p-8 space-y-6"}>
+                    {/* Mode Selector */}
                     <div className={"space-y-2"}>
-                        <label className={"text-[10px] font-black text-zinc-400 ml-1"}>Backend Host(IP)</label>
-                        <div className={"relative"}>
-                            <input type={"text"} value={config.ip}
-                                   onChange={(e) => setConfig({...config, ip: e.target.value})}
-                                   className={"w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all dark:text-white"}
-                                   placeholder={"127.0.0.1"}/>
-                            <Globe size={16} className={"absolute left-3.5 top-3.5 text-zinc-400"}/>
+                        <label className={"text-[10px] font-black text-zinc-400 ml-1"}>Connection Mode</label>
+                        <div className={"grid grid-cols-2 gap-2 p-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-700"}>
+                            <button
+                                onClick={() => setConfig({...config, mode: 'ip'})}
+                                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${config.mode === 'ip' ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                <LayoutGrid size={14}/> Direct IP
+                            </button>
+                            <button
+                                onClick={() => setConfig({...config, mode: 'nginx'})}
+                                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${config.mode === 'nginx' ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                            >
+                                <Network size={14}/> Nginx Gateway
+                            </button>
                         </div>
                     </div>
 
-                    <div className={"space-y-2"}>
-                        <label className={"text-[10px] font-black text-zinc-400 ml-1"}>Port</label>
-                        <div className={"relative"}>
-                            <input type={"text"} value={config.port}
-                                   onChange={(e) => setConfig({...config, port: e.target.value})}
-                                   className={"w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all dark:text-white"}
-                                   placeholder={"5000"}/>
-                            <Terminal size={16} className={"absolute left-3.5 top-3.5 text-zinc-400"}/>
+                    {config.mode === 'ip' ? (
+                        <>
+                            <div className={"space-y-2"}>
+                                <label className={"text-[10px] font-black text-zinc-400 ml-1"}>Backend Host (IP)</label>
+                                <div className={"relative"}>
+                                    <input type={"text"} value={config.ip}
+                                           onChange={(e) => setConfig({...config, ip: e.target.value})}
+                                           className={"w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all dark:text-white"}
+                                           placeholder={"127.0.0.1"}/>
+                                    <Globe size={16} className={"absolute left-3.5 top-3.5 text-zinc-400"}/>
+                                </div>
+                            </div>
+
+                            <div className={"space-y-2"}>
+                                <label className={"text-[10px] font-black text-zinc-400 ml-1"}>Port</label>
+                                <div className={"relative"}>
+                                    <input type={"text"} value={config.port}
+                                           onChange={(e) => setConfig({...config, port: e.target.value})}
+                                           className={"w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all dark:text-white"}
+                                           placeholder={"5000"}/>
+                                    <Terminal size={16} className={"absolute left-3.5 top-3.5 text-zinc-400"}/>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className={"space-y-2"}>
+                            <label className={"text-[10px] font-black text-zinc-400 ml-1"}>Gateway Base URL</label>
+                            <div className={"relative"}>
+                                <input type={"text"} value={config.gatewayUrl}
+                                       onChange={(e) => setConfig({...config, gatewayUrl: e.target.value})}
+                                       className={"w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all dark:text-white"}
+                                       placeholder={defaultGateway}/>
+                                <Link2 size={16} className={"absolute left-3.5 top-3.5 text-zinc-400"}/>
+                            </div>
+                            <p className={"text-[10px] text-zinc-400 italic px-1"}>Example: http://192.168.1.100/orchestration</p>
                         </div>
-                    </div>
+                    )}
 
                     <p className={"text-[11px] text-zinc-400 font-medium italic leading-relaxed"}>
                         * Changes require a page reload to apply new service endpoint configurations.
@@ -75,7 +105,7 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                         Cancel
                     </button>
                     <button onClick={handleSave}
-                    className={"flex-1 py-3 rounded-xl text-xs bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"}
+                            className={"flex-1 py-3 rounded-xl text-xs bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"}
                     >
                         <Save size={16}/> Save Config
                     </button>

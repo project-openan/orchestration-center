@@ -47,7 +47,7 @@ from orchestrate.core.prompts import get_generate_psop_prompt, get_choose_skill_
 
 class WorkflowGeneratorError(Exception):
     """Custom exception for PSOP workflow generation failures.
-    
+
     Raised when any step in the PSOP generation process fails,
     including task extraction, skill matching, or PSOP structure building.
     """
@@ -56,13 +56,13 @@ class WorkflowGeneratorError(Exception):
 
 class PsopGenerator:
     """Main class for generating PSOP workflows from PreFlow inputs.
-    
+
     This class orchestrates the complete PSOP generation process:
     1. Task extraction from markdown business steps
     2. Skill matching for extracted tasks
     3. PSOP structure building based on task dependencies
     4. Complete workflow generation
-    
+
     Attributes:
         _llm: LLM instance for natural language processing tasks
     """
@@ -77,16 +77,16 @@ class PsopGenerator:
             output_model: Optional[Type[BaseModel]] = None
     ) -> Union[BaseModel, Dict[str, Any], List[Any]]:
         """Parse JSON response from LLM output.
-        
+
         Extracts JSON from code blocks in LLM responses and validates/parses it.
-        
+
         Args:
             llm_response: Raw LLM response string containing JSON code blocks
             output_model: Optional Pydantic model to validate and parse JSON into
-            
+
         Returns:
             Parsed JSON data as dict, list, or Pydantic model instance
-            
+
         Raises:
             ValueError: If no JSON code block found, empty content, or invalid JSON
             JSONDecodeError: If JSON parsing fails
@@ -116,16 +116,16 @@ class PsopGenerator:
 
     def extract_tasks_from_steps(self, pre_wf_md: str) -> List[str]:
         """Extract concrete tasks from markdown-formatted business steps.
-        
+
         Uses LLM to parse human-readable business process steps and extract
         actionable tasks for agent execution.
-        
+
         Args:
             pre_wf_md: Markdown string containing business process steps
-            
+
         Returns:
             List of extracted task descriptions
-            
+
         Raises:
             WorkflowGeneratorError: If task extraction fails
         """
@@ -147,17 +147,17 @@ class PsopGenerator:
             agents_card: List[AgentCard]
     ) -> Dict[str, Any]:
         """Match extracted tasks with available agent skills.
-        
+
         Uses LLM to find the most appropriate skill for each task
         based on agent capabilities and skill descriptions.
-        
+
         Args:
             actions: List of task descriptions to match
             agents_card: List of agent cards with their skills
-            
+
         Returns:
             Dictionary mapping task descriptions to skill names
-            
+
         Raises:
             WorkflowGeneratorError: If skill matching fails
         """
@@ -167,7 +167,7 @@ class PsopGenerator:
                 {
                     'name': ac.name,
                     'description': ac.description,
-                    'skills': [s.model_dump(include={"name", "description"}) for s in ac.skills]
+                    'skills': [{'name': s.name, 'description': s.description} for s in ac.skills]
                 }
                 for ac in agents_card
             ]
@@ -189,17 +189,17 @@ class PsopGenerator:
             tasks: List[Dict[str, Any]]
     ) -> PSOP:
         """Build PSOP structure from matched tasks and their dependencies.
-        
+
         Uses LLM to analyze task dependencies and create a structured
         PSOP workflow with proper step sequencing and conditions.
-        
+
         Args:
             preflow: Original PreFlow containing business logic
             tasks: List of tasks with agent and skill assignments
-            
+
         Returns:
             Validated PSOP object with complete workflow structure
-            
+
         Raises:
             WorkflowGeneratorError: If PSOP structure building fails
         """
@@ -229,20 +229,20 @@ class PsopGenerator:
             agent_cards: List[AgentCard]
     ) -> PSOP:
         """Generate complete PSOP workflow from PreFlow and agent cards.
-        
+
         Main entry point for PSOP generation. Orchestrates the complete process:
         1. Task extraction from PreFlow steps
         2. Skill matching for extracted tasks
         3. PSOP structure building
         4. Workflow assembly and validation
-        
+
         Args:
             preflow: PreFlow containing business process steps
             agent_cards: List of available agents with their skills
-            
+
         Returns:
             Complete PSOP workflow ready for execution
-            
+
         Raises:
             WorkflowGeneratorError: If any step in the generation process fails
         """

@@ -1,1 +1,7 @@
 workflow-designer/yarn.lock
+__pycache__
+*.pyc
+.idea
+venv
+./venv
+log/

@@ -5,5 +5,62 @@
     "enable_thinking": true,
     "api": "https://api.deepseek.com",
     "api_key": "sk-f80c71a4058c4ea9a6df03e69804ecec"
+  },
+  "aoc_chat_llm": {
+    "description": "AOC Qwen3_32B chat model",
+    "model": "Qwen3_32B",
+    "enable_thinking": false,
+    "api": "http://10.43.49.201:8380/aoc/openapi/meu4zpeg",
+    "api_key": "dummy",
+    "extra": {
+      "app_key": "1639306657ccfb0e4925e8986",
+      "app_secret": "QnrDIYVKLVfszNcaVL34rm95lBCMdxL6gCTZBhuosnEv2xUL8PVFsPThn4MbUn5f",
+      "authorization": "Bearer 20250515AN232036A7wg_31EE45FA21BD49A99889E77A7A27C34E",
+      "api_code": "SS2010029022044",
+      "api_version": "1.0",
+      "scenario_code": "B99999999999",
+      "scenario_version": "V1",
+      "ability_code": "A999999999",
+      "test_flag": "1",
+      "request_template": "{\"model\": \"Qwen3_32B\", \"messages\": [{\"role\": \"user\", \"content\": \"{prompt}\"}], \"chat_template_kwargs\": {\"enable_thinking\": {enable_thinking}}}"
+    }
+  },
+  "aoc_embedding_llm": {
+    "description": "AOC BGE-M3 embedding model",
+    "model": "bge-m3",
+    "enable_thinking": false,
+    "api": "http://10.43.49.201:8380/aoc/openapi/b0ywzksd",
+    "api_key": "dummy",
+    "extra": {
+      "app_key": "1639306657ccfb0e4925e8986",
+      "app_secret": "QnrDIYVKLVfszNcaVL34rm95lBCMdxL6gCTZBhuosnEv2xUL8PVFsPThn4MbUn5f",
+      "authorization": "Bearer 20250515AN232036A7wg_31EE45FA21BD49A99889E77A7A27C34E",
+      "api_code": "SB2010029020281",
+      "api_version": "1.0",
+      "scenario_code": "B99999999999",
+      "scenario_version": "V1",
+      "ability_code": "A999999999",
+      "test_flag": "1",
+      "request_template": "{\"model\": \"bge-m3\", \"input\": \"{prompt}\"}"
+    }
+  },
+  "aoc_reranker_llm": {
+    "description": "AOC BGE Reranker v2 M3",
+    "model": "bge-reranker-v2-m3",
+    "enable_thinking": false,
+    "api": "http://10.43.49.201:8380/aoc/openapi/interface/bge-reranker-v2-m3",
+    "api_key": "dummy",
+    "extra": {
+      "app_key": "1639306657ccfb0e4925e8986",
+      "app_secret": "QnrDIYVKLVfszNcaVL34rm95lBCMdxL6gCTZBhuosnEv2xUL8PVFsPThn4MbUn5f",
+      "authorization": "Bearer 20250515AN232036A7wg_31EE45FA21BD49A99889E77A7A27C34E",
+      "api_code": "SB2010029018137",
+      "api_version": "1.0",
+      "scenario_code": "B99999999999",
+      "scenario_version": "V1",
+      "ability_code": "A999999999",
+      "test_flag": "1",
+      "request_template": "{\"model\": \"bge-reranker-v2-m3\", \"query\": \"{query}\", \"documents\": {documents}}"
+    }
   }
 }

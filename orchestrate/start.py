@@ -28,6 +28,7 @@ from common.util.cipher_converter import CipherConverter
 from common.util.cipher_util import DEFAULT_ENCODING
 from common.util.conf_util import conf_singleton_obj, set_ssl_folder_permissions, load_cert_password
 from common.util.config_util import get_conf
+from database.utils.table_creation import create_tables
 from orchestrate.server.frontend_support_server import app
 
 def customized_create_ssl_context(certfile: str | os.PathLike[str],
@@ -39,7 +40,7 @@ def customized_create_ssl_context(certfile: str | os.PathLike[str],
                                   ciphers: str | None) -> ssl.SSLContext:
     """
     Create a custom SSL context for secure connections.
-    
+
     Args:
         certfile: Path to the certificate file
         keyfile: Path to the private key file (optional)
@@ -48,10 +49,10 @@ def customized_create_ssl_context(certfile: str | os.PathLike[str],
         cert_reqs: Certificate verification requirements
         ca_certs: Path to CA certificates file (optional)
         ciphers: Cipher suites to use (optional)
-        
+
     Returns:
         SSLContext: Configured SSL context
-        
+
     Raises:
         Exception: If SSL context creation fails
     """
@@ -75,7 +76,7 @@ def customized_create_ssl_context(certfile: str | os.PathLike[str],
 def get_user_info_from_env():
     """
     Retrieve user information from environment variables.
-    
+
     Returns:
         dict: Dictionary containing username, uid, and gid
     """
@@ -112,7 +113,7 @@ class CustomUvicornServer:
     def __init__(self, server_config, conf_obj):
         """
         Initialize the custom Uvicorn server.
-        
+
         Args:
             server_config: Server configuration dictionary
             conf_obj: Configuration object containing SSL settings
@@ -152,6 +153,8 @@ def main():
     server_config = get_conf()
     is_https = server_config.get("enable_https", True)
     is_enable_https = str(is_https).lower() == 'true'
+    if server_config.get('persistence_mode', 'file') != 'file':
+        create_tables()
     if not is_enable_https:
         uvicorn.run(app, host=server_config.get('ip', "127.0.0.1"), port=int(server_config.get('port', 60000)))
     else:
@@ -199,6 +202,6 @@ if __name__ == '__main__':
     logger.info("  SSE Execution Interface:")
     logger.info("  GET  /rest/start_process_stream?psop_id=<id> - Start PSOP execution and push real-time progress")
     logger.info("")
-    logger.info("  For detailed documentation, refer to: PSOP_API_DOCUMENTATION.md")
+    logger.info("  For detailed documentation, refer to: psop_api_documentation.md")
     logger.info("=" * 50)
     main()
