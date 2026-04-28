@@ -42,10 +42,10 @@ fi
 BACKEND_PID_FILE="${SCRIPT_DIR}/tmp/backend.pid"
 FRONTEND_PID_FILE="${SCRIPT_DIR}/tmp/frontend.pid"
 
-# Clean up old PID files
+# 清理旧的 PID 文件
 rm -f "$BACKEND_PID_FILE" "$FRONTEND_PID_FILE"
 
-# ========== Frontend Startup ==========
+# ========== 前端启动代码 ==========
 echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Starting Frontend Application${NC}"
@@ -97,7 +97,7 @@ fi
 # Return to root directory
 cd "$ROOT_DIR" || exit 1
 
-# ========== Backend Startup ==========
+# ========== 后端启动代码 ==========
 echo ""
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Starting Backend Application${NC}"
@@ -111,7 +111,7 @@ BACKEND_PID=$!
 echo $BACKEND_PID > "$BACKEND_PID_FILE"
 echo -e "${GREEN}Backend started with PID: $BACKEND_PID${NC}"
 
-# Wait for processes
+# 等待进程
 wait $BACKEND_PID
 
 EXIT_CODE=$?

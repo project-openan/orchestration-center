@@ -26,14 +26,14 @@ from orchestrate.solution_package.parse_flow import (
 
 @pytest.fixture
 def parser():
-    """Create parser instance"""
+    """创建解析器实例"""
     with patch('orchestrate.solution_package.parse_flow.get_llm_instance'):
         return SolutionPackageParser()
 
 
 @pytest.fixture
 def mock_doc():
-    """Create mock PyMuPDF document"""
+    """创建模拟的PyMuPDF文档"""
     doc = MagicMock()
     doc.page_count = 10
     doc.get_toc.return_value = [
@@ -43,7 +43,7 @@ def mock_doc():
         (1, "Chapter 3", 8),
     ]
 
-    # Mock page text extraction
+    # 模拟页面文本提取
     def mock_get_text(page_idx):
         texts = {
             0: "Chapter 1 content page 1",
@@ -64,81 +64,81 @@ def mock_doc():
 
 
 class TestFindChapterRange:
-    """Test find_chapter_range static method"""
+    """测试 find_chapter_range 静态方法"""
 
     def test_find_existing_chapter(self, mock_doc):
-        """Test finding an existing chapter"""
+        """测试找到已存在的章节"""
         start, end = SolutionPackageParser.find_chapter_range(mock_doc, "Chapter 1")
-        assert start == 1  # Page numbers start from 1
-        assert end == 5  # Start page of the next top-level chapter
+        assert start == 1  # 页码从1开始
+        assert end == 5  # 下一个一级章节的起始页
 
     def test_find_last_chapter(self, mock_doc):
-        """Test finding the last chapter"""
+        """测试找到最后一个章节"""
         start, end = SolutionPackageParser.find_chapter_range(mock_doc, "Chapter 3")
         assert start == 8
-        assert end == mock_doc.page_count  # End of document
+        assert end == mock_doc.page_count  # 文档末尾
 
     def test_find_nonexistent_chapter(self, mock_doc):
-        """Test finding a nonexistent chapter"""
+        """测试查找不存在的章节"""
         start, end = SolutionPackageParser.find_chapter_range(mock_doc, "Nonexistent")
         assert start is None
         assert end == mock_doc.page_count
 
 
 class TestExtractText:
-    """Test extract_text static method"""
+    """测试 extract_text 静态方法"""
 
     def test_extract_valid_range(self, mock_doc):
-        """Test extracting text within valid range"""
+        """测试提取有效范围内的文本"""
         text = SolutionPackageParser.extract_text(mock_doc, 1, 3)
         assert "Chapter 1 content" in text
 
     def test_extract_empty_range(self, mock_doc):
-        """Test extracting empty range"""
+        """测试提取空范围"""
         text = SolutionPackageParser.extract_text(mock_doc, 5, 5)
         assert text == ""
 
     def test_extract_out_of_bounds(self, mock_doc):
-        """Test extracting pages out of bounds"""
+        """测试提取超出范围的页码"""
         text = SolutionPackageParser.extract_text(mock_doc, 1, 100)
-        # Should return normally, no exception
+        # 应该正常返回，不抛出异常
         assert isinstance(text, str)
 
     def test_extract_with_page_error(self, mock_doc):
-        """Test continuing with other pages when one page extraction fails"""
+        """测试某页提取失败时继续处理其他页"""
         mock_doc.__getitem__.side_effect = lambda idx: MagicMock(
             get_text=lambda: (_ for _ in ()).throw(Exception("Page error")) if idx == 1 else f"Page {idx} text"
         )
         text = SolutionPackageParser.extract_text(mock_doc, 1, 3)
-        # Should contain content from other pages
+        # 应该包含其他页面的内容
         assert "Page 0 text" in text or "Page 2 text" in text
 
 
 class TestBuildMarkdownPrompt:
-    """Test build_markdown_prompt static method"""
+    """测试 build_markdown_prompt 静态方法"""
 
     def test_prompt_contains_requirements(self):
-        """Test prompt contains necessary format requirements"""
+        """测试提示词包含必要的格式要求"""
         sample_text = "Test content"
         prompt = SolutionPackageParser.build_markdown_prompt(sample_text)
 
         assert "Markdown" in prompt
-        assert "#" in prompt  # Heading marker
-        assert "list" in prompt.lower()
+        assert "#" in prompt  # 标题标记
+        assert "列表" in prompt or "list" in prompt.lower()
         assert sample_text in prompt
 
     def test_prompt_translation_instruction(self):
-        """Test prompt contains translation instruction"""
+        """测试提示词包含翻译指令"""
         prompt = SolutionPackageParser.build_markdown_prompt("Test")
-        assert "Chinese" in prompt or "translate" in prompt
-        assert "Agent" in prompt
+        assert "中文" in prompt or "翻译" in prompt
+        assert "Agent" in prompt and "智能体" in prompt
 
 
 class TestGetChapterText:
-    """Test get_chapter_text method"""
+    """测试 get_chapter_text 方法"""
 
     def test_get_existing_chapter(self, parser, mock_doc, tmp_path):
-        """Test getting an existing chapter"""
+        """测试获取已存在的章节"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
@@ -147,12 +147,12 @@ class TestGetChapterText:
             assert "Chapter 1 content" in text
 
     def test_get_nonexistent_file(self, parser):
-        """Test getting a nonexistent file"""
+        """测试获取不存在的文件"""
         with pytest.raises(PDFParsingError, match="does not exist"):
             parser.get_chapter_text("/nonexistent/path.pdf", "Chapter 1")
 
     def test_get_nonexistent_chapter(self, parser, mock_doc, tmp_path):
-        """Test getting a nonexistent chapter"""
+        """测试获取不存在的章节"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
@@ -161,7 +161,7 @@ class TestGetChapterText:
                 parser.get_chapter_text(str(pdf_path), "Nonexistent Chapter")
 
     def test_get_chapter_open_error(self, parser, tmp_path):
-        """Test failing to open PDF file"""
+        """测试打开PDF文件失败"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
@@ -171,24 +171,24 @@ class TestGetChapterText:
 
 
 class TestExtractAllChapters:
-    """Test extract_all_chapters method"""
+    """测试 extract_all_chapters 方法"""
 
     def test_extract_with_toc(self, parser, mock_doc, tmp_path):
-        """Test extracting all chapters from PDF with TOC"""
+        """测试从有目录的PDF提取所有章节"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
         with patch('fitz.open', return_value=mock_doc):
             chapters = parser.extract_all_chapters(str(pdf_path))
 
-            # Should extract 3 top-level chapters
+            # 应该提取3个一级章节
             assert len(chapters) == 3
             assert "Chapter 1" in chapters
             assert "Chapter 2" in chapters
             assert "Chapter 3" in chapters
 
     def test_extract_empty_toc(self, parser, tmp_path):
-        """Test extracting from PDF without TOC"""
+        """测试从无目录的PDF提取"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
@@ -201,16 +201,16 @@ class TestExtractAllChapters:
             assert chapters == {}
 
     def test_extract_nonexistent_file(self, parser):
-        """Test extracting from a nonexistent file"""
+        """测试提取不存在的文件"""
         with pytest.raises(PDFParsingError):
             parser.extract_all_chapters("/nonexistent.pdf")
 
 
 class TestConvertToMarkdown:
-    """Test convert_to_markdown method"""
+    """测试 convert_to_markdown 方法"""
 
     def test_convert_success(self, parser):
-        """Test successful conversion"""
+        """测试成功转换"""
         mock_llm = MagicMock()
         mock_llm.ask_llm.return_value = ("prompt", "# Converted Markdown")
         parser.llm = mock_llm
@@ -220,12 +220,12 @@ class TestConvertToMarkdown:
         mock_llm.ask_llm.assert_called_once()
 
     def test_convert_empty_text(self, parser):
-        """Test converting empty text"""
+        """测试转换空文本"""
         with pytest.raises(PDFParsingError, match="empty"):
             parser.convert_to_markdown("")
 
     def test_convert_llm_error(self, parser):
-        """Test LLM call failure"""
+        """测试LLM调用失败"""
         mock_llm = MagicMock()
         mock_llm.ask_llm.side_effect = Exception("LLM error")
         parser.llm = mock_llm
@@ -235,10 +235,10 @@ class TestConvertToMarkdown:
 
 
 class TestConvertChapterToMarkdown:
-    """Test convert_chapter_to_markdown method"""
+    """测试 convert_chapter_to_markdown 方法"""
 
     def test_convert_with_content(self, parser):
-        """Test converting a chapter with content"""
+        """测试转换有内容的章节"""
         mock_llm = MagicMock()
         mock_llm.ask_llm.return_value = ("prompt", "# Markdown Content")
         parser.llm = mock_llm
@@ -248,27 +248,27 @@ class TestConvertChapterToMarkdown:
         assert "# Markdown Content" in content
 
     def test_convert_empty_content(self, parser):
-        """Test converting a chapter with empty content"""
+        """测试转换空内容章节"""
         title, content = parser.convert_chapter_to_markdown(("Ch1", ""))
         assert title == "Ch1"
-        assert "No text content" in content or "empty" in content.lower()
+        assert "无文本内容" in content or "empty" in content.lower()
 
     def test_convert_with_error(self, parser):
-        """Test error during conversion"""
+        """测试转换时出错"""
         mock_llm = MagicMock()
         mock_llm.ask_llm.side_effect = Exception("Conversion failed")
         parser.llm = mock_llm
 
         title, content = parser.convert_chapter_to_markdown(("Ch1", "Text"))
         assert title == "Ch1"
-        assert "Conversion failed" in content or "failed" in content.lower()
+        assert "转换失败" in content or "failed" in content.lower()
 
 
 class TestConvertAllChaptersToMarkdown:
-    """Test convert_all_chapters_to_markdown method"""
+    """测试 convert_all_chapters_to_markdown 方法"""
 
     def test_convert_all_success(self, parser):
-        """Test successful batch conversion"""
+        """测试批量转换成功"""
         mock_llm = MagicMock()
         mock_llm.ask_llm.return_value = ("prompt", "# Converted")
         parser.llm = mock_llm
@@ -280,9 +280,9 @@ class TestConvertAllChaptersToMarkdown:
         assert all("# Converted" in v for v in result.values())
 
     def test_convert_all_preserves_order(self, parser):
-        """Test batch conversion preserves order"""
+        """测试批量转换保持顺序"""
         mock_llm = MagicMock()
-        # Have LLM return content with chapter names to verify order
+        # 让LLM返回带章节名的内容以验证顺序
         call_count = [0]
 
         def mock_ask(prompt):
@@ -295,16 +295,16 @@ class TestConvertAllChaptersToMarkdown:
         chapters = {"First": "t1", "Second": "t2", "Third": "t3"}
         result = parser.convert_all_chapters_to_markdown(chapters, max_workers=1)
 
-        # Verify all chapters are converted
+        # 验证所有章节都被转换
         assert len(result) == 3
         assert all(k in result for k in chapters.keys())
 
 
 class TestParsePdfChapter:
-    """Test parse_pdf_chapter method"""
+    """测试 parse_pdf_chapter 方法"""
 
     def test_parse_success(self, parser, mock_doc, tmp_path):
-        """Test successfully parsing a single chapter"""
+        """测试成功解析单章节"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
@@ -318,7 +318,7 @@ class TestParsePdfChapter:
             assert "# Markdown" in result
 
     def test_parse_chapter_not_found(self, parser, mock_doc, tmp_path):
-        """Test returning None when chapter does not exist"""
+        """测试章节不存在时返回None"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
@@ -328,10 +328,10 @@ class TestParsePdfChapter:
 
 
 class TestParsePdfAllChapters:
-    """Test parse_pdf_all_chapters method"""
+    """测试 parse_pdf_all_chapters 方法"""
 
     def test_parse_all_success(self, parser, mock_doc, tmp_path):
-        """Test successfully parsing all chapters"""
+        """测试成功解析所有章节"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 
@@ -342,11 +342,11 @@ class TestParsePdfAllChapters:
         with patch('fitz.open', return_value=mock_doc):
             result = parser.parse_pdf_all_chapters(str(pdf_path), max_workers=2)
 
-            assert len(result) == 3  # 3 top-level chapters
+            assert len(result) == 3  # 3个一级章节
             assert all("# Converted" in v for v in result.values())
 
     def test_parse_all_with_error(self, parser, tmp_path):
-        """Test error during parsing"""
+        """测试解析过程中出错"""
         pdf_path = tmp_path / "test.pdf"
         pdf_path.touch()
 

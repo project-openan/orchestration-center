@@ -17,7 +17,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
-# Module imports under test
+# 待测试模块导入
 from orchestrate.runtime.exec_engine import DynamicWorkflowEngine
 from orchestrate.core.model.psop import (
     PSOP, Step, Task, TaskStatus, StepType, JumpCondition
@@ -26,7 +26,7 @@ from orchestrate.core.model.psop import (
 
 @pytest.fixture
 def mock_agent_card():
-    """Mock Agent Card object"""
+    """模拟 Agent Card 对象"""
     card = MagicMock()
     card.name = "test_agent"
     card.capabilities = MagicMock()
@@ -37,7 +37,7 @@ def mock_agent_card():
 
 @pytest.fixture
 def mock_llm_client():
-    """Mock LLM client, returns: (request_id, response_text)"""
+    """模拟 LLM 客户端，返回格式: (request_id, response_text)"""
     client = MagicMock()
     client.ask_llm = MagicMock(return_value=("mock_req_id", "step2"))
     return client
@@ -45,7 +45,7 @@ def mock_llm_client():
 
 @pytest.fixture
 def sample_task():
-    """Create standard test Task"""
+    """创建标准测试 Task"""
     return Task(
         description="Test energy saving analysis",
         agent="energy_agent",
@@ -55,7 +55,7 @@ def sample_task():
 
 @pytest.fixture
 def sample_step(sample_task):
-    """Create standard test Step"""
+    """创建标准测试 Step"""
     return Step(
         name="step1",
         type=StepType.ALL_SUCCESS,
@@ -66,7 +66,7 @@ def sample_step(sample_task):
 
 @pytest.fixture
 def sample_psop(sample_step):
-    """Create standard test PSOP"""
+    """创建标准测试 PSOP"""
     return PSOP(
         name="test_workflow",
         description="Test workflow for unit testing",
@@ -84,7 +84,7 @@ def sample_psop(sample_step):
 
 @pytest.fixture
 def mock_httpx_client():
-    """Mock httpx AsyncClient"""
+    """模拟 httpx AsyncClient"""
     client = AsyncMock()
     client.timeout = MagicMock()
     return client
@@ -92,7 +92,7 @@ def mock_httpx_client():
 
 @pytest.fixture
 def mock_a2a_response_task():
-    """Mock A2A response task object"""
+    """模拟 A2A 响应中的 task 对象"""
     task = MagicMock()
     task.artifacts = [MagicMock()]
     task.model_dump_json = MagicMock(return_value='{"content":"mock response"}')
@@ -100,10 +100,10 @@ def mock_a2a_response_task():
 
 
 class TestEngineInitialization:
-    """Test engine initialization related functionality"""
+    """测试引擎初始化相关功能"""
 
     def test_init_basic(self, sample_psop, mock_agent_card, mock_llm_client):
-        """Test basic initialization"""
+        """测试基础初始化"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[mock_agent_card])
@@ -115,7 +115,7 @@ class TestEngineInitialization:
             assert engine.llm_client == mock_llm_client
 
     def test_set_push_callback(self, sample_psop, mock_agent_card, mock_llm_client):
-        """Test callback function setting"""
+        """测试回调函数设置"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[mock_agent_card])
@@ -126,7 +126,7 @@ class TestEngineInitialization:
             assert engine.push_callback == callback
 
     def test_push_event_with_callback(self, sample_psop, mock_agent_card, mock_llm_client):
-        """Test event push successfully calls callback"""
+        """测试事件推送成功调用回调"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[mock_agent_card])
@@ -139,7 +139,7 @@ class TestEngineInitialization:
             callback.assert_called_once_with("test_event", {"key": "value"})
 
     def test_push_event_callback_exception_handled(self, sample_psop, mock_agent_card, mock_llm_client, caplog):
-        """Test callback exception is caught without affecting main flow"""
+        """测试回调异常时被捕获不影响主流程"""
         import logging
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
@@ -150,16 +150,16 @@ class TestEngineInitialization:
 
             engine.set_push_callback(bad_callback)
 
-            # Should not raise exception
+            # 不应抛出异常
             engine._push_event("test_event", {"key": "value"})
 
 
 class TestExecuteSubtasks:
-    """Test _execute_subtasks method"""
+    """测试 _execute_subtasks 方法"""
 
     @pytest.mark.asyncio
     async def test_execute_subtasks_success(self, sample_step, mock_agent_card, mock_llm_client):
-        """Test subtask execution success"""
+        """测试子任务执行成功"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -176,7 +176,7 @@ class TestExecuteSubtasks:
 
     @pytest.mark.asyncio
     async def test_execute_subtasks_failure(self, sample_step, mock_agent_card, mock_llm_client):
-        """Test subtask execution failure"""
+        """测试子任务执行失败"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -192,7 +192,7 @@ class TestExecuteSubtasks:
 
     @pytest.mark.asyncio
     async def test_execute_subtasks_multiple_tasks_all_success(self, mock_agent_card, mock_llm_client):
-        """Test multiple subtasks all succeed"""
+        """测试多个子任务全部成功"""
         step = Step(
             name="multi_step",
             type=StepType.ALL_SUCCESS,
@@ -217,7 +217,7 @@ class TestExecuteSubtasks:
 
     @pytest.mark.asyncio
     async def test_execute_subtasks_push_psop_update(self, sample_step, mock_agent_card, mock_llm_client):
-        """Test pushing PSOP status update during execution"""
+        """测试执行时推送 PSOP 状态更新"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -230,18 +230,18 @@ class TestExecuteSubtasks:
 
             await engine._execute_subtasks(sample_step)
 
-            # Verify psop_update event was pushed
+            # 验证推送了 psop_update 事件
             callback.assert_called()
             event_types = [call_args[0][0] for call_args in callback.call_args_list]
             assert "psop_update" in event_types
 
 
 class TestLLMRouteDecision:
-    """Test _llm_route_decision method"""
+    """测试 _llm_route_decision 方法"""
 
     @pytest.mark.asyncio
     async def test_llm_decision_jump_to_next(self, sample_step, mock_llm_client):
-        """Test LLM decides to jump to next step"""
+        """测试 LLM 决定跳转到下一步"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -262,14 +262,14 @@ class TestLLMRouteDecision:
 
             assert result == "step2"
             mock_llm_client.ask_llm.assert_called_once()
-            # Verify prompt contains key information
+            # 验证 prompt 包含关键信息
             prompt = mock_llm_client.ask_llm.call_args[0][0]
             assert "Current context" in prompt
             assert "Execution Result" in prompt
 
     @pytest.mark.asyncio
     async def test_llm_decision_end_on_error(self, sample_step, mock_llm_client):
-        """Test LLM decides to end on execution error"""
+        """测试执行错误时 LLM 决定结束"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -284,13 +284,13 @@ class TestLLMRouteDecision:
             )
 
             assert result == "end"
-            # Verify prompt contains error information
+            # 验证 prompt 包含错误信息
             prompt = mock_llm_client.ask_llm.call_args[0][0]
-            assert "Execution failed" in prompt
+            assert "执行失败" in prompt
 
     @pytest.mark.asyncio
     async def test_llm_decision_retry(self, sample_step, mock_llm_client):
-        """Test LLM decides to retry"""
+        """测试 LLM 决定重试"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -305,7 +305,7 @@ class TestLLMRouteDecision:
 
     @pytest.mark.asyncio
     async def test_llm_decision_invalid_step_name(self, sample_step, mock_llm_client):
-        """Test defaulting to end when LLM returns invalid step name"""
+        """测试 LLM 返回非法步骤名时默认结束"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -320,7 +320,7 @@ class TestLLMRouteDecision:
 
     @pytest.mark.asyncio
     async def test_llm_decision_case_insensitive(self, sample_step, mock_llm_client):
-        """Test decision result is case-insensitive"""
+        """测试决策结果大小写不敏感"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -332,16 +332,16 @@ class TestLLMRouteDecision:
             )]
             engine = DynamicWorkflowEngine(psop=psop, agent_cards=[])
 
-            # LLM returns uppercase
+            # LLM 返回大写
             mock_llm_client.ask_llm.return_value = ("id", "STEP2")
 
             result = engine._llm_route_decision(sample_step, {"skill": "success"})
 
-            assert result == "STEP2"  # Returns original value, but internal comparison is lowercase
+            assert result == "STEP2"  # 返回原始值，但内部比较时转小写
 
     @pytest.mark.asyncio
     async def test_llm_decision_llm_call_failure(self, sample_step):
-        """Test fault tolerance when LLM call fails"""
+        """测试 LLM 调用失败时的容错"""
         mock_llm = MagicMock()
         mock_llm.ask_llm.side_effect = Exception("LLM service down")
 
@@ -355,7 +355,7 @@ class TestLLMRouteDecision:
 
     @pytest.mark.asyncio
     async def test_llm_decision_no_llm_client(self, sample_step):
-        """Test exception raised when LLM client is not initialized"""
+        """测试未初始化 LLM 客户端时抛出异常"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=None):
             engine = DynamicWorkflowEngine(psop=MagicMock(steps=[sample_step]), agent_cards=[])
@@ -366,7 +366,7 @@ class TestLLMRouteDecision:
 
     @pytest.mark.asyncio
     async def test_llm_decision_prompt_contains_conditions(self, sample_step, mock_llm_client):
-        """Test prompt correctly contains jump conditions"""
+        """测试 prompt 正确包含跳转条件"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -376,17 +376,17 @@ class TestLLMRouteDecision:
             engine._llm_route_decision(sample_step, {"skill": "result"})
 
             prompt = mock_llm_client.ask_llm.call_args[0][0]
-            # Verify conditions are included in prompt as JSON
+            # 验证条件以 JSON 格式包含在 prompt 中
             assert "step2" in prompt
             assert "energy saving success" in prompt
 
 
 class TestExecuteSingleStep:
-    """Test _execute_single_step method"""
+    """测试 _execute_single_step 方法"""
 
     @pytest.mark.asyncio
     async def test_execute_step_success_flow(self, sample_step, mock_agent_card, mock_llm_client):
-        """Test step execution succeeds and jumps"""
+        """测试步骤成功执行并跳转"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -410,7 +410,7 @@ class TestExecuteSingleStep:
 
     @pytest.mark.asyncio
     async def test_execute_step_failure_stops_flow(self, sample_step, mock_agent_card, mock_llm_client):
-        """Test flow stops when step fails"""
+        """测试步骤失败时流程停止"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -422,16 +422,16 @@ class TestExecuteSingleStep:
 
             await engine._execute_single_step()
 
-            # Verify flow was terminated
+            # 验证流程被终止
             assert engine.current_step_idx == len(psop.steps)
             engine._record_stop_event.assert_called_once()
 
 
 class TestFindStepIndex:
-    """Test _find_step_index method"""
+    """测试 _find_step_index 方法"""
 
     def test_find_existing_step(self, sample_psop, mock_llm_client):
-        """Test finding an existing step"""
+        """测试找到存在的步骤"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[])
@@ -440,7 +440,7 @@ class TestFindStepIndex:
             assert idx == 1
 
     def test_find_first_step(self, sample_psop, mock_llm_client):
-        """Test finding the first step"""
+        """测试找到第一个步骤"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[])
@@ -449,7 +449,7 @@ class TestFindStepIndex:
             assert idx == 0
 
     def test_find_nonexistent_step(self, sample_psop, mock_llm_client):
-        """Test finding a nonexistent step"""
+        """测试查找不存在的步骤"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[])
@@ -458,7 +458,7 @@ class TestFindStepIndex:
             assert idx is None
 
     def test_find_step_empty_psop(self, mock_llm_client):
-        """Test step lookup in empty PSOP"""
+        """测试空 PSOP 的步骤查找"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             empty_psop = PSOP(name="empty", steps=[])
@@ -469,10 +469,10 @@ class TestFindStepIndex:
 
 
 class TestRecordStopEvent:
-    """Test _record_stop_event method"""
+    """测试 _record_stop_event 方法"""
 
     def test_record_stop_event(self, sample_psop, mock_llm_client):
-        """Test stop event is recorded correctly"""
+        """测试停止事件正确记录"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[])
@@ -486,7 +486,7 @@ class TestRecordStopEvent:
             assert event["details"] == {"detail": "max retries exceeded"}
 
     def test_record_multiple_stop_events(self, sample_psop, mock_llm_client):
-        """Test recording multiple stop events"""
+        """测试多次记录停止事件"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[])
@@ -500,11 +500,11 @@ class TestRecordStopEvent:
 
 
 class TestSendMessageToAgent:
-    """Test send_message_to_agent method"""
+    """测试 send_message_to_agent 方法"""
 
     @pytest.mark.asyncio
     async def test_send_message_success(self, mock_agent_card, mock_llm_client, mock_a2a_response_task):
-        """Test successfully sending a message and receiving a response"""
+        """测试成功发送消息并接收响应"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -533,17 +533,17 @@ class TestSendMessageToAgent:
 
     @pytest.mark.asyncio
     async def test_send_message_agent_not_found(self, mock_llm_client):
-        """Test exception raised when Agent is not found"""
+        """测试 Agent 未找到时抛出异常"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[])
 
-            with pytest.raises(RuntimeError, match="Agent not found"):
+            with pytest.raises(RuntimeError, match="未找到Agent"):
                 await engine.send_message_to_agent("nonexistent_agent", "task")
 
     @pytest.mark.asyncio
     async def test_send_message_timeout(self, mock_agent_card, mock_llm_client):
-        """Test timeout exception handling"""
+        """测试超时异常处理"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -558,7 +558,7 @@ class TestSendMessageToAgent:
 
     @pytest.mark.asyncio
     async def test_send_message_connect_error(self, mock_agent_card, mock_llm_client):
-        """Test connection error handling"""
+        """测试连接错误处理"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -573,7 +573,7 @@ class TestSendMessageToAgent:
 
     @pytest.mark.asyncio
     async def test_send_message_push_events(self, mock_agent_card, mock_llm_client, mock_a2a_response_task):
-        """Test event push during communication"""
+        """测试通信时事件推送"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -601,7 +601,7 @@ class TestSendMessageToAgent:
 
     @pytest.mark.asyncio
     async def test_send_message_no_artifacts_fallback(self, mock_agent_card, mock_llm_client):
-        """Test fallback when there are no artifacts"""
+        """测试无 artifacts 时的降级处理"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -611,7 +611,7 @@ class TestSendMessageToAgent:
                 mock_a2a = AsyncMock()
                 mock_factory.return_value.create.return_value = mock_a2a
 
-                # Mock task with no artifacts
+                # 模拟 task 无 artifacts
                 mock_task = MagicMock()
                 mock_task.artifacts = None
                 mock_task.__str__ = MagicMock(return_value="fallback string")
@@ -627,7 +627,7 @@ class TestSendMessageToAgent:
 
     @pytest.mark.asyncio
     async def test_send_message_empty_response(self, mock_agent_card, mock_llm_client):
-        """Test exception handling for empty response"""
+        """测试空响应时的异常处理"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[mock_agent_card])
@@ -637,10 +637,10 @@ class TestSendMessageToAgent:
                 mock_a2a = AsyncMock()
                 mock_factory.return_value.create.return_value = mock_a2a
 
-                # Mock empty iteration
+                # 模拟空迭代
                 async def mock_empty_stream(request):
                     return
-                    yield  # Make function a generator
+                    yield  # 使函数成为生成器
 
                 mock_a2a.send_message = mock_empty_stream
 
@@ -649,11 +649,11 @@ class TestSendMessageToAgent:
 
 
 class TestRunWorkflow:
-    """Test run main method"""
+    """测试 run 主方法"""
 
     @pytest.mark.asyncio
     async def test_run_empty_workflow(self, mock_llm_client):
-        """Test empty workflow execution"""
+        """测试空工作流执行"""
         empty_psop = PSOP(name="empty", steps=[])
 
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
@@ -667,14 +667,14 @@ class TestRunWorkflow:
 
     @pytest.mark.asyncio
     async def test_run_single_step_workflow(self, sample_step, mock_agent_card, mock_llm_client):
-        """Test single-step workflow execution"""
+        """测试单步骤工作流执行"""
         psop = PSOP(name="single", steps=[sample_step])
 
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=psop, agent_cards=[mock_agent_card])
 
-            # Mock dependent methods
+            # Mock 依赖方法
             engine._execute_subtasks = AsyncMock(return_value=({"t": "ok"}, True))
             engine._process_llm_decision = AsyncMock(side_effect=lambda s, r: setattr(engine, 'current_step_idx', 999))
 
@@ -685,12 +685,12 @@ class TestRunWorkflow:
 
     @pytest.mark.asyncio
     async def test_run_exception_handling(self, sample_psop, mock_agent_card, mock_llm_client, caplog):
-        """Test exception capture in run method"""
+        """测试 run 方法异常捕获"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[mock_agent_card])
 
-            # Mock internal method throwing exception
+            # 模拟内部方法抛出异常
             engine._execute_single_step = AsyncMock(side_effect=RuntimeError("Unexpected error"))
 
             with pytest.raises(RuntimeError, match="Unexpected error"):
@@ -698,11 +698,11 @@ class TestRunWorkflow:
 
 
 class TestIntegration:
-    """End-to-end integration test"""
+    """端到端集成测试"""
 
     @pytest.mark.asyncio
     async def test_full_workflow_execution(self, mock_llm_client):
-        """Test complete workflow execution flow: step1 -> step2 -> end"""
+        """测试完整工作流执行流程: step1 -> step2 -> end"""
 
         psop = PSOP(
             name="integration_test",
@@ -734,30 +734,30 @@ class TestIntegration:
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=psop, agent_cards=[mock_card1, mock_card2])
 
-            # Mock external calls
+            # Mock 外部调用
             async def mock_send(agent, task_desc):
                 return f"Result from {agent}: {task_desc}"
 
             engine.send_message_to_agent = mock_send
 
-            # Mock LLM decisions: step1->step2, step2->end
+            # Mock LLM 决策: step1->step2, step2->end
             decisions = iter(["step2", "end"])
             mock_llm_client.ask_llm = MagicMock(side_effect=lambda p: ("id", next(decisions)))
 
-            # Execute workflow
+            # 执行工作流
             history = await engine.run()
 
-            # Verify execution results
+            # 验证执行结果
             assert engine.current_step_idx == len(psop.steps)
             assert len(history) == 2
 
-            # Verify task statuses
+            # 验证任务状态
             assert psop.steps[0].subtasks[0].status.value == "success"
             assert psop.steps[1].subtasks[0].status.value == "success"
 
     @pytest.mark.asyncio
     async def test_workflow_early_termination_on_failure(self, mock_llm_client):
-        """Test workflow early termination on task failure"""
+        """测试任务失败时工作流提前终止"""
 
         psop = PSOP(
             name="fail_test",
@@ -783,14 +783,14 @@ class TestIntegration:
 
             history = await engine.run()
 
-            # Verify flow terminated after step1 failure
+            # 验证流程在 step1 失败后终止
             assert len(history) == 2
             assert history[0]["status"] == "FAILED"
             assert engine.current_step_idx == len(psop.steps)
 
     @pytest.mark.asyncio
     async def test_event_callback_integration(self, mock_llm_client):
-        """Test complete event callback integration"""
+        """测试事件回调完整集成"""
 
         psop = PSOP(name="callback_test", steps=[
             Step(name="s1", type=StepType.ALL_SUCCESS,
@@ -821,11 +821,11 @@ class TestIntegration:
 
 
 class TestEdgeCases:
-    """Boundary conditions and exception scenario tests"""
+    """边界条件和异常场景测试"""
 
     @pytest.mark.asyncio
     async def test_any_success_step_type(self, mock_llm_client):
-        """Test StepType.ANY_SUCCESS logic (current implementation executes subtasks sequentially)"""
+        """测试 StepType.ANY_SUCCESS 逻辑（当前实现中子任务是顺序执行）"""
         step = Step(
             name="any_step",
             type=StepType.ANY_SUCCESS,
@@ -839,7 +839,7 @@ class TestEdgeCases:
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[])
-            # First fails, second succeeds
+            # 第一个失败，第二个成功
             engine.send_message_to_agent = AsyncMock(side_effect=[
                 RuntimeError("fail"),
                 "success"
@@ -847,13 +847,13 @@ class TestEdgeCases:
 
             results, success = await engine._execute_subtasks(step)
 
-            # Note: current implementation breaks on first task failure, so success is False
-            # This is an implementation detail; the test documents current behavior
+            # 注意：当前实现在第一个任务失败时就 break，所以 success 为 False
+            # 这是实现细节，测试用于文档化当前行为
             assert success is False
 
     @pytest.mark.asyncio
     async def test_empty_subtasks_step(self, mock_llm_client):
-        """Test step with empty subtask list"""
+        """测试空子任务列表的步骤"""
         step = Step(name="empty_step", type=StepType.ALL_SUCCESS, subtasks=[], next=None)
 
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
@@ -867,7 +867,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_llm_decision_with_special_characters(self, sample_step, mock_llm_client):
-        """Test LLM decision handling special characters"""
+        """测试 LLM 决策处理特殊字符"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             psop = MagicMock()
@@ -879,7 +879,7 @@ class TestEdgeCases:
             )]
             engine = DynamicWorkflowEngine(psop=psop, agent_cards=[])
 
-            # Returns step name with special characters
+            # 返回带特殊字符的步骤名
             mock_llm_client.ask_llm.return_value = ("id", "step-2_with.special")
 
             result = engine._llm_route_decision(sample_step, {"skill": "ok"})
@@ -888,7 +888,7 @@ class TestEdgeCases:
 
     @pytest.mark.asyncio
     async def test_push_event_callback_exception_not_propagated(self, sample_psop, mock_agent_card, mock_llm_client):
-        """Test callback exception in _push_event does not affect main flow"""
+        """测试 _push_event 中回调异常不影响主流程"""
         with patch('orchestrate.runtime.exec_engine.get_llm_instance',
                    return_value=mock_llm_client):
             engine = DynamicWorkflowEngine(psop=sample_psop, agent_cards=[mock_agent_card])
@@ -898,8 +898,8 @@ class TestEdgeCases:
 
             engine.set_push_callback(failing_callback)
 
-            # Should not raise exception
+            # 不应抛出异常
             engine._push_event("test", {"data": 123})
 
-            # Can continue normal execution
+            # 可以继续正常执行
             assert engine.push_callback is not None
