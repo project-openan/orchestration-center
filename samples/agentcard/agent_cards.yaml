@@ -41,9 +41,9 @@ agents:
 #      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
-    supported_interfaces:
-      - protocol_binding: "HTTP+JSON"
-        protocol_version: "1.0"
+    supportedInterfaces:
+      - protocolBinding: "HTTP+JSON"
+        protocolVersion: "1.0"
         url: "http://127.0.0.1:8899"
 
   - name: "Energy Saving Intent Agent"
@@ -77,9 +77,9 @@ agents:
 #      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
-    supported_interfaces:
-      - protocol_binding: "HTTP+JSON"
-        protocol_version: "1.0"
+    supportedInterfaces:
+      - protocolBinding: "HTTP+JSON"
+        protocolVersion: "1.0"
         url: "http://127.0.0.1:8900"
 
   - name: "Live Streaming Agent"
@@ -105,9 +105,9 @@ agents:
 #      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
-    supported_interfaces:
-      - protocol_binding: "HTTP+JSON"
-        protocol_version: "1.0"
+    supportedInterfaces:
+      - protocolBinding: "HTTP+JSON"
+        protocolVersion: "1.0"
         url: "http://127.0.0.1:8901"
 
   - name: "Assurance Agent"
@@ -133,9 +133,9 @@ agents:
 #      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
-    supported_interfaces:
-      - protocol_binding: "HTTP+JSON"
-        protocol_version: "1.0"
+    supportedInterfaces:
+      - protocolBinding: "HTTP+JSON"
+        protocolVersion: "1.0"
         url: "http://127.0.0.1:8902"
 
   - name: "RAN Agent"
@@ -165,7 +165,7 @@ agents:
 #      stateTransitionHistory: true
     defaultInputModes: [ "text" ]
     defaultOutputModes: [ "text" ]
-    supported_interfaces:
-      - protocol_binding: "HTTP+JSON"
-        protocol_version: "1.0"
+    supportedInterfaces:
+      - protocolBinding: "HTTP+JSON"
+        protocolVersion: "1.0"
         url: "http://127.0.0.1:8903"
