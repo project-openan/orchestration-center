@@ -147,23 +147,23 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({ agent, isDark }) => {
                         </ul>
                     </InfoCard>
 
-                    {agent.supported_interfaces && agent.supported_interfaces.length > 0 && (
+                    {agent.supportedInterfaces && agent.supportedInterfaces.length > 0 && (
                         <InfoCard
-                            title={`${t('agent_profile.supported_interfaces')} (${agent.supported_interfaces.length})`}
+                            title={`${t('agent_profile.supported_interfaces')} (${agent.supportedInterfaces.length})`}
                             icon={Server}
                             theme={theme}
                         >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {agent.supported_interfaces.map((iface, index) => (
+                                {agent.supportedInterfaces.map((iface, index) => (
                                     <div
                                         key={`interface-${index}`}
                                         className={`p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
                                         <div className="flex justify-between items-start mb-2">
                                             <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
-                                                {iface.protocol_binding}
+                                                {iface.protocolBinding}
                                             </span>
                                             <span className={`text-[10px] px-1 border rounded ${theme.border} ${theme.textSecondary} opacity-60`}>
-                                                v{iface.protocol_version}
+                                                v{iface.protocolVersion}
                                             </span>
                                         </div>
                                         <div className={`text-sm ${theme.textSecondary} truncate font-mono`} title={iface.url}>
@@ -267,7 +267,7 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({ agent, isDark }) => {
                                     {t('agent_profile.defaultInputModes')}
                                 </span>
                                 <div className="flex flex-wrap gap-2 mt-2 mb-4">
-                                    {agent.default_input_modes.map(m => (
+                                    {agent.defaultInputModes.map(m => (
                                         <span key={m}
                                               className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
                                             {m}
@@ -279,7 +279,7 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({ agent, isDark }) => {
                                     {t('agent_profile.defaultOutputModes')}
                                 </span>
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                    {agent.default_output_modes.map(m => (
+                                    {agent.defaultOutputModes.map(m => (
                                         <span key={m}
                                               className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
                                             {m}
@@ -288,9 +288,9 @@ const AgentDashboard: React.FC<AgentProfileProps> = ({ agent, isDark }) => {
                                 </div>
                             </div>
                         </div>
-                        {agent.documentation_url && (
+                        {agent.documentationUrl && (
                             <a
-                                href={agent.documentation_url}
+                                href={agent.documentationUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDark
