@@ -57,10 +57,10 @@ class AgentRegistryClient:
         :return: True if successful, False if duplicate
         """
         if isinstance(agent, AgentCard):
-            data = MessageToDict(agent, preserving_proto_field_name=True)
+            data = MessageToDict(agent)
         else:
             data = agent
-        resp = self._request('POST', '/rest/a2a-t/v1/agents/register', json=data)
+        resp = self._request('POST', '/rest/v1/registry-center/agent-cards', json={"agentCards":[data]})
         return resp.json()
 
     def update_full(self, name: str, organization: str, agent: AgentCard) -> bool:
@@ -71,10 +71,9 @@ class AgentRegistryClient:
         :param agent: New AgentCard data
         :return: True if updated, False if not found
         """
-        data = MessageToDict(agent, preserving_proto_field_name=True)
-        resp = self._request('PUT', f'/rest/a2a-t/v1/update_agent/{name}',
-                             params={'organization': organization},
-                             json=data)
+        data = MessageToDict(agent)
+        resp = self._request('PUT', f'/rest/v1/registry-center/agent-cards/{organization}/{name}',
+                             json={"agentCards":[data]})
         return resp.json()
 
     def deregister(self, name: str, organization: str) -> bool:
@@ -84,8 +83,7 @@ class AgentRegistryClient:
         :param organization: Agent organization
         :return: True if deleted, False if not found
         """
-        resp = self._request('DELETE', f'/rest/a2a-t/v1/deregister_agent/{name}',
-                             params={'organization': organization})
+        resp = self._request('DELETE', f'/rest/v1/registry-center/agent-cards/{organization}/{name}')
         return resp.json()
 
     def get(self, name: str, organization: str) -> dict | None:
@@ -93,8 +91,7 @@ class AgentRegistryClient:
         Get an agent by exact name and organization.
         :return: AgentCard if found, else None
         """
-        resp = self._request('GET', f'/rest/a2a-t/v1/agents/{name}',
-                             params={'organization': organization})
+        resp = self._request('GET', f'/rest/v1/registry-center/agent-cards/{organization}/{name}')
         if resp.status_code == 200:
             return resp.json()
         elif resp.status_code == 404:
@@ -116,7 +113,7 @@ class AgentRegistryClient:
             parms['organization'] = organization
         if provider:
             parms['provider'] = provider
-        resp = self._request('GET', f'/rest/a2a-t/v1/agents/query', params=parms)
+        resp = self._request('GET', f'/rest/v1/registry-center/agent-cards', params=parms)
         return resp.json()
 
     def search_by_task(self, task: str) -> List[dict]:
@@ -125,7 +122,7 @@ class AgentRegistryClient:
         :param task: Natural language task
         :return: List of relevant AgentCard instances
         """
-        resp = self._request('GET', f'/rest/a2a-t/v1/agents/retrieve', params={'task': task})
+        resp = self._request('POST', f'/rest/v1/registry-center/agent-cards/semantic-query', json={'task': task})
         return resp.json()
 
     def list_all(self) -> List[dict]:
