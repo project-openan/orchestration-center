@@ -30,8 +30,8 @@ interface AgentSkill {
 }
 
 interface SupportedInterface {
-    protocol_binding: string;
-    protocol_version: string;
+    protocolBinding: string;
+    protocolVersion: string;
     url: string;
 }
 
@@ -52,7 +52,7 @@ interface AgentData {
     defaultInputModes: string[];
     defaultOutputModes: string[];
     skills: AgentSkill[];
-    supported_interfaces?: SupportedInterface[];
+    supportedInterface?: SupportedInterface[];
     documentationUrl?: string;
     [key: string]: any;
 }
