@@ -4,6 +4,7 @@ import {
   getBaseUrl,
   defaultIp,
   defaultPort,
+  defaultGateway,
   getAgentCards,
   getWorkflow,
   getWorkflowById,
@@ -74,6 +75,27 @@ describe('api service', () => {
       mockLocalStorage.setItem('server_config', JSON.stringify({ ip: '192.168.1.1' }));
       const url = getBaseUrl();
       expect(url).toBe(`http://192.168.1.1:${defaultPort}`);
+    });
+
+    it('should use independent nginx URL when mode is nginx', () => {
+      mockLocalStorage.setItem('server_config', JSON.stringify({
+        mode: 'nginx',
+        ip: '192.168.1.1',
+        port: '8080',
+        nginxUrl: 'http://gateway.example.com/orchestration/'
+      }));
+      const url = getBaseUrl();
+      expect(url).toBe('http://gateway.example.com/orchestration');
+    });
+
+    it('should use default gateway when nginx URL is missing', () => {
+      mockLocalStorage.setItem('server_config', JSON.stringify({
+        mode: 'nginx',
+        ip: '192.168.1.1',
+        port: '8080'
+      }));
+      const url = getBaseUrl();
+      expect(url).toBe(defaultGateway);
     });
 
     it('should handle malformed JSON in localStorage', () => {

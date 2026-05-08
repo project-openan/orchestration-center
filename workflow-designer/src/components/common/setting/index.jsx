@@ -3,13 +3,32 @@ import {defaultIp, defaultPort, defaultGateway} from "@/service/api.js";
 import {Server, X, Globe, Terminal, Save, Link2, LayoutGrid, Network} from "lucide-react";
 
 const SettingsModal = ({isOpen, onClose, t}) => {
-    const [config, setConfig] = useState(() => {
+    const getInitialConfig = () => {
+        const defaults = {mode: 'ip', ip: defaultIp, port: defaultPort, nginxUrl: defaultGateway};
         const saved = localStorage.getItem('server_config');
-        return saved ? JSON.parse(saved) : {mode: 'ip', ip: defaultIp, port: defaultPort, gatewayUrl: defaultGateway}
+        if (!saved) return defaults;
+
+        try {
+            const parsed = JSON.parse(saved);
+            return {
+                ...defaults,
+                ...parsed,
+                nginxUrl: parsed.nginxUrl || parsed.gatewayUrl || defaults.nginxUrl,
+            };
+        } catch (e) {
+            return defaults;
+        }
+    };
+
+    const [config, setConfig] = useState(() => {
+        return getInitialConfig();
     });
 
     const handleSave = () => {
-        localStorage.setItem('server_config', JSON.stringify(config));
+        const nextConfig = config.mode === 'nginx'
+            ? {mode: 'nginx', nginxUrl: config.nginxUrl || defaultGateway}
+            : {mode: 'ip', ip: config.ip || defaultIp, port: config.port || defaultPort};
+        localStorage.setItem('server_config', JSON.stringify(nextConfig));
         onClose();
         window.location.reload();
     }
@@ -40,13 +59,13 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                         <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('settings.connection_mode')}</label>
                         <div className={"grid grid-cols-2 gap-2 p-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-700"}>
                             <button
-                                onClick={() => setConfig({...config, mode: 'ip'})}
+                                onClick={() => setConfig({...config, mode: 'ip', ip: config.ip || defaultIp, port: config.port || defaultPort})}
                                 className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${config.mode === 'ip' ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
                                 <LayoutGrid size={14}/> {t('settings.direct_ip')}
                             </button>
                             <button
-                                onClick={() => setConfig({...config, mode: 'nginx'})}
+                                onClick={() => setConfig({...config, mode: 'nginx', nginxUrl: config.nginxUrl || defaultGateway})}
                                 className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${config.mode === 'nginx' ? 'bg-white dark:bg-zinc-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                             >
                                 <Network size={14}/> {t('settings.nginx_gateway')}
@@ -82,8 +101,8 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                         <div className={"space-y-2"}>
                             <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('settings.gateway_base_url')}</label>
                             <div className={"relative"}>
-                                <input type={"text"} value={config.gatewayUrl}
-                                       onChange={(e) => setConfig({...config, gatewayUrl: e.target.value})}
+                                <input type={"text"} value={config.nginxUrl}
+                                       onChange={(e) => setConfig({...config, nginxUrl: e.target.value})}
                                        className={"w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 rounded-xl font-bold focus:ring-4 focus:ring-blue-500/10 outline-none transition-all dark:text-white"}
                                        placeholder={defaultGateway}/>
                                 <Link2 size={16} className={"absolute left-3.5 top-3.5 text-zinc-400"}/>
