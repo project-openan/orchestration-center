@@ -113,7 +113,7 @@ class AgentRegistryClient:
             parms['organization'] = organization
         if provider:
             parms['provider'] = provider
-        resp = self._request('GET', f'/rest/v1/registry-center/agent-cards/', params=parms)
+        resp = self._request('GET', f'/rest/v1/registry-center/agent-cards', params=parms)
         return resp.json().get("agentCards", [])
 
     def search_by_task(self, task: str) -> List[dict]:
