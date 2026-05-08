@@ -100,7 +100,7 @@ const KVEditor = ({title, data = {}, onChange, isDark}) => {
 
                 {Object.keys(data).length === 0 && (
                     <div className={`text-[11px] italic text-center py-4 border border-dashed rounded-xl transition-colors ${theme.emptyBox}`}>
-                        {t('worflow.panel.noParams')}
+                        {t('workflow.panel.noParams')}
                     </div>
                 )}
             </div>

@@ -1,5 +1,6 @@
 // @ts-ignore
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface WorkflowLoaderProps {
     isDark?: boolean;
@@ -10,10 +11,14 @@ interface WorkflowLoaderProps {
 
 const WorkflowLoader: React.FC<WorkflowLoaderProps> = ({
                                                            isDark = true,
-                                                           loadingMessage = "Loading Workflow",
-                                                           subMessage = "正在初始化数据...",
+                                                           loadingMessage,
+                                                           subMessage,
                                                            className = ""
                                                        }) => {
+    const { t } = useTranslation();
+    const displayMessage = loadingMessage || t('workflow_loader.loading');
+    const displaySubMessage = subMessage || t('workflow_loader.initializing');
+
     return (
         <div className={`
       relative w-full h-full min-h-[400px] flex flex-col items-center justify-center transition-colors duration-500
@@ -40,12 +45,12 @@ const WorkflowLoader: React.FC<WorkflowLoaderProps> = ({
                 <div className="flex flex-col items-center gap-1">
                     <p className={`text-sm font-medium tracking-widest  animate-pulse
             ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                        {loadingMessage}
+                        {displayMessage}
                     </p>
                     <div className="h-[2px] w-8 rounded-full bg-blue-500 transition-all duration-1000 animate-bounce mt-1" />
                     <p className={`text-xs mt-2 opacity-60 font-light
             ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                        {subMessage}
+                        {displaySubMessage}
                     </p>
                 </div>
             </div>

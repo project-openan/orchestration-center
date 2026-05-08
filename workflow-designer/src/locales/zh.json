@@ -1,6 +1,6 @@
 {
   "nav": {
-    "title": "A2A-T Prototype",
+    "title": "A2A-T 样机",
     "tabs": {
       "agents": "Agent库",
       "orchestration": "编排中心",
@@ -45,7 +45,10 @@
     "show_less": "收起详情",
     "view_detail": "查看详情",
     "no_text": "未检测到文本内容，请查看数据详情。",
-    "workflow_list": "匹配工作流"
+    "workflow_list": "匹配工作流",
+    "no_match": "未检索到匹配的工作流",
+    "match_failed": "匹配请求失败。",
+    "no_description": "该工作流暂无描述。"
   },
   "orchestration": {
     "title": "编排中心",
@@ -65,7 +68,11 @@
     "apply_change": "应用修改",
     "direct": "直接跳转",
     "graph_mode": "图形化编排",
-    "build_workflow": "Build Workflow",
+    "build_workflow": "构建工作流",
+    "start": "开始",
+    "new_design": "新设计",
+    "generate": "生成",
+    "generating": "生成中...",
     "no_tags": "无标签",
     "back_to_options": "返回选项",
     "ai_orchestrator": "AI 编排助手",
@@ -110,6 +117,8 @@
       "nodeConfig": "节点配置",
       "edgeConfig": "分支配置",
       "agentName": "Agent 名称",
+      "stepName": "步骤名称",
+      "subtasks": "子任务",
       "taskDesc": "任务描述 (Task)",
       "taskPlaceholder": "描述该步骤的具体动作",
       "selectSkill": "选择技能 (Skill)",
@@ -118,13 +127,17 @@
       "outputDefine": "接口输出定义 (Output)",
       "noInput": "无预定义输入",
       "noOutput": "无预定义输出",
+      "source": "源节点",
+      "target": "目标节点",
       "inputParams": "运行参数输入 (input_params)",
       "condition": "跳转条件 (Condition)",
+      "conditionPlaceholder": "用自然语言描述条件",
       "keyPlaceholder": "参数名",
       "valuePlaceholder": "参数值",
       "noParams": "暂无参数项",
       "confirm": "确认并保存配置",
-      "placeholderSelect": "请选择技能..."
+      "placeholderSelect": "请选择技能...",
+      "removeSubtask": "移除子任务"
     },
     "export": {
       "success": "工作流保存成功",
@@ -149,17 +162,26 @@
   "registry": {
     "title": "Agent库",
     "search_placeholder": "搜索智能体名称或功能...",
-    "units": "个实例",
+    "units": "个",
     "description_label": "智能体描述",
     "prompt_label": "核心逻辑 (Prompt)",
     "tool_label": "工具",
     "call_api": "执行API",
     "secure_badge": "运行时安全验证",
     "secure_note": "已通过A2A-T电信级网络环境验证。",
-    "select_prompt": "请选择一个智能体查看详细注册信息"
+    "select_prompt": "请选择一个智能体查看详细注册信息",
+    "synchronizing": "同步中...",
+    "select_agent": "请选择 Agent",
+    "raw": "原始数据",
+    "gui": "图形视图",
+    "org": "组织：",
+    "protocol": "协议：",
+    "switch_to_raw": "切换到原始数据",
+    "switch_to_gui": "切换到图形视图"
   },
   "agent_profile": {
     "description": "描述",
+    "supported_interfaces": "支持的接口",
     "skills": "技能",
     "capabilities": "能力",
     "configuration": "配置信息",
@@ -181,6 +203,38 @@
     "save": "保存",
     "confirm_delete": "确认删除？",
     "delete_success": "删除成功",
-    "delete_failed": "删除失败"
+    "delete_failed": "删除失败",
+    "copied": "已复制！",
+    "copy_raw_json": "复制原始 JSON",
+    "chars": "字符"
+  },
+  "settings": {
+    "title": "服务连接",
+    "connection_mode": "连接模式",
+    "direct_ip": "直连 IP",
+    "nginx_gateway": "Nginx 网关",
+    "backend_host": "后端主机 (IP)",
+    "port": "端口",
+    "gateway_base_url": "网关基础 URL",
+    "gateway_example": "示例：{{url}}",
+    "reload_note": "* 修改服务端点配置后需要重新加载页面才能生效。",
+    "save_config": "保存配置"
+  },
+  "workflow_empty": {
+    "title": "暂无工作流数据",
+    "desc": "当前执行记录没有可展示的节点或连线。"
+  },
+  "workflow_loader": {
+    "loading": "正在加载工作流",
+    "initializing": "正在初始化数据..."
+  },
+  "node_label": {
+    "start": "开始节点",
+    "end": "结束节点",
+    "no_skill": "未指定技能",
+    "no_subtasks": "未配置子任务"
+  },
+  "error": {
+    "parse_failed": "解析拖拽的 Agent 模板失败。"
   }
 }

@@ -1,5 +1,6 @@
 import React, { memo, useMemo } from 'react';
 import { Handle, Position, useConnection } from '@xyflow/react';
+import { useTranslation } from 'react-i18next';
 
 const AGENT_COLORS = [
     { light: 'bg-blue-100 text-blue-700', dark: 'bg-blue-500/20 text-blue-300', bar: 'bg-blue-500' },
@@ -26,6 +27,7 @@ const getAgentTheme = (agentName) => {
 
 const AgentNode = ({ data, selected }) => {
     const connection = useConnection();
+    const { t } = useTranslation();
     const isConnecting = connection.inProgress;
 
     const isDark = data.isDark || false;
@@ -118,13 +120,13 @@ const AgentNode = ({ data, selected }) => {
                                  <div className={`h-1.5 w-1.5 rounded-full ${getStatusColor(task.status)} opacity-60`} />
                              </div>
                              <div className={`text-[11px] font-medium leading-[1.15] break-words whitespace-normal ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
-                                 {task.skill || 'No skill specified'}
+                                 {task.skill || t('node_label.no_skill')}
                              </div>
                          </div>
                      ))}
                      {subtasks.length === 0 && (
                          <div className={`text-[10px] italic px-2 py-1 ${theme.textSub} opacity-50`}>
-                             No subtasks configured
+                             {t('node_label.no_subtasks')}
                          </div>
                      )}
                  </div>

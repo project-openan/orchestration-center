@@ -245,7 +245,7 @@ const OrchestrationCenter = ({ isDark }) => {
 
                         <div className="mb-16 text-center z-10 animate-in fade-in zoom-in-95 duration-1000">
                             <h2 className="text-4xl font-black dark:text-white  mb-3">
-                                Build <span className="text-blue-600">Workflow</span>
+                                {t('orchestration.build_workflow')}
                             </h2>
                         </div>
 
@@ -344,7 +344,7 @@ const OrchestrationCenter = ({ isDark }) => {
     `}
                                     >
                                         <span className="relative">
-                                            {loading ? 'GENERATING...' : 'GENERATE'}
+                                            {loading ? t('orchestration.generating') : t('orchestration.generate')}
                                         </span>
                                         {loading ? (
                                             <Loader2 size={18} className="animate-spin" />
@@ -515,7 +515,7 @@ const OrchestrationCenter = ({ isDark }) => {
                     className="px-10 py-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center  bg-white dark:bg-zinc-900 backdrop-blur-md shrink-0">
                     <div className="flex items-center gap-4">
                         <h2 className="text-lg font-black dark:text-white uppercase">
-                            {activeView === 'welcome' ? 'Start' : (activeView === 'ai' ? 'AI Orchestrator' : (currentWf?.name || 'New Design'))}
+                            {activeView === 'welcome' ? t('orchestration.start') : (activeView === 'ai' ? t('orchestration.ai_orchestrator') : (currentWf?.name || t('orchestration.new_design')))}
                         </h2>
 
                         {activeView === 'detail' && (

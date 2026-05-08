@@ -543,7 +543,7 @@ const UnifiedWorkflow = ({
     nodes = [],
     edges = [],
     isLoading = false,
-    loadingMessage = "Loading workflow...",
+    loadingMessage,
     onSelectChange,
     visible = true,
     importedNodes,
@@ -554,6 +554,8 @@ const UnifiedWorkflow = ({
     onCancel,
     onSaveSuccess
 }) => {
+    const { t } = useTranslation();
+
     if (mode === 'view' && isLoading) {
         return <WorkflowLoader isDark={isDark} loadingMessage={loadingMessage} />;
     }
@@ -564,9 +566,9 @@ const UnifiedWorkflow = ({
                 <div className="w-20 h-20 mb-6 rounded-3xl bg-white dark:bg-zinc-800/80 shadow-md flex items-center justify-center border border-zinc-100 dark:border-zinc-700/50">
                     <Layers className="w-10 h-10 text-zinc-300 dark:text-zinc-600" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-lg font-black text-zinc-600 dark:text-zinc-300 mb-2 tracking-tight">No Workflow Data</h3>
+                <h3 className="text-lg font-black text-zinc-600 dark:text-zinc-300 mb-2 tracking-tight">{t('workflow_empty.title')}</h3>
                 <p className="text-sm text-zinc-400 dark:text-zinc-500 max-w-sm text-center leading-relaxed">
-                    There are no nodes or edges to display for this execution record.
+                    {t('workflow_empty.desc')}
                 </p>
             </div>
         );

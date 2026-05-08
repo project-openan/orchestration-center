@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Check, Copy, FileJson } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const CodeInspector = ({ data, fileName = 'manifest.json', isDark = false }) => {
+    const { t } = useTranslation();
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -28,7 +30,7 @@ const CodeInspector = ({ data, fileName = 'manifest.json', isDark = false }) => 
                     className={`relative flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200 active:scale-95 ${isDark
                         ? 'bg-zinc-800 text-zinc-400 hover:bg-blue-600/20 hover:text-blue-400 border border-zinc-700/50 hover:border-blue-500/50'
                         : 'bg-white text-zinc-600 border border-zinc-200 shadow-sm hover:border-blue-500 hover:text-blue-600'}`}
-                    title={copied ? 'Copied!' : 'Copy Raw JSON'}>
+                    title={copied ? t('common.copied') : t('common.copy_raw_json')}>
                     <div className={`transition-all duration-300 ${copied ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}>
                         <Copy size={16} strokeWidth={2.5} />
                     </div>
@@ -48,7 +50,7 @@ const CodeInspector = ({ data, fileName = 'manifest.json', isDark = false }) => 
 
             <div className={`px-6 py-2 border-t flex justify-end transition-colors ${isDark ? 'bg-zinc-900/30 border-zinc-800' : 'bg-zinc-100/50 border-zinc-200'}`}>
                 <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                    UTF-8 · JSON · {jsonString.length} chars
+                    UTF-8 · JSON · {jsonString.length} {t('common.chars')}
                 </span>
             </div>
         </div>

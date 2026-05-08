@@ -45,11 +45,17 @@
     "show_less": "Collapse",
     "view_detail": "Raw Detail",
     "no_text": "No text content detected, please check details.",
-    "workflow_list": "Matched Workflows"
+    "workflow_list": "Matched Workflows",
+    "no_match": "No matching workflow found",
+    "match_failed": "Match request failed.",
+    "no_description": "No description provided for this workflow."
   },
   "orchestration": {
     "title": "Orchestration",
     "list_label": "CORE O&M FLOWS",
+    "method_import": "SolutionPackage Import",
+    "method_graph": "Graph Builder",
+    "method_ai": "Natural Language Orchestration",
     "edit_mode": "Edit Mode",
     "preview_mode": "Preview",
     "node_logic": "JUMP LOGIC",
@@ -62,8 +68,24 @@
     "apply_change": "APPLY CHANGE",
     "direct": "DIRECT",
     "graph_mode": "Manual",
+    "build_workflow": "Build Workflow",
+    "start": "Start",
+    "new_design": "New Design",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "no_tags": "No tags",
+    "back_to_options": "Back to options",
+    "ai_orchestrator": "AI Orchestrator",
+    "edit": "Edit",
     "invalid_file": "Please upload a valid JSON file.",
-    "incorrect_content": "Failed to parse the JSON file. Please check the file content."
+    "incorrect_content": "Failed to parse the JSON file. Please check the file content.",
+    "delete_workflow_title": "Delete Workflow",
+    "delete_workflow_confirm": "Are you sure you want to delete this workflow? This action cannot be undone.",
+    "stage_parsing": "Parsing SolutionPackage...",
+    "stage_planning": "Planning workflow...",
+    "stage_generating": "Generating workflow from intent...",
+    "stage_finalizing": "Building preview...",
+    "stage_deleting": "Deleting workflow..."
   },
   "workflow": {
     "title": "WORKFLOW PROGRESSION",
@@ -96,6 +118,8 @@
       "nodeConfig": "Node Config",
       "edgeConfig": "Edge Config",
       "agentName": "Agent Name",
+      "stepName": "Step Name",
+      "subtasks": "Subtasks",
       "taskDesc": "Task Description",
       "taskPlaceholder": "Describe the specific action",
       "selectSkill": "Select Skill",
@@ -104,13 +128,17 @@
       "outputDefine": "Output Definitions",
       "noInput": "No input definitions",
       "noOutput": "No output definitions",
+      "source": "Source",
+      "target": "Target",
       "inputParams": "Runtime Parameters",
       "condition": "Condition",
+      "conditionPlaceholder": "Describe the condition in natural language",
       "keyPlaceholder": "Key",
       "valuePlaceholder": "Value",
       "noParams": "No parameters defined",
       "confirm": "Confirm Configuration",
-      "placeholderSelect": "please choose..."
+      "placeholderSelect": "please choose...",
+      "removeSubtask": "Remove subtask"
     },
     "export": {
       "success": "Workflow saved successfully",
@@ -142,10 +170,19 @@
     "call_api": "EXECUTE API",
     "secure_badge": "RUNTIME SECURE VERIFIED",
     "secure_note": "Verified for A2A-T carrier-grade network environments.",
-    "select_prompt": "Select an instance to view registration metadata"
+    "select_prompt": "Select an instance to view registration metadata",
+    "synchronizing": "Synchronizing...",
+    "select_agent": "Select an agent",
+    "raw": "RAW",
+    "gui": "GUI",
+    "org": "Org:",
+    "protocol": "Protocol:",
+    "switch_to_raw": "Switch to RAW",
+    "switch_to_gui": "Switch to GUI"
   },
   "agent_profile": {
     "description": "Description",
+    "supported_interfaces": "Supported Interfaces",
     "skills": "Skills",
     "capabilities": "Capabilities",
     "configuration": "Configuration",
@@ -165,6 +202,40 @@
     "confirm": "Confirm",
     "cancel": "Cancel",
     "save": "Save",
-    "confirm_delete": "confirm delete?"
+    "confirm_delete": "confirm delete?",
+    "delete_success": "Deleted successfully",
+    "delete_failed": "Delete failed",
+    "copied": "Copied!",
+    "copy_raw_json": "Copy Raw JSON",
+    "chars": "chars"
+  },
+  "settings": {
+    "title": "Server Connection",
+    "connection_mode": "Connection Mode",
+    "direct_ip": "Direct IP",
+    "nginx_gateway": "Nginx Gateway",
+    "backend_host": "Backend Host (IP)",
+    "port": "Port",
+    "gateway_base_url": "Gateway Base URL",
+    "gateway_example": "Example: {{url}}",
+    "reload_note": "* Changes require a page reload to apply new service endpoint configurations.",
+    "save_config": "Save Config"
+  },
+  "workflow_empty": {
+    "title": "No Workflow Data",
+    "desc": "There are no nodes or edges to display for this execution record."
+  },
+  "workflow_loader": {
+    "loading": "Loading Workflow",
+    "initializing": "Initializing data..."
+  },
+  "node_label": {
+    "start": "Start Node",
+    "end": "End Node",
+    "no_skill": "No skill specified",
+    "no_subtasks": "No subtasks configured"
+  },
+  "error": {
+    "parse_failed": "Failed to parse dropped agent template."
   }
 }
