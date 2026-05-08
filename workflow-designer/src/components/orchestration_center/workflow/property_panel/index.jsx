@@ -217,12 +217,12 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                 {isNode ? (
                     <>
 
-                        <ReadOnlyField label={t('workflow.panel.stepName') || 'Step Name'} value={data.label} isDark={isDark} />
+                        <ReadOnlyField label={t('workflow.panel.stepName')} value={data.label} isDark={isDark} />
 
                         {data.subtasks && data.subtasks.length > 0 ? (
                             <div className="space-y-3">
                                 <label className={`text-[12px] ml-1 font-bold uppercase tracking-widest ${theme.label}`}>
-                                    {t('workflow.panel.subtasks') || 'Subtasks'} ({data.subtasks.length})
+                                    {t('workflow.panel.subtasks')} ({data.subtasks.length})
                                 </label>
                                 <div className="flex flex-col gap-2.5">
                                     {data.subtasks.map((task, idx) => (
@@ -241,7 +241,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                                                     <button
                                                         onClick={() => handleRemoveSubtask(idx)}
                                                         className="p-1 hover:bg-red-500/10 rounded-md text-red-500 opacity-0 group-hover/task:opacity-100 transition-opacity"
-                                                        title="Remove subtask"
+                                                        title={t('workflow.panel.removeSubtask')}
                                                     >
                                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
@@ -296,11 +296,11 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                     <section className="space-y-4">
                         <div className={`flex flex-col gap-2 p-3 rounded-xl border ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50 border-zinc-100'}`}>
                             <div className="flex justify-between text-[12px] tracking-tight">
-                                <span className="text-zinc-500 font-bold uppercase">Source</span>
+                                <span className="text-zinc-500 font-bold uppercase">{t('workflow.panel.source')}</span>
                                 <span className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>{activeElement.source}</span>
                             </div>
                             <div className="flex justify-between text-[12px] tracking-tight">
-                                <span className="text-zinc-500 font-bold uppercase">Target</span>
+                                <span className="text-zinc-500 font-bold uppercase">{t('workflow.panel.target')}</span>
                                 <span className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>{activeElement.target}</span>
                             </div>
                         </div>
@@ -308,7 +308,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                             label={t('workflow.panel.condition')}
                             value={data.condition}
                             onChange={(v) => updateData('condition', v)}
-                            placeholder="自然语言描述条件"
+                            placeholder={t('workflow.panel.conditionPlaceholder')}
                             isDark={isDark}
                             fontMono
                         />

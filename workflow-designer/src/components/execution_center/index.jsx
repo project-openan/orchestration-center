@@ -189,11 +189,11 @@ const ExecutionCenter = ({ isDark }) => {
                 setSelectedId(results[0].workflow_id);
                 setWorkflowSource('retrieved');
             } else {
-                setError("未检索到匹配的工作流");
+                setError(t('execution.no_match'));
             }
         } catch (err) {
             console.error("Failed to match workflows:", err);
-            setError("Match request failed.");
+            setError(t('execution.match_failed'));
         } finally {
             setIsMatching(false);
         }
@@ -396,7 +396,7 @@ const ExecutionCenter = ({ isDark }) => {
                                             <span className="text-sm font-black dark:text-white truncate uppercase tracking-tight">{wf.name}</span>
                                         </div>
                                         <span className="text-[11px] font-medium opacity-60 dark:text-zinc-400 line-clamp-2 leading-normal">
-                                            {wf.description || "No description provided for this workflow."}
+                                            {wf.description || t('execution.no_description')}
                                         </span>
                                     </div>
                                     
@@ -451,7 +451,7 @@ const ExecutionCenter = ({ isDark }) => {
                                 nodes={nodes}
                                 edges={edges}
                                 isLoading={(isRunning && nodes.length === 0) || isMatching}
-                                loadingMessage={isMatching ? 'Matching...' : t('execution.init')}
+                                loadingMessage={isMatching ? t('execution.matching') : t('execution.init')}
                                 onSelectChange={handleNodeSelect}
                             />
                         ) : (

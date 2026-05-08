@@ -111,7 +111,7 @@ const Sidebar = ({ isDark }) => {
                                         {info.displayName || key}
                                     </div>
                                     <div className="text-xs opacity-90 leading-relaxed">
-                                        {info.description || '暂无描述'}
+                                        {info.description || t('execution.no_description')}
                                     </div>
                                 </div>
                             }

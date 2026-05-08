@@ -103,7 +103,7 @@ const AgentRegistry = ({ isDark, t }) => {
                             </h1>
                             <span
                                 className="text-zinc-400 text-[10px] font-black px-2 py-1 rounded-full uppercase border border-zinc-100 dark:border-zinc-800">
-                                {agents.length} UNITS
+                                {agents.length} {t('registry.units')}
                             </span>
                         </div>
                         <div className="relative">
@@ -149,7 +149,7 @@ const AgentRegistry = ({ isDark, t }) => {
                 {!agent ? (
                     <div
                         className="h-full flex items-center justify-center italic text-zinc-400 font-bold bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl opacity-40">
-                        {loading ? "Synchronizing..." : "Select an agent"}
+                        {loading ? t('registry.synchronizing') : t('registry.select_agent')}
                     </div>
                 ) : (
                     <div
@@ -175,17 +175,17 @@ const AgentRegistry = ({ isDark, t }) => {
                                             >
                                                 {viewMode === 'structured' ? <Code2 size={12} /> :
                                                     <LayoutDashboard size={12} />}
-                                                {viewMode === 'structured' ? 'RAW' : 'GUI'}
+                                                {viewMode === 'structured' ? t('registry.raw') : t('registry.gui')}
                                             </button>
                                         </div>
                                     </div>
                                     <div className="flex gap-3 mt-2 items-center">
-                                        <span className="text-[10px] font-black text-zinc-400 uppercase">Org:</span>
+                                        <span className="text-[10px] font-black text-zinc-400 uppercase">{t('registry.org')}</span>
                                         <span
                                             className="text-[10px] font-black text-zinc-900 dark:text-zinc-200 uppercase">{agent.provider?.organization}</span>
                                         <div className="w-1 h-1 rounded-full bg-zinc-300" />
                                         <span
-                                            className="text-[10px] font-black text-zinc-400 uppercase">Protocol:</span>
+                                            className="text-[10px] font-black text-zinc-400 uppercase">{t('registry.protocol')}</span>
                                         <span
                                             className="text-[10px] font-black text-zinc-900 dark:text-zinc-200">{agent.protocolVersion}</span>
                                     </div>
@@ -202,7 +202,7 @@ const AgentRegistry = ({ isDark, t }) => {
     `}
                             >
                                 {viewMode === 'structured' ? <Code2 size={14} /> : <LayoutDashboard size={14} />}
-                                <span>{viewMode === 'structured' ? 'Switch to RAW' : 'Switch to GUI'}</span>
+                                <span>{viewMode === 'structured' ? t('registry.switch_to_raw') : t('registry.switch_to_gui')}</span>
                             </button>
                         </div>
 

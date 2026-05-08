@@ -1,7 +1,9 @@
 import { Handle, Position, useConnection } from "@xyflow/react";
+import { useTranslation } from "react-i18next";
 
 export const StartNode = ({ selected }) => {
     const connection = useConnection();
+    const { t } = useTranslation();
     const isConnecting = connection.inProgress;
 
     const handleBaseStyle = `
@@ -24,7 +26,7 @@ export const StartNode = ({ selected }) => {
             ${selected ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}
         `}>
             <div className={"absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"}>
-                开始节点
+                {t('node_label.start')}
             </div>
             START
 
@@ -36,6 +38,7 @@ export const StartNode = ({ selected }) => {
 
 export const EndNode = ({ selected }) => {
     const connection = useConnection();
+    const { t } = useTranslation();
     const isConnecting = connection.inProgress;
 
     const targetHandleBaseClasses = `
@@ -51,7 +54,7 @@ export const EndNode = ({ selected }) => {
             ${selected ? 'ring-2 ring-rose-500 ring-offset-2' : ''}
         `}>
             <div className={"absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"}>
-                结束节点
+                {t('node_label.end')}
             </div>
             END
 
