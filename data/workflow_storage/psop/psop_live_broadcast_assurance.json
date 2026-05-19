@@ -21,7 +21,9 @@
           "step": "step2",
           "condition": "任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step2",
@@ -40,7 +42,9 @@
           "step": "step3",
           "condition": "任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step3",
@@ -59,7 +63,9 @@
           "step": "step4",
           "condition": "任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step4",
@@ -78,7 +84,9 @@
           "step": "step5",
           "condition": "任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step5",
@@ -97,7 +105,9 @@
           "step": "step6",
           "condition": "任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step6",
@@ -116,7 +126,9 @@
           "step": "step7",
           "condition": "任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step7",
@@ -135,7 +147,9 @@
           "step": "step8",
           "condition": "任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step8",
@@ -154,7 +168,9 @@
           "step": "end",
           "condition": "流程结束，保障任务完成"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     }
   ],
   "related_preflow": null,

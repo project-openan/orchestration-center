@@ -180,6 +180,12 @@ def get_generate_psop_prompt(preflow: str, tasks: list, psop_scheme: str) -> str
 3、最后一步的next属性，无条件走end，next属性值如下： "next":[{{"step":"end, "condition":""}}]
 4、仅输出psop即可，不用输出其他内容。
 
+## 跨层编排规则（重要）
+- 如果某个步骤需要综合、总结、分析前面步骤的执行结果，则该步骤属于聚合层。
+- 聚合层步骤需设置 layer=1（执行层默认为0），并设置 context_from 包含所有需要引用结果的步骤名称。
+- context_from 示例：["step1","step2"] 表示将 step1 和 step2 的输出注入到当前步骤 Agent 的上下文中。
+- 如果步骤中的 Agent 只需要独立执行而不依赖其他步骤结果，则不需要设置 context_from。
+
 ## 示例输出
 ```json
 {PSOP_EXAMPLE}
@@ -209,10 +215,20 @@ def get_intent_to_psop_prompt(user_intent: str, agent_cards_json: str, psop_sche
 4. **条件跳转**：为每个步骤设置合理的跳转条件
 5. **命名规范**：步骤名称使用"step1"、"step2"等格式，每个步骤的type默认为"AllSuccess"
 
+## 跨层编排规则（重要）
+6. **层级划分**：
+   - 执行层 (layer=0)：独立执行分析、数据采集、检查等任务的步骤
+   - 聚合层 (layer=1+)：需要综合、总结、对比前面步骤结果的步骤
+7. **上下文传递**：
+   - 聚合层步骤需设置 context_from 字段，包含其依赖的前置步骤名称列表
+   - context_from 示例：["step1","step2"] 表示将 step1 和 step2 的输出注入到当前步骤的 Agent 上下文中
+   - 执行层步骤不需要设置 context_from
+8. **典型场景**：当用户意图包含"总结"、"综合研判"、"根因分析"、"给出最终方案"等需要汇总前序分析的描述时，最后一步应设为聚合层步骤
+
 ## 输出格式
 请直接输出完整的PSOP JSON，用```json```包裹。
 
-## 示例
+## 示例1：普通流程
 用户意图：诊断基站批量掉站故障
 
 可用Agent及技能：[包含MAE故障Agent等]
@@ -312,11 +328,81 @@ def get_intent_to_psop_prompt(user_intent: str, agent_cards_json: str, psop_sche
 }}
 ```
 
+## 示例2：跨层编排流程（含聚合总结）
+用户意图：排查基站故障并给出综合故障分析报告
+
+可用Agent及技能：[包含诊断Agent、传输Agent、总结Agent等]
+
+输出：
+```json
+{{
+    "name": "基站故障排查与综合报告",
+    "steps": [
+        {{
+            "name": "step1",
+            "type": "AllSuccess",
+            "layer": 0,
+            "subtasks": [
+                {{
+                    "description": "检查基站动力环境和软硬件状态",
+                    "agent": "MAE故障Agent",
+                    "skill": "故障诊断"
+                }}
+            ],
+            "next": [
+                {{
+                    "step": "step2",
+                    "condition": ""
+                }}
+            ]
+        }},
+        {{
+            "name": "step2",
+            "type": "AllSuccess",
+            "layer": 0,
+            "subtasks": [
+                {{
+                    "description": "查询传输网元告警信息",
+                    "agent": "传输Agent",
+                    "skill": "传输告警查询"
+                }}
+            ],
+            "next": [
+                {{
+                    "step": "step3",
+                    "condition": ""
+                }}
+            ]
+        }},
+        {{
+            "name": "step3",
+            "type": "AllSuccess",
+            "layer": 1,
+            "context_from": ["step1", "step2"],
+            "subtasks": [
+                {{
+                    "description": "综合前面所有排查结果，分析故障根因并生成处理建议报告",
+                    "agent": "总结Agent",
+                    "skill": "故障根因分析"
+                }}
+            ],
+            "next": [
+                {{
+                    "step": "end",
+                    "condition": ""
+                }}
+            ]
+        }}
+    ]
+}}
+```
+
 ## 注意事项
 1. 最后一步的next属性设置为：[{{"step": "end", "condition": ""}}]
 2. 保持电信运维的专业术语和逻辑严谨性
 3. 确保生成的PSOP符合格式要求
 4. 仅输出JSON，不要有其他解释性文字
+5. 根据用户意图判断是否需要跨层编排，如果需要，最后一步应为聚合层步骤并设置适当的 context_from
 """
 
 

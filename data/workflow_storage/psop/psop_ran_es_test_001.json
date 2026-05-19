@@ -21,7 +21,9 @@
           "step": "step2",
           "condition": "成功获取RAN ES意图探索报告"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step2",
@@ -40,7 +42,9 @@
           "step": "step3",
           "condition": "节能意图内容生成成功"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step3",
@@ -59,7 +63,9 @@
           "step": "step4",
           "condition": "意图成功交付并激活"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step4",
@@ -85,7 +91,9 @@
           "step": "step5",
           "condition": "收到RAN ES意图执行报告"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step5",
@@ -104,7 +112,9 @@
           "step": "end",
           "condition": "节能效果评估完成，流程结束"
         }
-      ]
+      ],
+      "layer": 0,
+      "context_from": null
     }
   ],
   "related_preflow": null,

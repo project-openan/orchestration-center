@@ -903,3 +903,207 @@ class TestEdgeCases:
 
             # Can continue normal execution
             assert engine.push_callback is not None
+
+
+class TestCrossLayerOrchestration:
+    """Cross-layer orchestration tests - context passing between steps"""
+
+    @pytest.mark.asyncio
+    async def test_build_context_for_step_empty(self, mock_llm_client):
+        """Test _build_context_for_step returns empty when no context_from"""
+        with patch('orchestrate.runtime.exec_engine.get_llm_instance',
+                   return_value=mock_llm_client):
+            engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[])
+            step = Step(
+                name="step1",
+                type=StepType.ALL_SUCCESS,
+                subtasks=[],
+                next=None
+            )
+            result = engine._build_context_for_step(step)
+            assert result == ""
+
+    def test_build_context_for_step_with_refs(self, mock_llm_client):
+        """Test _build_context_for_step builds context from referenced steps"""
+        with patch('orchestrate.runtime.exec_engine.get_llm_instance',
+                   return_value=mock_llm_client):
+            engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[])
+            engine.step_outputs = {
+                "step1": {"task_a": "result from a", "task_b": "result from b"},
+                "step2": {"task_c": "result from c"},
+            }
+            step = Step(
+                name="step3",
+                type=StepType.ALL_SUCCESS,
+                subtasks=[],
+                next=None,
+                layer=1,
+                context_from=["step1", "step2"]
+            )
+            result = engine._build_context_for_step(step)
+            assert "step1" in result
+            assert "step2" in result
+            assert "task_a" in result
+            assert "result from a" in result
+            assert "task_b" in result
+            assert "result from b" in result
+            assert "task_c" in result
+            assert "result from c" in result
+
+    def test_build_context_for_step_missing_ref(self, mock_llm_client):
+        """Test _build_context_for_step handles missing referenced steps gracefully"""
+        with patch('orchestrate.runtime.exec_engine.get_llm_instance',
+                   return_value=mock_llm_client):
+            engine = DynamicWorkflowEngine(psop=MagicMock(), agent_cards=[])
+            engine.step_outputs = {
+                "step1": {"task_a": "result"},
+            }
+            step = Step(
+                name="step3",
+                type=StepType.ALL_SUCCESS,
+                subtasks=[],
+                next=None,
+                layer=1,
+                context_from=["step1", "step2"]
+            )
+            result = engine._build_context_for_step(step)
+            assert "step1" in result
+            assert "step2" not in result
+
+    def test_build_task_message_without_context(self):
+        """Test _build_task_message returns just description when no context"""
+        task = Task(description="do something", agent="agent1", skill="skill1")
+        result = DynamicWorkflowEngine._build_task_message(task, "")
+        assert result == "do something"
+
+    def test_build_task_message_with_context(self):
+        """Test _build_task_message prepends context to task description"""
+        task = Task(description="summarize findings", agent="agent1", skill="skill1")
+        context = "## 前置步骤执行结果\n### step1 结果\n- 任务: \"analyze\"\n  输出: OK"
+        result = DynamicWorkflowEngine._build_task_message(task, context)
+        assert context in result
+        assert task.description in result
+        assert "当前任务" in result
+
+    @pytest.mark.asyncio
+    async def test_step_outputs_accumulation(self, mock_llm_client):
+        """Test that step outputs are accumulated in step_outputs dict"""
+        with patch('orchestrate.runtime.exec_engine.get_llm_instance',
+                   return_value=mock_llm_client):
+            psop = PSOP(
+                name="accum_test",
+                steps=[
+                    Step(name="step1", type=StepType.ALL_SUCCESS,
+                         subtasks=[Task(description="t1", agent="a1", skill="s1")],
+                         next=[JumpCondition(step="step2", condition="")]),
+                    Step(name="step2", type=StepType.ALL_SUCCESS,
+                         subtasks=[Task(description="t2", agent="a2", skill="s2")],
+                         next=None, layer=1, context_from=["step1"])
+                ]
+            )
+
+            mock_card1 = MagicMock(name="a1")
+            mock_card1.name = "a1"
+            mock_card1.capabilities = MagicMock(streaming=False)
+
+            mock_card2 = MagicMock(name="a2")
+            mock_card2.name = "a2"
+            mock_card2.capabilities = MagicMock(streaming=False)
+
+            engine = DynamicWorkflowEngine(psop=psop, agent_cards=[mock_card1, mock_card2])
+
+            async def mock_send(agent, task_desc):
+                return f"Result from {agent}"
+
+            engine.send_message_to_agent = mock_send
+
+            decisions = iter(["step2", "end"])
+            mock_llm_client.ask_llm = MagicMock(side_effect=lambda p: ("id", next(decisions)))
+
+            await engine.run()
+
+            assert "step1" in engine.step_outputs
+            assert "step2" in engine.step_outputs
+            assert engine.step_outputs["step1"]["t1"] == "Result from a1"
+
+    @pytest.mark.asyncio
+    async def test_context_injected_to_downstream_agent(self, mock_llm_client):
+        """Test that context from upstream steps is injected to downstream agent"""
+        with patch('orchestrate.runtime.exec_engine.get_llm_instance',
+                   return_value=mock_llm_client):
+            psop = PSOP(
+                name="context_inject_test",
+                steps=[
+                    Step(name="step1", type=StepType.ALL_SUCCESS,
+                         subtasks=[Task(description="analyze data", agent="analyzer", skill="analyze")],
+                         next=[JumpCondition(step="step2", condition="")]),
+                    Step(name="step2", type=StepType.ALL_SUCCESS, layer=1,
+                         context_from=["step1"],
+                         subtasks=[Task(description="summarize all", agent="summarizer", skill="summarize")],
+                         next=None)
+                ]
+            )
+
+            mock_card = MagicMock()
+            mock_card.name = "analyzer"
+            mock_card.capabilities = MagicMock(streaming=False)
+
+            mock_card2 = MagicMock()
+            mock_card2.name = "summarizer"
+            mock_card2.capabilities = MagicMock(streaming=False)
+
+            engine = DynamicWorkflowEngine(psop=psop, agent_cards=[mock_card, mock_card2])
+
+            captured_messages = []
+
+            async def mock_send(agent, task_desc):
+                captured_messages.append((agent, task_desc))
+                return f"Result from {agent}"
+
+            engine.send_message_to_agent = mock_send
+
+            decisions = iter(["step2", "end"])
+            mock_llm_client.ask_llm = MagicMock(side_effect=lambda p: ("id", next(decisions)))
+
+            await engine.run()
+
+            assert len(captured_messages) == 2
+            step2_message = captured_messages[1][1]
+            assert "前置步骤执行结果" in step2_message
+            assert "step1" in step2_message
+            assert "analyze data" in step2_message
+            assert "当前任务" in step2_message
+            assert "summarize all" in step2_message
+
+    @pytest.mark.asyncio
+    async def test_layer_field_default_value(self):
+        """Test that layer field defaults to 0"""
+        step = Step(
+            name="test",
+            type=StepType.ALL_SUCCESS,
+            subtasks=[],
+            next=None
+        )
+        assert step.layer == 0
+        assert step.context_from is None
+
+    @pytest.mark.asyncio
+    async def test_psop_model_serialization_with_layer(self):
+        """Test that PSOP model with layer and context_from serializes correctly"""
+        psop = PSOP(
+            name="cross_layer_test",
+            steps=[
+                Step(name="step1", type=StepType.ALL_SUCCESS,
+                     subtasks=[Task(description="t1", agent="a1", skill="s1")],
+                     next=[JumpCondition(step="end", condition="")], layer=0),
+                Step(name="step2", type=StepType.ALL_SUCCESS, layer=1,
+                     context_from=["step1"],
+                     subtasks=[Task(description="t2", agent="a2", skill="s2")],
+                     next=None)
+            ]
+        )
+        data = psop.model_dump()
+        assert data["steps"][0]["layer"] == 0
+        assert data["steps"][0]["context_from"] is None
+        assert data["steps"][1]["layer"] == 1
+        assert data["steps"][1]["context_from"] == ["step1"]

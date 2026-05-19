@@ -66,6 +66,13 @@ class Step(BaseModel):
     next: Optional[List[JumpCondition]] = Field(None,
                                                 description="Jump conditions to next steps. List of jump \
                                                 conditions (if empty, unconditional jump)")
+    layer: int = Field(0, description="Orchestration layer level. 0 = execution layer (leaf agents), "
+                                      "1+ = aggregation layers (can consume lower layer outputs)")
+    context_from: Optional[List[str]] = Field(None,
+                                              description="List of step names whose outputs should be provided as "
+                                                          "context to this step's agents. "
+                                                          "If set, the execution engine will inject prior step results "
+                                                          "into each agent's input.")
 
 
 class PSOP(BaseModel):
