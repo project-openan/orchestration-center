@@ -3,20 +3,31 @@ import axios from "axios";
 const STORAGE_KEY = 'server_config';
 export const defaultIp = '127.0.0.1';
 export const defaultPort = '60000';
-export const defaultGateway = 'http://127.0.0.1/orchestration';
+export const defaultGateway = '/api/orchestrate';
 
 const trimTrailingSlash = (url) => url.replace(/\/$/, '');
+
+const isStandardPort = () => {
+    const p = window.location.port;
+    return !p || p === '80' || p === '443';
+};
 
 export const getBaseUrl = () => {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        const config = saved ? JSON.parse(saved) : {};
-        if (config.mode === 'nginx') {
+        if (saved) {
+            const config = JSON.parse(saved);
+            if (config.mode === 'ip') {
+                const ip = config.ip || defaultIp;
+                const port = config.port || defaultPort;
+                return `http://${ip}:${port}`;
+            }
             return trimTrailingSlash(config.nginxUrl || config.gatewayUrl || defaultGateway);
         }
-        const ip = config.ip || defaultIp;
-        const port = config.port || defaultPort;
-        return `http://${ip}:${port}`;
+        if (isStandardPort()) {
+            return trimTrailingSlash(defaultGateway);
+        }
+        return `http://${defaultIp}:${defaultPort}`;
     } catch (e) {
         return `http://${defaultIp}:${defaultPort}`;
     }
