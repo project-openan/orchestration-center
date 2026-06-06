@@ -1,6 +1,6 @@
 {
   "nav": {
-    "title": "OpenAN Orchestration Center",
+    "title": "Agent to Agent for Telecom Orchestration Center",
     "tabs": {
       "agents": "Registry Center",
       "orchestration": "Orchestration Center",
