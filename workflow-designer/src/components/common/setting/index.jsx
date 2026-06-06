@@ -4,7 +4,9 @@ import {Server, X, Globe, Terminal, Save, Link2, LayoutGrid, Network} from "luci
 
 const SettingsModal = ({isOpen, onClose, t}) => {
     const getInitialConfig = () => {
-        const defaults = {mode: 'ip', ip: defaultIp, port: defaultPort, nginxUrl: defaultGateway};
+        const port = window.location.port;
+        const autoMode = (!port || port === '80' || port === '443') ? 'nginx' : 'ip';
+        const defaults = {mode: autoMode, ip: defaultIp, port: defaultPort, nginxUrl: defaultGateway};
         const saved = localStorage.getItem('server_config');
         if (!saved) return defaults;
 
