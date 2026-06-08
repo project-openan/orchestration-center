@@ -1,31 +1,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Search, Zap, ShieldCheck, Cpu, Box, Bot, Database, Network, Globe, Code2, LayoutDashboard,
-    X, Layers, Server, Radio
+    Search, Code2, LayoutDashboard,
+    X, Layers, Server, Radio, Network
 } from 'lucide-react';
 import { getAgentCards } from "@/service/api.js";
 import CodeInspector from "./code_inspector/index.jsx";
 import AgentCard from "./agentcard_visualization/index.jsx";
 
 const THEMES = ['emerald', 'blue', 'indigo', 'rose', 'cyan', 'amber', 'violet'];
-const ICONS = [
-    <Network size={22} />, <Zap size={22} />, <ShieldCheck size={22} />,
-    <Cpu size={22} />, <Box size={22} />, <Bot size={22} />,
-    <Database size={22} />, <Globe size={22} />
-];
 
 const SERVICE_LAYER_TAGS = ['live', 'assurance', 'uncertainty', 'monitoring', 'negotiation', 'simulation'];
 const NETWORK_LAYER_TAGS = ['ran', 'spn', 'dispatch', 'energy-saving', 'wireless', 'diagnosis', 'aggregate', 'analysis', 'plan', 'exec', 'strategy', 'recovery'];
 
-const getAssetsBySeed = (seed) => {
+const getAssetsBySeed = (seed, layer) => {
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
         hash = seed.charCodeAt(i) + ((hash << 5) - hash);
     }
     return {
         theme: THEMES[Math.abs(hash) % THEMES.length],
-        icon: ICONS[Math.abs(hash) % ICONS.length]
+        icon: layer === 'network' ? <Network size={22} /> : <Server size={22} />
     };
 };
 
@@ -57,18 +52,19 @@ const AgentRegistry = ({ isDark, t }) => {
 
                 const enhancedData = rawList.map((val) => {
                     const key = val.name;
-                    const ui = getAssetsBySeed(key);
                     const syncedRaw = { ...val, provider: val.provider };
                     const modifiedSkills = (syncedRaw.skills || []).map(skill => {
                         const { inputs, outputs, ...rest } = skill;
                         return rest;
                     });
+                    const layer = getAgentLayer(syncedRaw);
+                    const ui = getAssetsBySeed(key, layer);
                     return {
                         ...syncedRaw,
                         id: key,
                         displayName: key.toUpperCase(),
                         ...ui,
-                        layer: getAgentLayer(syncedRaw),
+                        layer: layer,
                         _raw: { ...syncedRaw, skills: modifiedSkills },
                     };
                 });
