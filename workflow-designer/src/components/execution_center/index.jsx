@@ -22,7 +22,9 @@ import {
     MessageSquare,
     BarChart3,
     SlidersHorizontal,
-    X
+    X,
+    FileText,
+    ChevronUp
 } from 'lucide-react';
 import { getWorkflow, getWorkflowById, getStartProcessStreamUrl, matchWorkflowsTopN, getExecutionRecords, getExecutionRecord, deleteExecutionRecord } from '@/service/api.js';
 import { transformWorkflowToReactFlow } from '@/components/orchestration_center/workflow/utils/index.jsx';
@@ -459,6 +461,7 @@ const ExecutionCenter = ({ isDark }) => {
     });
     const [showFilters, setShowFilters] = useState(false);
     const [availableTags, setAvailableTags] = useState([]);
+    const [showSummary, setShowSummary] = useState(true);
 
     // Save search mode to localStorage
     const handleSearchModeChange = useCallback((mode) => {
@@ -1222,9 +1225,7 @@ const ExecutionCenter = ({ isDark }) => {
                         </div>
                     </div>
 
-                    <div className={`flex-1 relative ${theme.content}`}>
-
-
+                    <div className={`flex-1 relative min-h-0 ${theme.content}`}>
                         {selectedId || nodes.length > 0 ? (
                             <UnifiedWorkflow
                                 mode="view"
@@ -1249,6 +1250,37 @@ const ExecutionCenter = ({ isDark }) => {
                                 <button onClick={() => setError(null)} className="ml-4 opacity-50 hover:opacity-100">
                                     <Plus size={18} className="rotate-45" />
                                 </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={`shrink-0 border-t ${theme.header}`}>
+                        <button
+                            onClick={() => setShowSummary(!showSummary)}
+                            className={`w-full flex items-center justify-between px-8 py-3 transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800/50`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <FileText size={16} className="text-blue-500" />
+                                <span className="text-sm font-black uppercase tracking-wide dark:text-white">
+                                    {t('execution.summary_title')}
+                                </span>
+                            </div>
+                            {showSummary
+                                ? <ChevronDown size={16} className="text-zinc-400" />
+                                : <ChevronUp size={16} className="text-zinc-400" />}
+                        </button>
+                        {showSummary && (
+                            <div className="px-8 pb-6 animate-in slide-in-from-top duration-300">
+                                <div className={`rounded-xl border-2 border-dashed p-8 flex flex-col items-center justify-center gap-3
+                                    ${isDark ? 'border-zinc-700 bg-zinc-800/30' : 'border-zinc-200 bg-zinc-50/50'}`}>
+                                    <FileText size={32} className="text-zinc-300 dark:text-zinc-600" />
+                                    <p className="text-sm font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">
+                                        {t('execution.summary_placeholder')}
+                                    </p>
+                                    <p className="text-xs text-zinc-400 dark:text-zinc-600">
+                                        {t('execution.summary_hint')}
+                                    </p>
+                                </div>
                             </div>
                         )}
                     </div>
