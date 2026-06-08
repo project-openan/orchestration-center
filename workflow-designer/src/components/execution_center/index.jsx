@@ -20,9 +20,11 @@ import {
     XCircle,
     RotateCcw,
     MessageSquare,
-    BarChart3
+    BarChart3,
+    SlidersHorizontal,
+    X
 } from 'lucide-react';
-import { getWorkflowById, getStartProcessStreamUrl, matchWorkflowsTopN, getExecutionRecords, getExecutionRecord, deleteExecutionRecord } from '@/service/api.js';
+import { getWorkflow, getWorkflowById, getStartProcessStreamUrl, matchWorkflowsTopN, getExecutionRecords, getExecutionRecord, deleteExecutionRecord } from '@/service/api.js';
 import { transformWorkflowToReactFlow } from '@/components/orchestration_center/workflow/utils/index.jsx';
 import UnifiedWorkflow from '../orchestration_center/workflow/index.jsx';
 import ExecutionStatistics from './execution_statistics/index.jsx';
@@ -441,6 +443,178 @@ const ExecutionCenter = ({ isDark }) => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState(null);
 
+    // Search mode: 'fuzzy' | 'exact'
+    const [searchMode, setSearchMode] = useState(() => {
+        return localStorage.getItem('execution_search_mode') || 'fuzzy';
+    });
+
+    // Exact search filters
+    const [exactFilters, setExactFilters] = useState({
+        name: '',
+        workflowId: '',
+        tags: [],
+        status: '',
+        dateFrom: '',
+        dateTo: ''
+    });
+    const [showFilters, setShowFilters] = useState(false);
+    const [availableTags, setAvailableTags] = useState([]);
+
+    // Save search mode to localStorage
+    const handleSearchModeChange = useCallback((mode) => {
+        setSearchMode(mode);
+        localStorage.setItem('execution_search_mode', mode);
+        setUserIntent('');
+        setMatchedWorkflows([]);
+        setSelectedId(null);
+        setPsopStatus(null);
+        setNodes([]);
+        setEdges([]);
+    }, []);
+
+    // Update exact filter
+    const updateFilter = useCallback((key, value) => {
+        setExactFilters(prev => ({ ...prev, [key]: value }));
+    }, []);
+
+    // Toggle tag in exact filter
+    const toggleTag = useCallback((tag) => {
+        setExactFilters(prev => ({
+            ...prev,
+            tags: prev.tags.includes(tag)
+                ? prev.tags.filter(t => t !== tag)
+                : [...prev.tags, tag]
+        }));
+    }, []);
+
+    // Clear all exact filters
+    const clearFilters = useCallback(() => {
+        setExactFilters({
+            name: '',
+            workflowId: '',
+            tags: [],
+            status: '',
+            dateFrom: '',
+            dateTo: ''
+        });
+        setMatchedWorkflows([]);
+        setSelectedId(null);
+        setPsopStatus(null);
+        setNodes([]);
+        setEdges([]);
+    }, []);
+
+    // Handle exact search
+    const handleExactSearch = useCallback(async () => {
+        try {
+            setIsMatching(true);
+            setNodes([]);
+            setEdges([]);
+            setSelectedId(null);
+            setPsopStatus(null);
+            setError(null);
+
+            const res = await getWorkflow();
+            if (res.status === 'success') {
+                let results = (res.data || []).map(item => ({
+                    workflow_id: item.workflow_id,
+                    name: item.name || 'Untitled',
+                    tags: item.tags || [],
+                    description: item.description,
+                    created_at: item.created_at,
+                    status: item.status || 'unknown'
+                }));
+
+                // Apply filters
+                if (exactFilters.name) {
+                    const nameLower = exactFilters.name.toLowerCase();
+                    results = results.filter(wf =>
+                        wf.name.toLowerCase().includes(nameLower)
+                    );
+                }
+
+                if (exactFilters.workflowId) {
+                    const idLower = exactFilters.workflowId.toLowerCase();
+                    results = results.filter(wf =>
+                        wf.workflow_id.toLowerCase().includes(idLower)
+                    );
+                }
+
+                if (exactFilters.tags.length > 0) {
+                    results = results.filter(wf =>
+                        exactFilters.tags.some(tag => wf.tags.includes(tag))
+                    );
+                }
+
+                if (exactFilters.status) {
+                    results = results.filter(wf => wf.status === exactFilters.status);
+                }
+
+                if (exactFilters.dateFrom) {
+                    const fromDate = new Date(exactFilters.dateFrom);
+                    results = results.filter(wf => new Date(wf.created_at) >= fromDate);
+                }
+
+                if (exactFilters.dateTo) {
+                    const toDate = new Date(exactFilters.dateTo);
+                    results = results.filter(wf => new Date(wf.created_at) <= toDate);
+                }
+
+                // Extract all unique tags for filter options
+                const allTags = new Set();
+                (res.data || []).forEach(item => {
+                    (item.tags || []).forEach(tag => allTags.add(tag));
+                });
+                setAvailableTags(Array.from(allTags));
+
+                setMatchedWorkflows(results);
+                if (results.length === 1) {
+                    setSelectedId(results[0].workflow_id);
+                    setWorkflowSource('retrieved');
+                } else if (results.length === 0) {
+                    setError(t('execution.no_match'));
+                }
+            }
+        } catch (err) {
+            console.error("Exact search failed:", err);
+            setError(t('execution.match_failed'));
+        } finally {
+            setIsMatching(false);
+        }
+    }, [exactFilters, t]);
+
+    // Auto-search when filters change in exact mode
+    useEffect(() => {
+        if (searchMode === 'exact') {
+            const hasFilters = exactFilters.name || exactFilters.workflowId ||
+                exactFilters.tags.length > 0 || exactFilters.status ||
+                exactFilters.dateFrom || exactFilters.dateTo;
+            if (hasFilters) {
+                const timer = setTimeout(() => handleExactSearch(), 300);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [exactFilters, searchMode, handleExactSearch]);
+
+    // Load available tags on mount
+    useEffect(() => {
+        const loadTags = async () => {
+            try {
+                const res = await getWorkflow();
+                if (res.status === 'success') {
+                    const allTags = new Set();
+                    (res.data || []).forEach(item => {
+                        (item.tags || []).forEach(tag => allTags.add(tag));
+                    });
+                    setAvailableTags(Array.from(allTags));
+                }
+            } catch (err) {
+                console.error("Failed to load tags:", err);
+            }
+        };
+        loadTags();
+    }, []);
+
     const handleNodeSelect = useCallback((node) => {
         if (!node) {
             setSelectedNodeId(null);
@@ -720,43 +894,169 @@ const ExecutionCenter = ({ isDark }) => {
 
             <div className="flex-1 min-h-0 overflow-hidden">
                 {activeSubMenu === 'execution' ? (
-                    <div className="h-full p-10 flex flex-col gap-6 w-full transition-all animate-in fade-in duration-500 overflow-hidden">
-                        <div className={`shrink-0 rounded-[2.5rem] border flex items-center justify-between px-8 py-5 ${theme.panel}`}>
+                    <div className="h-full p-10 flex flex-col gap-4 w-full transition-all animate-in fade-in duration-500 overflow-hidden">
+                        <div className={`shrink-0 rounded-[2.5rem] border flex flex-col px-8 py-5 ${theme.panel}`}>
 
-                <div className="flex-1 relative group mr-12 min-w-0">
-                    <Search size={22} className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-blue-500 transition-colors" />
-                    <input
-                        type="text"
-                        value={userIntent}
-                        onChange={(e) => setUserIntent(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleMatchIntent()}
-                        placeholder={t('execution.intent_placeholder')}
-                        className={`w-full h-14 pl-14 pr-6 rounded-[1.25rem] border-2 text-base font-bold outline-none transition-all duration-300 focus:shadow-[0_0_0_6px_rgba(59,130,246,0.1)] focus:border-blue-500 ${theme.input} shadow-inner`}
-                    />
-                </div>
-
-                <div className="shrink-0 flex items-center gap-6">
-                    <div className="flex items-center gap-3 pr-6 border-r border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
                         <button
-                            onClick={handleMatchIntent}
-                            disabled={isMatching || !userIntent.trim()}
-                            className="flex items-center gap-3 px-6 h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.25rem] text-sm font-black uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-blue-500/20"
+                            onClick={() => handleSearchModeChange('fuzzy')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all
+                                ${searchMode === 'fuzzy'
+                                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                                    : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
                         >
-                            <Search size={16} strokeWidth={3} />
-                            {isMatching ? t('execution.matching') : t('execution.match')}
+                            <Search size={14} />
+                            {t('execution.search_fuzzy')}
+                        </button>
+                        <button
+                            onClick={() => handleSearchModeChange('exact')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all
+                                ${searchMode === 'exact'
+                                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                                    : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                        >
+                            <SlidersHorizontal size={14} />
+                            {t('execution.search_exact')}
                         </button>
                     </div>
+                    {searchMode === 'exact' && (
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black uppercase transition-all
+                                ${showFilters
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                        >
+                            <SlidersHorizontal size={14} />
+                            {t('execution.filters')}
+                        </button>
+                    )}
+                </div>
 
-                    <div className="flex flex-col items-end">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">{t('execution.engine_status')}</span>
-                        <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-emerald-500 animate-ping' : (psopStatus ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700')}`} />
-                            <span className={`text-[11px] font-black uppercase tracking-wider ${isRunning ? 'text-emerald-500' : 'dark:text-white'}`}>
-                                {isRunning ? t('execution.running') : (psopStatus ? t('execution.completed') : t('execution.ready'))}
-                            </span>
+                <div className="flex items-center gap-4">
+                    <div className="flex-1 relative group min-w-0">
+                        <Search size={22} className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-blue-500 transition-colors" />
+                        <input
+                            type="text"
+                            value={searchMode === 'fuzzy' ? userIntent : exactFilters.name}
+                            onChange={(e) => {
+                                if (searchMode === 'fuzzy') {
+                                    setUserIntent(e.target.value);
+                                } else {
+                                    updateFilter('name', e.target.value);
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && searchMode === 'fuzzy') {
+                                    handleMatchIntent();
+                                }
+                            }}
+                            placeholder={searchMode === 'fuzzy' ? t('execution.intent_placeholder') : t('execution.search_by_name')}
+                            className={`w-full h-14 pl-14 pr-6 rounded-[1.25rem] border-2 text-base font-bold outline-none transition-all duration-300 focus:shadow-[0_0_0_6px_rgba(59,130,246,0.1)] focus:border-blue-500 ${theme.input} shadow-inner`}
+                        />
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-4">
+                        {searchMode === 'fuzzy' ? (
+                            <div className="flex items-center gap-3 pr-6 border-r border-zinc-100 dark:border-zinc-800">
+                                <button
+                                    onClick={handleMatchIntent}
+                                    disabled={isMatching || !userIntent.trim()}
+                                    className="flex items-center gap-3 px-6 h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.25rem] text-sm font-black uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-blue-500/20"
+                                >
+                                    <Search size={16} strokeWidth={3} />
+                                    {isMatching ? t('execution.matching') : t('execution.match')}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-3 pr-6 border-r border-zinc-100 dark:border-zinc-800">
+                                <button
+                                    onClick={clearFilters}
+                                    className="flex items-center gap-2 px-4 h-14 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-300 rounded-[1.25rem] text-sm font-black uppercase tracking-wider transition-all active:scale-95"
+                                >
+                                    <X size={16} strokeWidth={3} />
+                                    {t('execution.clear_filters')}
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col items-end">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">{t('execution.engine_status')}</span>
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-emerald-500 animate-ping' : (psopStatus ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700')}`} />
+                                <span className={`text-[11px] font-black uppercase tracking-wider ${isRunning ? 'text-emerald-500' : 'dark:text-white'}`}>
+                                    {isRunning ? t('execution.running') : (psopStatus ? t('execution.completed') : t('execution.ready'))}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                {searchMode === 'exact' && showFilters && (
+                    <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 grid grid-cols-4 gap-4 animate-in slide-in-from-top duration-300">
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-2 uppercase">{t('execution.filter_workflow_id')}</label>
+                            <input
+                                type="text"
+                                value={exactFilters.workflowId}
+                                onChange={(e) => updateFilter('workflowId', e.target.value)}
+                                placeholder={t('execution.filter_workflow_id_placeholder')}
+                                className={`w-full h-10 px-4 rounded-lg border text-sm font-bold outline-none transition-all focus:border-blue-500 ${theme.input}`}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-2 uppercase">{t('execution.filter_status')}</label>
+                            <select
+                                value={exactFilters.status}
+                                onChange={(e) => updateFilter('status', e.target.value)}
+                                className={`w-full h-10 px-4 rounded-lg border text-sm font-bold outline-none transition-all focus:border-blue-500 ${theme.input}`}
+                            >
+                                <option value="">{t('execution.filter_status_all')}</option>
+                                <option value="success">{t('execution.filter_status_success')}</option>
+                                <option value="failed">{t('execution.filter_status_failed')}</option>
+                                <option value="running">{t('execution.filter_status_running')}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-2 uppercase">{t('execution.filter_date_from')}</label>
+                            <input
+                                type="date"
+                                value={exactFilters.dateFrom}
+                                onChange={(e) => updateFilter('dateFrom', e.target.value)}
+                                className={`w-full h-10 px-4 rounded-lg border text-sm font-bold outline-none transition-all focus:border-blue-500 ${theme.input}`}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-2 uppercase">{t('execution.filter_date_to')}</label>
+                            <input
+                                type="date"
+                                value={exactFilters.dateTo}
+                                onChange={(e) => updateFilter('dateTo', e.target.value)}
+                                className={`w-full h-10 px-4 rounded-lg border text-sm font-bold outline-none transition-all focus:border-blue-500 ${theme.input}`}
+                            />
+                        </div>
+                        {availableTags.length > 0 && (
+                            <div className="col-span-4">
+                                <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-2 uppercase">{t('execution.filter_tags')}</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {availableTags.map(tag => (
+                                        <button
+                                            key={tag}
+                                            onClick={() => toggleTag(tag)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all
+                                                ${exactFilters.tags.includes(tag)
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 flex gap-6 min-h-0">

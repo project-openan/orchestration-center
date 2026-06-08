@@ -77,7 +77,22 @@
     "status_success": "成功",
     "status_failed": "失败",
     "status_running": "运行中",
-    "no_data": "暂无数据"
+    "no_data": "暂无数据",
+    "search_fuzzy": "模糊搜索",
+    "search_exact": "精确搜索",
+    "filters": "筛选",
+    "search_by_name": "按工作流名称搜索...",
+    "clear_filters": "清除",
+    "filter_workflow_id": "工作流ID",
+    "filter_workflow_id_placeholder": "输入工作流ID...",
+    "filter_status": "状态",
+    "filter_status_all": "全部",
+    "filter_status_success": "成功",
+    "filter_status_failed": "失败",
+    "filter_status_running": "运行中",
+    "filter_date_from": "开始日期",
+    "filter_date_to": "结束日期",
+    "filter_tags": "标签"
   },
   "orchestration": {
     "title": "编排中心",
