@@ -64,49 +64,49 @@ const SkillCenter = ({ isDark }) => {
             <div
                 key={skill.id}
                 onClick={() => setSelectedSkill(skill)}
-                className={`group relative p-6 rounded-2xl border cursor-pointer transition-all duration-300
+                className={`group relative p-8 rounded-2xl border cursor-pointer transition-all duration-300
                     bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800
                     ${themeBorder(skill.domain)}
                     hover:shadow-lg hover:-translate-y-1 animate-in fade-in duration-300`}
             >
-                <div className="flex items-start justify-between mb-4">
-                    <div className={`p-3 rounded-xl text-white shadow-lg ${themeColor(skill.domain)}`}>
-                        <Package size={22} />
+                <div className="flex items-start justify-between mb-5">
+                    <div className={`p-4 rounded-xl text-white shadow-lg ${themeColor(skill.domain)}`}>
+                        <Package size={26} />
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" />
-                        <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" />
+                        <span className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase">
                             {activeVersions}/{skill.versions.length} {t('skills.ver')}
                         </span>
                     </div>
                 </div>
 
-                <h3 className="text-sm font-black text-zinc-900 dark:text-white mb-2 leading-tight truncate">
+                <h3 className="text-base font-black text-zinc-900 dark:text-white mb-3 leading-tight line-clamp-1">
                     {skill.name}
                 </h3>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-4 leading-relaxed min-h-[2.5em]">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-5 leading-relaxed min-h-[3em]">
                     {skill.description}
                 </p>
 
-                <div className="flex flex-wrap gap-1.5 mb-4">
+                <div className="flex flex-wrap gap-2 mb-5">
                     {skill.tags.slice(0, 3).map(tag => (
                         <span key={tag}
-                            className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                            className="px-2.5 py-1 rounded-md text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
                             {tag}
                         </span>
                     ))}
                     {skill.tags.length > 3 && (
-                        <span className="px-2 py-0.5 rounded-md text-[9px] font-bold text-zinc-400 dark:text-zinc-500">
+                        <span className="px-2.5 py-1 rounded-md text-xs font-bold text-zinc-400 dark:text-zinc-500">
                             +{skill.tags.length - 3}
                         </span>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                    <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase">
+                <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <span className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase">
                         {skill.vendor.name}
                     </span>
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500">
                         {skill.domain}
                     </span>
                 </div>
@@ -173,7 +173,7 @@ const SkillCenter = ({ isDark }) => {
                         <p className="text-sm font-bold uppercase tracking-wider">{t('skills.no_skills')}</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-8">
                         {filteredSkills.map(renderCard)}
                     </div>
                 )}
