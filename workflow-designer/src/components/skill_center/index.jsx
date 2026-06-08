@@ -173,7 +173,7 @@ const SkillCenter = ({ isDark }) => {
                         <p className="text-sm font-bold uppercase tracking-wider">{t('skills.no_skills')}</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8">
                         {filteredSkills.map(renderCard)}
                     </div>
                 )}
