@@ -14,12 +14,15 @@ const SERVICE_LAYER_TAGS = ['live', 'assurance', 'uncertainty', 'monitoring', 'n
 const NETWORK_LAYER_TAGS = ['ran', 'spn', 'dispatch', 'energy-saving', 'wireless', 'diagnosis', 'aggregate', 'analysis', 'plan', 'exec', 'strategy', 'recovery'];
 
 const getAssetsBySeed = (seed, layer) => {
+    const SERVICE_THEMES = ['blue', 'indigo', 'cyan'];
+    const NETWORK_THEMES = ['emerald', 'amber', 'rose'];
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
         hash = seed.charCodeAt(i) + ((hash << 5) - hash);
     }
+    const themes = layer === 'network' ? NETWORK_THEMES : SERVICE_THEMES;
     return {
-        theme: THEMES[Math.abs(hash) % THEMES.length],
+        theme: themes[Math.abs(hash) % themes.length],
         icon: layer === 'network' ? <Network size={22} /> : <Server size={22} />
     };
 };
@@ -95,6 +98,10 @@ const AgentRegistry = ({ isDark, t }) => {
         } else if (activeTab === 'network') {
             result = result.filter(a => a.layer === 'network');
         }
+        result = [...result].sort((a, b) => {
+            const order = { service: 0, network: 1 };
+            return (order[a.layer] ?? 2) - (order[b.layer] ?? 2);
+        });
         return result;
     }, [agents, searchTerm, activeTab]);
 
@@ -111,6 +118,10 @@ const AgentRegistry = ({ isDark, t }) => {
             if (!groups[org]) groups[org] = [];
             groups[org].push(a);
         });
+        Object.values(groups).forEach(arr => arr.sort((a, b) => {
+            const order = { service: 0, network: 1 };
+            return (order[a.layer] ?? 2) - (order[b.layer] ?? 2);
+        }));
         return groups;
     }, [agents, searchTerm]);
 
@@ -142,17 +153,28 @@ const AgentRegistry = ({ isDark, t }) => {
         return map[theme] || 'hover:border-blue-300';
     };
 
+    const layerBadge = (layer) => {
+        if (layer === 'network') {
+            return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+        }
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
+    };
+
+    const layerBg = () => {
+        return 'bg-white dark:bg-zinc-900';
+    };
+
     const renderCard = (agent) => (
         <div
             key={agent.id}
             onClick={() => { setSelectedAgent(agent); setViewMode('structured'); }}
             className={`group relative p-6 rounded-2xl border cursor-pointer transition-all duration-300
-                bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800
+                ${layerBg()} border-zinc-100 dark:border-zinc-800
                 ${themeBorder(agent.theme)}
                 hover:shadow-lg hover:-translate-y-1 animate-in fade-in duration-300`}
         >
             <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-xl text-white shadow-lg ${themeColor(agent.theme)}`}>
+                <div className={`p-3 rounded-xl text-white shadow-lg ${agent.layer === 'network' ? 'bg-emerald-500' : themeColor(agent.theme)}`}>
                     {React.cloneElement(agent.icon, { size: 22 })}
                 </div>
                 <div className="flex items-center gap-2">
@@ -185,8 +207,8 @@ const AgentRegistry = ({ isDark, t }) => {
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase">
-                    {agent.provider?.organization}
+                <span className={`text-xs font-black px-4 py-1 rounded-lg border uppercase ${layerBadge(agent.layer)}`}>
+                    {agent.layer === 'network' ? 'Network' : 'Service'}
                 </span>
                 <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
                     {agent.skills?.length || 0} {t('registry.skills_count')}
@@ -299,7 +321,7 @@ const AgentRegistry = ({ isDark, t }) => {
                     <div className="bg-white dark:bg-zinc-950 w-full max-w-5xl h-[85vh] rounded-[2rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
                             <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-xl text-white shadow-lg ${themeColor(selectedAgent.theme)}`}>
+                                <div className={`p-3 rounded-xl text-white shadow-lg ${selectedAgent.layer === 'network' ? 'bg-emerald-500' : themeColor(selectedAgent.theme)}`}>
                                     {React.cloneElement(selectedAgent.icon, { size: 24 })}
                                 </div>
                                 <div>
