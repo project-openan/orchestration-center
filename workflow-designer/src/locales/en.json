@@ -77,7 +77,22 @@
     "status_success": "Success",
     "status_failed": "Failed",
     "status_running": "Running",
-    "no_data": "No data available"
+    "no_data": "No data available",
+    "search_fuzzy": "Fuzzy",
+    "search_exact": "Exact",
+    "filters": "Filters",
+    "search_by_name": "Search by workflow name...",
+    "clear_filters": "Clear",
+    "filter_workflow_id": "Workflow ID",
+    "filter_workflow_id_placeholder": "Enter workflow ID...",
+    "filter_status": "Status",
+    "filter_status_all": "All",
+    "filter_status_success": "Success",
+    "filter_status_failed": "Failed",
+    "filter_status_running": "Running",
+    "filter_date_from": "From Date",
+    "filter_date_to": "To Date",
+    "filter_tags": "Tags"
   },
   "orchestration": {
     "title": "Orchestration",
