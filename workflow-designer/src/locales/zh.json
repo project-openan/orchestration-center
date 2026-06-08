@@ -4,7 +4,8 @@
     "tabs": {
       "agents": "Agent库",
       "orchestration": "编排中心",
-      "execution": "工作流执行"
+      "execution": "工作流执行",
+      "skills": "技能中心"
     }
   },
   "execution": {
@@ -308,5 +309,29 @@
   },
   "error": {
     "parse_failed": "解析拖拽的 Agent 模板失败。"
+  },
+  "skills": {
+    "title": "技能中心",
+    "total_skills": "个技能",
+    "tab_all": "全部",
+    "tab_service": "ServiceLayer",
+    "tab_common": "公共技能",
+    "search_placeholder": "搜索技能名称或描述...",
+    "no_skills": "未找到匹配的技能",
+    "description": "描述",
+    "vendor": "供应商",
+    "support_level": "支持级别",
+    "tags": "标签",
+    "versions": "个版本",
+    "ver": "版本",
+    "version_history": "版本历史",
+    "created": "创建时间",
+    "updated": "更新时间",
+    "status_active": "活跃",
+    "status_deprecated": "已弃用",
+    "status_archived": "已归档",
+    "risk_low": "低风险",
+    "risk_medium": "中风险",
+    "risk_high": "高风险"
   }
 }

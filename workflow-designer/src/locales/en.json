@@ -4,7 +4,8 @@
     "tabs": {
       "agents": "Registry Center",
       "orchestration": "Orchestration Center",
-      "execution": "Execution Center"
+      "execution": "Execution Center",
+      "skills": "Skill Center"
     }
   },
   "execution": {
@@ -309,5 +310,29 @@
   },
   "error": {
     "parse_failed": "Failed to parse dropped agent template."
+  },
+  "skills": {
+    "title": "Skill Center",
+    "total_skills": "skills",
+    "tab_all": "All",
+    "tab_service": "ServiceLayer",
+    "tab_common": "Common Skills",
+    "search_placeholder": "Search by skill name or description...",
+    "no_skills": "No matching skills found",
+    "description": "Description",
+    "vendor": "Vendor",
+    "support_level": "Support Level",
+    "tags": "Tags",
+    "versions": "versions",
+    "ver": "ver",
+    "version_history": "Version History",
+    "created": "Created",
+    "updated": "Updated",
+    "status_active": "Active",
+    "status_deprecated": "Deprecated",
+    "status_archived": "Archived",
+    "risk_low": "Low Risk",
+    "risk_medium": "Medium Risk",
+    "risk_high": "High Risk"
   }
 }

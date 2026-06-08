@@ -1,4 +1,4 @@
-import {Bot, Sun, Moon, LayoutDashboard, Share2, PlayCircle} from "lucide-react";
+import {Bot, Sun, Moon, LayoutDashboard, Share2, PlayCircle, Sparkles} from "lucide-react";
 
 const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange, t}) => {
     return (
@@ -37,6 +37,14 @@ const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange,
                                 : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
                     <PlayCircle size={16}/>
                     {t('nav.tabs.execution')}
+                </button>
+                <button onClick={() => onTabChange('skills')}
+                        className={`flex items-center gap-3 px-6 py-2 rounded-xl text-sm font-black transition-all duration-300 ${
+                            currentTab === 'skills'
+                                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-md scale-[1.02]'
+                                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+                    <Sparkles size={16}/>
+                    {t('nav.tabs.skills')}
                 </button>
             </div>
             <div className="flex items-center gap-6">
