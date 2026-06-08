@@ -19,11 +19,13 @@ import {
     CheckCircle2,
     XCircle,
     RotateCcw,
-    MessageSquare
+    MessageSquare,
+    BarChart3
 } from 'lucide-react';
 import { getWorkflowById, getStartProcessStreamUrl, matchWorkflowsTopN, getExecutionRecords, getExecutionRecord, deleteExecutionRecord } from '@/service/api.js';
 import { transformWorkflowToReactFlow } from '@/components/orchestration_center/workflow/utils/index.jsx';
 import UnifiedWorkflow from '../orchestration_center/workflow/index.jsx';
+import ExecutionStatistics from './execution_statistics/index.jsx';
 
 const parseProtobufText = (raw) => {
     if (!raw || typeof raw !== 'string') return { text: raw, metadata: null };
@@ -410,6 +412,7 @@ const LogEntry = React.memo(({ event, isDark, t, isSelected }) => {
 
 const ExecutionCenter = ({ isDark }) => {
     const { t, i18n } = useTranslation();
+    const [activeSubMenu, setActiveSubMenu] = useState('execution');
     const [selectedId, setSelectedId] = useState(null);
     const [isRunning, setIsRunning] = useState(false);
     const [events, setEvents] = useState([]);
@@ -691,8 +694,34 @@ const ExecutionCenter = ({ isDark }) => {
 
 
     return (
-        <div className="h-full p-10 flex flex-col gap-6 w-full transition-all animate-in fade-in duration-500 overflow-hidden font-sans">
-            <div className={`shrink-0 rounded-[2.5rem] border flex items-center justify-between px-8 py-5 ${theme.panel}`}>
+        <div className="h-full flex flex-col w-full overflow-hidden font-sans">
+            <div className="shrink-0 flex items-center gap-1 px-6 pt-6 pb-2">
+                <button
+                    onClick={() => setActiveSubMenu('execution')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide transition-all duration-300
+                        ${activeSubMenu === 'execution'
+                            ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
+                            : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                >
+                    <Play size={14} />
+                    {t('execution.sub_menu_execution')}
+                </button>
+                <button
+                    onClick={() => setActiveSubMenu('statistics')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide transition-all duration-300
+                        ${activeSubMenu === 'statistics'
+                            ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
+                            : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                >
+                    <BarChart3 size={14} />
+                    {t('execution.sub_menu_statistics')}
+                </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-hidden">
+                {activeSubMenu === 'execution' ? (
+                    <div className="h-full p-10 flex flex-col gap-6 w-full transition-all animate-in fade-in duration-500 overflow-hidden">
+                        <div className={`shrink-0 rounded-[2.5rem] border flex items-center justify-between px-8 py-5 ${theme.panel}`}>
 
                 <div className="flex-1 relative group mr-12 min-w-0">
                     <Search size={22} className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-blue-500 transition-colors" />
@@ -1081,6 +1110,11 @@ const ExecutionCenter = ({ isDark }) => {
                     </div>
                 </div>
             )}
+                    </div>
+                ) : (
+                    <ExecutionStatistics isDark={isDark} />
+                )}
+            </div>
         </div>
     );
 };

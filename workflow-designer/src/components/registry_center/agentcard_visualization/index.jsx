@@ -1,9 +1,9 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Server,
     Globe,
     Activity,
-    Box,
     Terminal,
     CheckCircle2,
     XCircle,
@@ -11,7 +11,9 @@ import {
     Layers,
     Cpu,
     Fingerprint,
-    Settings
+    Settings,
+    ChevronDown,
+    ChevronRight
 } from 'lucide-react';
 
 const getTheme = (isDark) => ({
@@ -72,9 +74,37 @@ const CapabilityToggle = ({ label, active, icon: Icon, theme }) => {
     );
 };
 
+const SectionHeader = ({ title, icon: Icon, expanded, onToggle, count, isDark }) => (
+    <button
+        onClick={onToggle}
+        className={`w-full flex items-center justify-between px-5 py-3.5 rounded-xl border transition-all duration-200
+            ${isDark
+                ? 'bg-zinc-900/80 border-zinc-800 hover:bg-zinc-800/80'
+                : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100'}`}
+    >
+        <div className="flex items-center gap-3">
+            <Icon size={18} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
+            <span className={`text-sm font-black uppercase tracking-wide ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>
+                {title}
+            </span>
+            {count !== undefined && (
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black
+                    ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-500'}`}>
+                    {count}
+                </span>
+            )}
+        </div>
+        {expanded
+            ? <ChevronDown size={16} className={isDark ? 'text-zinc-500' : 'text-zinc-400'} />
+            : <ChevronRight size={16} className={isDark ? 'text-zinc-500' : 'text-zinc-400'} />}
+    </button>
+);
+
 const AgentDashboard = ({ agent, isDark }) => {
     const { t } = useTranslation();
     const theme = getTheme(isDark);
+    const [basicExpanded, setBasicExpanded] = useState(true);
+    const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
     const renderDescriptionList = (desc) => {
         return (
@@ -85,54 +115,34 @@ const AgentDashboard = ({ agent, isDark }) => {
     };
 
     return (
-        <div className={`w-full min-h-screen ${isDark ? 'bg-zinc-950/50' : 'bg-zinc-50/50'} transition-colors duration-300 p-8`}>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                <div className="col-span-1 md:col-span-8 space-y-6">
-                    <InfoCard
-                        title={t('agent_profile.description')}
-                        icon={Fingerprint}
-                        theme={theme}
-                    >
-                        <ul className="space-y-1">
-                            {renderDescriptionList(agent.description)}
-                        </ul>
-                    </InfoCard>
+        <div className={`w-full ${isDark ? 'bg-zinc-950/50' : 'bg-zinc-50/50'} transition-colors duration-300 p-8`}>
+            <div className="space-y-4">
+                <SectionHeader
+                    title={t('agent_profile.basic')}
+                    icon={Fingerprint}
+                    expanded={basicExpanded}
+                    onToggle={() => setBasicExpanded(!basicExpanded)}
+                    count={2}
+                    isDark={isDark}
+                />
 
-                    {agent.supportedInterfaces && agent.supportedInterfaces.length > 0 && (
+                {basicExpanded && (
+                    <div className="space-y-6 animate-in fade-in duration-300 pl-1">
                         <InfoCard
-                            title={`${t('agent_profile.supported_interfaces')} (${agent.supportedInterfaces.length})`}
-                            icon={Server}
+                            title={t('agent_profile.description')}
+                            icon={Fingerprint}
+                            theme={theme}
+                        >
+                            {renderDescriptionList(agent.description)}
+                        </InfoCard>
+
+                        <InfoCard
+                            title={`${t('agent_profile.skills')} (${agent.skills.length})`}
+                            icon={Terminal}
                             theme={theme}
                         >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {agent.supportedInterfaces.map((iface, index) => (
-                                    <div
-                                        key={`interface-${index}`}
-                                        className={`p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
-                                                {iface.protocolBinding}
-                                            </span>
-                                            <span className={`text-[10px] px-1 border rounded ${theme.border} ${theme.textSecondary} opacity-60`}>
-                                                v{iface.protocolVersion}
-                                            </span>
-                                        </div>
-                                        <div className={`text-sm ${theme.textSecondary} truncate font-mono`} title={iface.url}>
-                                            {iface.url}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </InfoCard>
-                    )}
-                    <InfoCard
-                        title={`${t('agent_profile.skills')} (${agent.skills.length})`}
-                        icon={Terminal}
-                        theme={theme}
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {agent.skills
-                                .map((skill, index) => {
+                                {agent.skills.map((skill, index) => {
                                     const uniqueKey = `skill-${skill.id || 'no-id'}-${skill.name}-${index}`;
                                     return (
                                         <div
@@ -146,116 +156,158 @@ const AgentDashboard = ({ agent, isDark }) => {
                                             <p className={`text-base ${theme.textSecondary} line-clamp-2 mb-3`}>
                                                 {skill.description}
                                             </p>
-                                            <div className="absolute bottom-[calc(100%-10px)] left-1/2 -translate-x-1/2  invisible opacity-0 translate-y-1
-      group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-out z-30 w-full min-w-[200px] max-w-[280px]
-      pointer-events-none
-    ">
+                                            <div className="absolute bottom-[calc(100%-10px)] left-1/2 -translate-x-1/2 invisible opacity-0 translate-y-1
+                                                group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-out z-30 w-full min-w-[200px] max-w-[280px]
+                                                pointer-events-none">
                                                 <div className={`relative px-3 py-2 rounded-lg shadow-xl border text-sm leading-relaxed
-        ${isDark ? 'bg-zinc-800 text-slate-200 border-zinc-700' : 'bg-white text-slate-700 border-slate-200'}
-      `}>
+                                                    ${isDark ? 'bg-zinc-800 text-slate-200 border-zinc-700' : 'bg-white text-slate-700 border-slate-200'}`}>
                                                     {skill.description}
-
-                                                    <div className={`
-          absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-b border-r
-          ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-slate-200'}
-        `} />
+                                                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-b border-r
+                                                        ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-slate-200'}`} />
                                                 </div>
                                             </div>
                                             <div className="flex flex-wrap gap-2 mt-auto">
-                                                {skill.inputModes?.map(m => (
-                                                    <span key={m}
-                                                          className={`text-[10px] opacity-60 px-1 border rounded ${theme.border} ${theme.textSecondary}`}>
-                                                        IN: {m}
+                                                {(skill.tags || []).map(tag => (
+                                                    <span key={tag}
+                                                        className={`text-[10px] px-1.5 py-0.5 rounded border ${theme.border} ${theme.textSecondary}`}>
+                                                        {tag}
                                                     </span>
                                                 ))}
                                             </div>
                                         </div>
                                     );
                                 })}
-                        </div>
-                    </InfoCard>
-                </div>
-                <div className="col-span-1 md:col-span-4 space-y-6">
-                    <InfoCard
-                        title={t('agent_profile.capabilities')}
-                        icon={Cpu}
-                        theme={theme}
-                    >
-                        <div className="grid grid-cols-1 gap-3">
-                            <CapabilityToggle
-                                label={t('agent_profile.streaming')}
-                                active={agent.capabilities.streaming}
-                                icon={Activity}
-                                theme={theme}
-                            />
-                            <CapabilityToggle
-                                label={t('agent_profile.stateTransitionHistory')}
-                                active={agent.capabilities.stateTransitionHistory}
-                                icon={Layers}
-                                theme={theme}
-                            />
-                            <CapabilityToggle
-                                label={t('agent_profile.pushNotifications')}
-                                active={agent.capabilities.pushNotifications}
-                                icon={Zap}
-                                theme={theme}
-                            />
-                        </div>
-                    </InfoCard>
-                    <InfoCard
-                        title={t('agent_profile.configuration')}
-                        icon={Settings}
-                        theme={theme}
-                    >
-                        <div className="space-y-1">
-                            <StatusRow
-                                label={t('agent_profile.protocolVersion')}
-                                value={`v${agent.version}`}
-                                theme={theme}
-                            />
-                            <div className="pt-4">
-                                <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
-                                    {t('agent_profile.defaultInputModes')}
-                                </span>
-                                <div className="flex flex-wrap gap-2 mt-2 mb-4">
-                                    {agent.defaultInputModes.map(m => (
-                                        <span key={m}
-                                              className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
-                                            {m}
-                                        </span>
-                                    ))}
-                                </div>
+                            </div>
+                        </InfoCard>
+                    </div>
+                )}
 
-                                <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
-                                    {t('agent_profile.defaultOutputModes')}
-                                </span>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {agent.defaultOutputModes.map(m => (
-                                        <span key={m}
-                                              className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
-                                            {m}
-                                        </span>
-                                    ))}
-                                </div>
+                <div className="pt-2">
+                    <SectionHeader
+                        title={t('agent_profile.advanced')}
+                        icon={Settings}
+                        expanded={advancedExpanded}
+                        onToggle={() => setAdvancedExpanded(!advancedExpanded)}
+                        count={3}
+                        isDark={isDark}
+                    />
+                </div>
+
+                {advancedExpanded && (
+                    <div className="animate-in fade-in duration-300 pl-1">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                            <div className="col-span-1 md:col-span-8 space-y-6">
+                                {agent.supportedInterfaces && agent.supportedInterfaces.length > 0 && (
+                                    <InfoCard
+                                        title={`${t('agent_profile.supported_interfaces')} (${agent.supportedInterfaces.length})`}
+                                        icon={Server}
+                                        theme={theme}
+                                    >
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {agent.supportedInterfaces.map((iface, index) => (
+                                                <div
+                                                    key={`interface-${index}`}
+                                                    className={`p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
+                                                            {iface.protocolBinding}
+                                                        </span>
+                                                        <span className={`text-[10px] px-1 border rounded ${theme.border} ${theme.textSecondary} opacity-60`}>
+                                                            v{iface.protocolVersion}
+                                                        </span>
+                                                    </div>
+                                                    <div className={`text-sm ${theme.textSecondary} truncate font-mono`} title={iface.url}>
+                                                        {iface.url}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </InfoCard>
+                                )}
+                            </div>
+                            <div className="col-span-1 md:col-span-4 space-y-6">
+                                <InfoCard
+                                    title={t('agent_profile.capabilities')}
+                                    icon={Cpu}
+                                    theme={theme}
+                                >
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <CapabilityToggle
+                                            label={t('agent_profile.streaming')}
+                                            active={agent.capabilities.streaming}
+                                            icon={Activity}
+                                            theme={theme}
+                                        />
+                                        <CapabilityToggle
+                                            label={t('agent_profile.stateTransitionHistory')}
+                                            active={agent.capabilities.stateTransitionHistory}
+                                            icon={Layers}
+                                            theme={theme}
+                                        />
+                                        <CapabilityToggle
+                                            label={t('agent_profile.pushNotifications')}
+                                            active={agent.capabilities.pushNotifications}
+                                            icon={Zap}
+                                            theme={theme}
+                                        />
+                                    </div>
+                                </InfoCard>
+                                <InfoCard
+                                    title={t('agent_profile.configuration')}
+                                    icon={Settings}
+                                    theme={theme}
+                                >
+                                    <div className="space-y-1">
+                                        <StatusRow
+                                            label={t('agent_profile.protocolVersion')}
+                                            value={`v${agent.version}`}
+                                            theme={theme}
+                                        />
+                                        <div className="pt-4">
+                                            <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
+                                                {t('agent_profile.defaultInputModes')}
+                                            </span>
+                                            <div className="flex flex-wrap gap-2 mt-2 mb-4">
+                                                {agent.defaultInputModes.map(m => (
+                                                    <span key={m}
+                                                          className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
+                                                        {m}
+                                                    </span>
+                                                ))}
+                                            </div>
+
+                                            <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
+                                                {t('agent_profile.defaultOutputModes')}
+                                            </span>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {agent.defaultOutputModes.map(m => (
+                                                    <span key={m}
+                                                          className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
+                                                        {m}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {agent.documentationUrl && (
+                                        <a
+                                            href={agent.documentationUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDark
+                                                ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
+                                                : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                                            }`}
+                                        >
+                                            <Globe className="w-4 h-4" />
+                                            {t('agent_profile.documentationUrl')}
+                                        </a>
+                                    )}
+                                </InfoCard>
                             </div>
                         </div>
-                        {agent.documentationUrl && (
-                            <a
-                                href={agent.documentationUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDark
-                                    ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
-                                    : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
-                                }`}
-                            >
-                                <Globe className="w-4 h-4" />
-                                {t('agent_profile.documentationUrl')}
-                            </a>
-                        )}
-                    </InfoCard>
-
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );

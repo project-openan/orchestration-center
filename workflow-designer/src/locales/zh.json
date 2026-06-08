@@ -64,7 +64,20 @@
     "loading": "加载中...",
     "load_history_failed": "加载历史记录失败",
     "delete_record_title": "删除执行记录",
-    "delete_record_confirm": "确定要删除该执行记录吗？此操作无法撤销。"
+    "delete_record_confirm": "确定要删除该执行记录吗？此操作无法撤销。",
+    "sub_menu_execution": "工作流执行",
+    "sub_menu_statistics": "执行统计",
+    "statistics_title": "执行统计",
+    "time_day": "日",
+    "time_week": "周",
+    "time_month": "月",
+    "frequency_ranking": "执行频次排名",
+    "status_distribution": "状态分布",
+    "monthly_trend": "月度趋势",
+    "status_success": "成功",
+    "status_failed": "失败",
+    "status_running": "运行中",
+    "no_data": "暂无数据"
   },
   "orchestration": {
     "title": "编排中心",
@@ -204,6 +217,13 @@
     "title": "Agent库",
     "search_placeholder": "搜索智能体名称或功能...",
     "units": "个",
+    "online": "在线",
+    "skills_count": "个技能",
+    "no_agents": "未找到智能体",
+    "tab_all": "全部",
+    "tab_service": "服务层",
+    "tab_network": "网络层",
+    "tab_vendor": "厂商",
     "description_label": "智能体描述",
     "prompt_label": "核心逻辑 (Prompt)",
     "tool_label": "工具",
@@ -221,6 +241,8 @@
     "switch_to_gui": "切换到图形视图"
   },
   "agent_profile": {
+    "basic": "基础属性",
+    "advanced": "高级属性",
     "description": "描述",
     "supported_interfaces": "支持的接口",
     "skills": "技能",
@@ -249,18 +271,6 @@
     "copied": "已复制！",
     "copy_raw_json": "复制原始 JSON",
     "chars": "字符"
-  },
-  "settings": {
-    "title": "服务连接",
-    "connection_mode": "连接模式",
-    "direct_ip": "直连 IP",
-    "nginx_gateway": "Nginx 网关",
-    "backend_host": "后端主机 (IP)",
-    "port": "端口",
-    "gateway_base_url": "网关基础 URL",
-    "gateway_example": "示例：{{url}}",
-    "reload_note": "* 修改服务端点配置后需要重新加载页面才能生效。",
-    "save_config": "保存配置"
   },
   "workflow_empty": {
     "title": "暂无工作流数据",

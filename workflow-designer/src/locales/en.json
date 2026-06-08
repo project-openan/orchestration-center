@@ -64,7 +64,20 @@
     "loading": "Loading...",
     "load_history_failed": "Failed to load history record",
     "delete_record_title": "Delete Execution Record",
-    "delete_record_confirm": "Are you sure you want to delete this execution record? This action cannot be undone."
+    "delete_record_confirm": "Are you sure you want to delete this execution record? This action cannot be undone.",
+    "sub_menu_execution": "Workflow Execution",
+    "sub_menu_statistics": "Execution Statistics",
+    "statistics_title": "Execution Statistics",
+    "time_day": "Day",
+    "time_week": "Week",
+    "time_month": "Month",
+    "frequency_ranking": "Execution Frequency Ranking",
+    "status_distribution": "Status Distribution",
+    "monthly_trend": "Monthly Trend",
+    "status_success": "Success",
+    "status_failed": "Failed",
+    "status_running": "Running",
+    "no_data": "No data available"
   },
   "orchestration": {
     "title": "Orchestration",
@@ -205,6 +218,13 @@
     "title": "Registry center",
     "search_placeholder": "Search by agent name, capability or toolstack...",
     "units": "UNITS",
+    "online": "online",
+    "skills_count": "skills",
+    "no_agents": "No agents found",
+    "tab_all": "All",
+    "tab_service": "Service Layer",
+    "tab_network": "Network Layer",
+    "tab_vendor": "Vendor",
     "description_label": "FUNCTIONAL SPECIFICATION",
     "prompt_label": "CORE LOGIC (PROMPT)",
     "tool_label": "TOOLSTACK BINDING",
@@ -222,6 +242,8 @@
     "switch_to_gui": "Switch to GUI"
   },
   "agent_profile": {
+    "basic": "Basic Properties",
+    "advanced": "Advanced Properties",
     "description": "Description",
     "supported_interfaces": "Supported Interfaces",
     "skills": "Skills",
@@ -250,18 +272,6 @@
     "copied": "Copied!",
     "copy_raw_json": "Copy Raw JSON",
     "chars": "chars"
-  },
-  "settings": {
-    "title": "Server Connection",
-    "connection_mode": "Connection Mode",
-    "direct_ip": "Direct IP",
-    "nginx_gateway": "Nginx Gateway",
-    "backend_host": "Backend Host (IP)",
-    "port": "Port",
-    "gateway_base_url": "Gateway Base URL",
-    "gateway_example": "Example: {{url}}",
-    "reload_note": "* Changes require a page reload to apply new service endpoint configurations.",
-    "save_config": "Save Config"
   },
   "workflow_empty": {
     "title": "No Workflow Data",
