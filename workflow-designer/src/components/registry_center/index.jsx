@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Search, Code2, LayoutDashboard,
-    X, Layers, Server, Radio, Network
+    X, Layers, Server, Radio, Network, Globe
 } from 'lucide-react';
 import { getAgentCards } from "@/service/api.js";
 import CodeInspector from "./code_inspector/index.jsx";
