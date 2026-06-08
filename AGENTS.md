@@ -110,6 +110,18 @@ data/workflow_storage/ # File-based persistence (PSOP, PreFlow, execution record
 - **CI/CD** configured in `.github/workflows/ci.yml` — runs pytest (unit) and ESLint (frontend).
 - **License headers required** on all source files (Apache 2.0, Huawei copyright).
 
+## Merge workflow (GitCode)
+
+**IMPORTANT: Always follow this merge principle:**
+
+1. **Commit to fork first** — All changes must be committed to the personal fork (`guofei6_/orchestration-center`) before creating a PR.
+2. **Create PR to upstream** — Submit PR from fork to upstream (`OpenAN/orchestration-center`).
+3. **Never push directly to upstream** — Always use the fork → PR → merge workflow.
+
+**Local-only files (do NOT commit):**
+- `workflow-designer/src/service/api.js` — Contains local debug configuration (API endpoint). Keep local modifications for development, do not include in commits.
+- `etc/conf/server.conf` — Local server configuration. Revert any local changes before committing.
+
 ## Key commands reference
 
 ```powershell
