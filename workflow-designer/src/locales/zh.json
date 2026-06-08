@@ -92,7 +92,10 @@
     "filter_status_running": "运行中",
     "filter_date_from": "开始日期",
     "filter_date_to": "结束日期",
-    "filter_tags": "标签"
+    "filter_tags": "标签",
+    "summary_title": "执行总结",
+    "summary_placeholder": "总结内容即将上线",
+    "summary_hint": "等待后端接口对接"
   },
   "orchestration": {
     "title": "编排中心",

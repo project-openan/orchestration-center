@@ -92,7 +92,10 @@
     "filter_status_running": "Running",
     "filter_date_from": "From Date",
     "filter_date_to": "To Date",
-    "filter_tags": "Tags"
+    "filter_tags": "Tags",
+    "summary_title": "Execution Summary",
+    "summary_placeholder": "Summary content coming soon",
+    "summary_hint": "Waiting for backend API integration"
   },
   "orchestration": {
     "title": "Orchestration",
