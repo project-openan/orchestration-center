@@ -20,7 +20,7 @@
 
 启动方式：
   1. 注册中心：python -m agent_registry.start   (默认 http://127.0.0.1:5000)
-  2. 编排中心：python -m orchestrate.start       (默认 http://127.0.0.1:5000)
+  2. 编排中心：python -m orchestrate.start       (默认 http://127.0.0.1:5001)
   3. 确保注册中心已注册至少一个 Agent
 
 用法：
@@ -29,7 +29,7 @@
   python tests/test_external_apis.py
 
 环境变量（可选）：
-  ORCHESTRATE_BASE_URL   编排中心地址，默认 http://127.0.0.1:5000
+  ORCHESTRATE_BASE_URL   编排中心地址，默认 http://127.0.0.1:5001
   TEST_PDF_FILE          测试用 PDF SOP 文件路径（可选，用于文件上传测试）
   TEST_TXT_FILE          测试用 TXT/MD SOP 文件路径（可选，用于 TXT 上传测试）
 """
@@ -43,7 +43,7 @@ import requests
 
 # ──── 配置 ─────────────────────────────────────────────────────────────────────
 
-ORCHESTRATE_BASE = os.environ.get("ORCHESTRATE_BASE_URL", "http://127.0.0.1:5000")
+ORCHESTRATE_BASE = os.environ.get("ORCHESTRATE_BASE_URL", "http://127.0.0.1:5001")
 TEST_PDF_FILE = os.environ.get("TEST_PDF_FILE", "")
 TEST_TXT_FILE = os.environ.get("TEST_TXT_FILE", "")
 
