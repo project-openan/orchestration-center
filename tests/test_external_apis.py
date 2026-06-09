@@ -43,7 +43,7 @@ import requests
 
 # ──── 配置 ─────────────────────────────────────────────────────────────────────
 
-ORCHESTRATE_BASE = os.environ.get("ORCHESTRATE_BASE_URL", "http://127.0.0.1:60000")
+ORCHESTRATE_BASE = os.environ.get("ORCHESTRATE_BASE_URL", "http://127.0.0.1:5000")
 TEST_PDF_FILE = os.environ.get("TEST_PDF_FILE", "")
 TEST_TXT_FILE = os.environ.get("TEST_TXT_FILE", "")
 
