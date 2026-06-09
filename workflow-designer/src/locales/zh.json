@@ -262,6 +262,7 @@
   "agent_profile": {
     "basic": "基础属性",
     "advanced": "高级属性",
+    "organization": "所属组织",
     "description": "描述",
     "supported_interfaces": "支持的接口",
     "skills": "技能",

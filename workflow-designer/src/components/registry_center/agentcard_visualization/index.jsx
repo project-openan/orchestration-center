@@ -122,12 +122,32 @@ const AgentDashboard = ({ agent, isDark }) => {
                     icon={Fingerprint}
                     expanded={basicExpanded}
                     onToggle={() => setBasicExpanded(!basicExpanded)}
-                    count={2}
+                    count={3}
                     isDark={isDark}
                 />
 
                 {basicExpanded && (
                     <div className="space-y-6 animate-in fade-in duration-300 pl-1">
+                        <InfoCard
+                            title={t('agent_profile.organization')}
+                            icon={Globe}
+                            theme={theme}
+                        >
+                            <div className={`text-sm font-semibold ${theme.textPrimary}`}>
+                                {agent.provider?.organization || '-'}
+                            </div>
+                            {agent.provider?.url && (
+                                <a
+                                    href={agent.provider.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`text-xs mt-1 inline-block ${theme.accent} hover:underline`}
+                                >
+                                    {agent.provider.url}
+                                </a>
+                            )}
+                        </InfoCard>
+
                         <InfoCard
                             title={t('agent_profile.description')}
                             icon={Fingerprint}

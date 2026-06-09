@@ -10,8 +10,8 @@ import AgentCard from "./agentcard_visualization/index.jsx";
 
 const THEMES = ['emerald', 'blue', 'indigo', 'rose', 'cyan', 'amber', 'violet'];
 
-const SERVICE_LAYER_TAGS = ['live', 'assurance', 'uncertainty', 'monitoring', 'negotiation', 'simulation'];
-const NETWORK_LAYER_TAGS = ['ran', 'spn', 'dispatch', 'energy-saving', 'wireless', 'diagnosis', 'aggregate', 'analysis', 'plan', 'exec', 'strategy', 'recovery'];
+const NETWORK_LAYER_VENDORS = ['huawei', 'ericsson', 'zte', '华为', '爱立信', '中兴'];
+const SERVICE_LAYER_VENDORS = ['直真', '新大陆', '福诺', '亿阳', '移动'];
 
 const getAssetsBySeed = (seed, layer) => {
     const SERVICE_THEMES = ['blue', 'indigo', 'cyan'];
@@ -28,11 +28,11 @@ const getAssetsBySeed = (seed, layer) => {
 };
 
 const getAgentLayer = (agent) => {
-    const allTags = (agent.skills || []).flatMap(s => s.tags || []);
-    const hasServiceTag = allTags.some(tag => SERVICE_LAYER_TAGS.includes(tag));
-    const hasNetworkTag = allTags.some(tag => NETWORK_LAYER_TAGS.includes(tag));
-    if (hasServiceTag && !hasNetworkTag) return 'service';
-    if (hasNetworkTag) return 'network';
+    const org = (agent.provider?.organization || '').toLowerCase();
+    const isNetworkVendor = NETWORK_LAYER_VENDORS.some(vendor => org.includes(vendor));
+    const isServiceVendor = SERVICE_LAYER_VENDORS.some(vendor => org.includes(vendor));
+    if (isNetworkVendor) return 'network';
+    if (isServiceVendor) return 'service';
     return 'service';
 };
 
@@ -207,9 +207,14 @@ const AgentRegistry = ({ isDark, t }) => {
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                <span className={`text-xs font-black px-4 py-1 rounded-lg border uppercase ${layerBadge(agent.layer)}`}>
-                    {agent.layer === 'network' ? 'Network' : 'Service'}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span className={`text-xs font-black px-4 py-1 rounded-lg border uppercase ${layerBadge(agent.layer)}`}>
+                        {agent.layer === 'network' ? 'Network' : 'Service'}
+                    </span>
+                    <span className={`text-xs font-black px-3 py-1 rounded-lg border ${agent.layer === 'network' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'}`}>
+                        {agent.provider?.organization}
+                    </span>
+                </div>
                 <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
                     {agent.skills?.length || 0} {t('registry.skills_count')}
                 </span>
