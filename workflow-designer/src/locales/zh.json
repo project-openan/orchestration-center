@@ -292,6 +292,18 @@
     "copy_raw_json": "复制原始 JSON",
     "chars": "字符"
   },
+  "settings": {
+    "title": "服务连接",
+    "connection_mode": "连接模式",
+    "direct_ip": "直连 IP",
+    "nginx_gateway": "Nginx 网关",
+    "backend_host": "后端主机 (IP)",
+    "port": "端口",
+    "gateway_base_url": "网关基础 URL",
+    "gateway_example": "示例：{{url}}",
+    "reload_note": "* 修改服务端点配置后需要重新加载页面才能生效。",
+    "save_config": "保存配置"
+  },
   "workflow_empty": {
     "title": "暂无工作流数据",
     "desc": "当前执行记录没有可展示的节点或连线。"

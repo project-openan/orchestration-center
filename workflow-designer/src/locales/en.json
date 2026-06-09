@@ -293,6 +293,18 @@
     "copy_raw_json": "Copy Raw JSON",
     "chars": "chars"
   },
+  "settings": {
+    "title": "Server Connection",
+    "connection_mode": "Connection Mode",
+    "direct_ip": "Direct IP",
+    "nginx_gateway": "Nginx Gateway",
+    "backend_host": "Backend Host (IP)",
+    "port": "Port",
+    "gateway_base_url": "Gateway Base URL",
+    "gateway_example": "Example: {{url}}",
+    "reload_note": "* Changes require a page reload to apply new service endpoint configurations.",
+    "save_config": "Save Config"
+  },
   "workflow_empty": {
     "title": "No Workflow Data",
     "desc": "There are no nodes or edges to display for this execution record."

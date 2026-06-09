@@ -1,7 +1,11 @@
-import {Bot, Sun, Moon, LayoutDashboard, Share2, PlayCircle, Sparkles} from "lucide-react";
+import {useState} from "react";
+import {Bot, Sun, Moon, LayoutDashboard, Share2, PlayCircle, Sparkles, Settings} from "lucide-react";
+import SettingsModal from "../setting/index.jsx";
 
 const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange, t}) => {
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     return (
+        <>
         <nav
             className="h-16 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-8 flex justify-between items-center shrink-0 z-20 transition-all">
             <div className="flex items-center gap-4">
@@ -64,8 +68,12 @@ const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange,
                         EN
                     </button>
                 </div>
+                <Settings size={20} onClick={() => setIsSettingsOpen(true)}
+                          className={"text-zinc-400 cursor-pointer hover:rotate-90 transition-all duration-500"}/>
             </div>
         </nav>
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} t={t}/>
+        </>
     )
 }
 
