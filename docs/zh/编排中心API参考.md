@@ -38,7 +38,7 @@
 ### 约束与限制
 
   - 各接口均受并发控制（Semaphore）与令牌桶限流（RateLimiter）双重保护，详见各接口约束。
-  - 服务端口默认为 **5000**。
+  - 服务端口默认为 **5001**。
 
 ---
 
@@ -92,7 +92,7 @@
 
     ```
     POST /api/v1/orchestrate/sop HTTP/1.1
-    Host: your-host:5000
+    Host: your-host:5001
     Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
 
     ------WebKitFormBoundary
@@ -111,7 +111,7 @@
 
     ```json
     POST /api/v1/orchestrate/sop HTTP/1.1
-    Host: your-host:5000
+    Host: your-host:5001
     Content-Type: application/json
 
     {
@@ -199,7 +199,7 @@
 
     ```json
     POST /api/v1/orchestrate/intent HTTP/1.1
-    Host: your-host:5000
+    Host: your-host:5001
     Content-Type: application/json
 
     {
@@ -280,7 +280,7 @@
 
     ```json
     POST /api/v1/orchestrate/search HTTP/1.1
-    Host: your-host:5000
+    Host: your-host:5001
     Content-Type: application/json
 
     {
@@ -440,7 +440,7 @@ init → start → ... → error → close
 ```python
 import requests, json
 resp = requests.get(
-    "http://127.0.0.1:5000/api/v1/orchestrate/execute/{psop_id}?lang=zh",
+    "http://127.0.0.1:5001/api/v1/orchestrate/execute/{psop_id}?lang=zh",
     stream=True,
 )
 for line in resp.iter_lines(decode_unicode=True):
@@ -502,7 +502,7 @@ for line in resp.iter_lines(decode_unicode=True):
 
     ```json
     POST /api/v1/orchestrate/execute HTTP/1.1
-    Host: your-host:5000
+    Host: your-host:5001
     Content-Type: application/json
 
     {
@@ -602,7 +602,7 @@ for line in resp.iter_lines(decode_unicode=True):
 
     ```
     GET /api/v1/orchestrate/execute/a1b2c3d4-e5f6-7890-abcd-ef1234567890?user_intent=帮我查基站节能率 HTTP/1.1
-    Host: your-host:5000
+    Host: your-host:5001
     ```
 
 - 响应格式（SSE 事件流）
@@ -720,7 +720,7 @@ for line in resp.iter_lines(decode_unicode=True):
 
     ```
     GET /api/v1/executions/exec-uuid-12345678 HTTP/1.1
-    Host: your-host:5000
+    Host: your-host:5001
     ```
 
 - 响应参数

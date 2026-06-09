@@ -45,7 +45,7 @@ All Rights Reserved.
 sequenceDiagram
     actor User as 用户
     participant FE as 编排中心前端<br/>(React :3003)
-    participant BE as 后端 :5000<br/>(FastAPI)
+    participant BE as 后端 :5001<br/>(FastAPI)
     participant LLM as 大模型
     participant Reg as 注册中心
     participant Agt as Agent 服务
@@ -164,7 +164,7 @@ python3 -m venv .venv
 source .venv/bin/activate      # Linux
 # .venv\Scripts\activate       # Windows
 pip install -r requirements.txt
-python -m orchestrate.start    # 端口 5000
+python -m orchestrate.start    # 端口 5001
 
 # 前端启动（新终端）
 cd workflow-designer
@@ -180,7 +180,7 @@ python -m samples.start_agents_server
 
 | 服务 | 验证方式 |
 |------|----------|
-| 后端 | 日志输出 `Uvicorn running on http://127.0.0.1:5000` |
+| 后端 | 日志输出 `Uvicorn running on http://127.0.0.1:5001` |
 | 前端 | 浏览器访问 `http://localhost:3003` |
 | 示例 Agent | 控制台输出各 Agent 启动信息 |
 
@@ -192,7 +192,7 @@ flowchart TB
         wd["工作流设计器<br/>React 18 + Vite + Tailwind<br/>端口 3003"]
     end
 
-    subgraph backend["编排后端 (端口 5000)"]
+    subgraph backend["编排后端 (端口 5001)"]
         direction TB
         api["双 API 层<br/>内部 /rest/v1/orchestrate/*<br/>对外 /api/v1/*"]
         domain["核心领域<br/>PSOP 生成 · 意图生成<br/>语义检索 · 发布"]

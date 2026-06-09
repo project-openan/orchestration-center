@@ -2,7 +2,7 @@ import axios from "axios";
 
 const STORAGE_KEY = 'server_config';
 export const defaultIp = '127.0.0.1';
-export const defaultPort = '5000';
+export const defaultPort = '5001';
 export const defaultGateway = '/api/orchestrate';
 
 const trimTrailingSlash = (url) => url.replace(/\/$/, '');

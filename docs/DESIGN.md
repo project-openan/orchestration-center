@@ -8,7 +8,7 @@
 sequenceDiagram
     actor User as 用户
     participant FE as 编排中心前端<br/>(React :3003)
-    participant BE as 后端 :5000<br/>(FastAPI)
+    participant BE as 后端 :5001<br/>(FastAPI)
     participant LLM as 大模型
     participant Reg as 注册中心
     participant Agt as Agent 服务
@@ -341,7 +341,7 @@ etc/conf/llm_config.json   (LLM 提供商配置)
 | Key | 说明 | 默认值                     |
 |-----|------|-------------------------|
 | `persistence_mode` | 存储模式: `file` 或 `postgresql` | `file`                  |
-| `ip` / `port` | 绑定的 IP 和端口 | `0.0.0.0` / `5000`     |
+| `ip` / `port` | 绑定的 IP 和端口 | `0.0.0.0` / `5001`     |
 | `agent_registry_url` | Agent 注册中心地址 | `http://127.0.0.1:5000` |
 | `enable_https` | 是否启用 HTTPS | `false`                 |
 | `forwarded_allow_ips` | 反向代理信任的 IP | `*`                     |

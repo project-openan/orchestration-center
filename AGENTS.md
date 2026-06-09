@@ -19,7 +19,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# Start backend (port 5000)
+# Start backend (port 5001)
 python -m orchestrate.start
 
 # Start frontend (port 3003, from workflow-designer/)
@@ -106,7 +106,7 @@ data/workflow_storage/ # File-based persistence (PSOP, PreFlow, execution record
 - **Frontend is JS/JSX, not TypeScript**.
 - **All Python code is run as modules** (`python -m`, not `python file.py`). Imports use absolute paths rooted at repo root.
 - **Sample agents must be running** for workflow execution to succeed (they provide the actual A2A agent endpoints).
-- **Workflow designer expects backend at `http://127.0.0.1:5000`** (hardcoded in `workflow-designer/src/service/api.js`).
+- **Workflow designer expects backend at `http://127.0.0.1:5001`** (hardcoded in `workflow-designer/src/service/api.js`).
 - **CI/CD** configured in `.github/workflows/ci.yml` — runs pytest (unit) and ESLint (frontend).
 - **License headers required** on all source files (Apache 2.0, Huawei copyright).
 
@@ -126,7 +126,7 @@ data/workflow_storage/ # File-based persistence (PSOP, PreFlow, execution record
 
 ```powershell
 # Backend
-python -m orchestrate.start              # Start server (HTTP on :5000)
+python -m orchestrate.start              # Start server (HTTP on :5001)
 python -m samples.start_agents_server    # Start sample agents
 
 # Frontend (cd workflow-designer)

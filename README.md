@@ -45,7 +45,7 @@ The Orchestration Center is a visual platform for designing and executing multi-
 sequenceDiagram
     actor User as User
     participant FE as Workflow Designer<br/>(React :3003)
-    participant BE as Backend :5000<br/>(FastAPI)
+    participant BE as Backend :5001<br/>(FastAPI)
     participant LLM as LLM
     participant Reg as Agent Registry
     participant Agt as A2A Agents
@@ -165,7 +165,7 @@ source .venv/bin/activate      # Linux
 # .venv\Scripts\activate       # Windows
 pip install -r requirements.txt
 
-# Start backend (port 5000)
+# Start backend (port 5001)
 python -m orchestrate.start
 
 # Frontend setup (separate terminal)
@@ -182,7 +182,7 @@ python -m samples.start_agents_server
 
 | Service | Check |
 |---------|-------|
-| Backend | `Uvicorn running on http://127.0.0.1:5000` |
+| Backend | `Uvicorn running on http://127.0.0.1:5001` |
 | Frontend | Open `http://localhost:3003` in browser |
 | Sample Agents | Agent startup messages in console |
 
@@ -194,7 +194,7 @@ flowchart TB
         wd["Workflow Designer<br/>React 18 + Vite + Tailwind<br/>Port 3003"]
     end
 
-    subgraph backend["Orchestration Backend (Port 5000)"]
+    subgraph backend["Orchestration Backend (Port 5001)"]
         direction TB
         api["Dual API Layer<br/>Internal /rest/v1/orchestrate/*<br/>External /api/v1/*"]
         domain["Core Domain<br/>PSOP Generator · Intent Generator<br/>Semantic Search · Publisher"]

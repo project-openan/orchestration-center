@@ -159,7 +159,7 @@ sudo systemctl status orchestration-center
 journalctl -u orchestration-center -f
 ```
 
-If you see `Uvicorn running on http://127.0.0.1:5000`, the startup is successful.
+If you see `Uvicorn running on http://127.0.0.1:5001`, the startup is successful.
 
 Method 2: Manual Startup (Windows)
 
