@@ -263,6 +263,7 @@
   "agent_profile": {
     "basic": "Basic Properties",
     "advanced": "Advanced Properties",
+    "organization": "Organization",
     "description": "Description",
     "supported_interfaces": "Supported Interfaces",
     "skills": "Skills",
