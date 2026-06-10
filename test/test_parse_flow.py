@@ -130,10 +130,10 @@ class TestBuildMarkdownPrompt:
         assert sample_text in prompt
 
     def test_prompt_translation_instruction(self):
-        """Test prompt contains translation instruction"""
+        """Test prompt contains format requirements"""
         prompt = SolutionPackageParser.build_markdown_prompt("Test")
-        assert "Chinese" in prompt or "translate" in prompt
-        assert "Agent" in prompt
+        assert "Markdown" in prompt
+        assert "convert" in prompt
 
 
 class TestGetChapterText:
@@ -253,7 +253,7 @@ class TestConvertChapterToMarkdown:
         """Test converting a chapter with empty content"""
         title, content = parser.convert_chapter_to_markdown(("Ch1", ""))
         assert title == "Ch1"
-        assert "No text content" in content or "empty" in content.lower()
+        assert "no text content" in content.lower()
 
     def test_convert_with_error(self, parser):
         """Test error during conversion"""

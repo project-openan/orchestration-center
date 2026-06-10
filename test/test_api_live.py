@@ -44,13 +44,14 @@ def mock_deps():
     fake_parser.parse_solution_package.return_value = "parsed text"
 
     with patch.object(app.state, 'semaphore', False, create=True), \
+         patch('orchestrate.server.frontend_support_server.agent_cards_semaphore') as mock_sem, \
          patch('orchestrate.server.shared_handlers.SharedHandlers.save_psop', return_value=fake_save), \
          patch('orchestrate.server.shared_handlers.SharedHandlers.delete_psop', return_value=fake_delete), \
          patch('orchestrate.server.shared_handlers.SharedHandlers.retrieval', return_value=fake_retrieval), \
          patch('orchestrate.server.frontend_support_server.PsopGenerator', return_value=fake_psop_gen), \
          patch('orchestrate.server.frontend_support_server.IntentPsopGenerator', return_value=fake_intent_gen), \
          patch('orchestrate.server.frontend_support_server.SolutionPackageParser', return_value=fake_parser), \
-         patch('orchestrate.server.response_utils.get_agent_cards', return_value=[]), \
+         patch('orchestrate.server.frontend_support_server.get_agent_cards', return_value=[]), \
          patch('orchestrate.server.frontend_support_server.HandlerRegistry', MagicMock()):
         yield
 
