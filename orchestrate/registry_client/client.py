@@ -55,13 +55,16 @@ class AgentRegistryClient:
             logger.error(f"Request failed: {e}")
             raise e
 
-    async def register(self, agent: Union[AgentCard, dict]) -> bool:
+    async def register(self, agent: Union[AgentCard, dict]) -> dict | None:
         if isinstance(agent, AgentCard):
             data = MessageToDict(agent)
         else:
             data = agent
         resp = await self._request('POST', '/rest/v1/registry-center/agent-cards', json={"agentCards":[data]})
-        return resp.json()
+        try:
+            return resp.json()
+        except Exception:
+            return {"agentCards": [data]} if resp.status_code in (200, 201) else None
 
     async def update_full(self, name: str, organization: str, agent: AgentCard) -> bool:
         data = MessageToDict(agent)

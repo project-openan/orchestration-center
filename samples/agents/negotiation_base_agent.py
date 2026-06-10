@@ -57,6 +57,9 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
         event_queue: EventQueue,
     ) -> None:
         user_input = context.get_user_input()
+        task_id = context.task_id or "N/A"
+        ctx_id = context.context_id or "N/A"
+        logger.info(f"[{self.__class__.__name__}] execute: task_id={task_id}, context_id={ctx_id}")
 
         if is_follow_up_task(user_input):
             task = await self._handle_follow_up_task(context, user_input)
@@ -66,7 +69,7 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
         await event_queue.enqueue_event(task)
 
     async def _handle_new_task(self, context: RequestContext, user_input: str) -> Task:
-        negotiation_result = self._start_negotiation(user_input)
+        negotiation_result = self._start_negotiation(user_input, context.task_id, context.context_id)
 
         negotiation_context_data = negotiation_result.get(NEGOTIATION_CONTEXT_KEY, {})
         negotiation_text = negotiation_result.get(NEGOTIATION_TEXT_KEY, "")
@@ -77,7 +80,7 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
             except Exception as e:
                 logger.warning(f"Failed to parse negotiation context: {e}")
 
-        response = await asyncio.to_thread(self._execute_task, user_input)
+        response = await asyncio.to_thread(self._execute_task, user_input, context.task_id, context.context_id)
 
         uncertain = await asyncio.to_thread(is_uncertain_response, response, self.llm)
         if uncertain:
@@ -122,14 +125,14 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
                 negotiation_context_data = continued_context
             except Exception as e:
                 logger.warning(f"Failed to parse continued negotiation context: {e}")
-                _ = self._start_negotiation(cleaned_input or user_input)
+                _ = self._start_negotiation(cleaned_input or user_input, context.task_id, context.context_id)
                 negotiation_context_data = {}
         else:
-            _ = self._start_negotiation(cleaned_input or user_input)
+            _ = self._start_negotiation(cleaned_input or user_input, context.task_id, context.context_id)
             negotiation_context_data = {}
 
         execute_input = cleaned_input if cleaned_input else user_input
-        response = await asyncio.to_thread(self._execute_task, execute_input)
+        response = await asyncio.to_thread(self._execute_task, execute_input, context.task_id, context.context_id)
 
         return self._build_task_response(
             context=context,
@@ -137,13 +140,18 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
             negotiation_context=negotiation_context_data,
         )
 
-    def _start_negotiation(self, user_input: str) -> Dict[str, Any]:
+    def _start_negotiation(self, user_input: str, task_id: str = None, context_id: str = None) -> Dict[str, Any]:
         try:
+            facts = {"agent": self.__class__.__name__}
+            if task_id:
+                facts["task_id"] = task_id
+            if context_id:
+                facts["context_id"] = context_id
             negotiation_result = self.a2at_server.start_negotiation(
                 StartNegotiationInput(
                     type=NegotiationType.FULFILLMENT,
                     content_text=user_input,
-                    facts={"agent": self.__class__.__name__}
+                    facts=facts
                 )
             )
             negotiation_text = negotiation_result.get(NEGOTIATION_TEXT_KEY)
@@ -156,8 +164,15 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
             logger.error(f"[{self.__class__.__name__}] Failed to start negotiation: {e}")
             return {}
 
-    def _execute_task(self, user_input: str) -> str:
+    def _execute_task(self, user_input: str, task_id: str = None, context_id: str = None) -> str:
         prompt = self.prompt_template.format(task=user_input)
+        ctx_lines = []
+        if task_id:
+            ctx_lines.append(f"Task ID: {task_id}")
+        if context_id:
+            ctx_lines.append(f"Context ID: {context_id}")
+        if ctx_lines:
+            prompt = "## Execution Context\n" + "\n".join(ctx_lines) + "\n\n" + prompt
         _, res = self.llm.ask_llm(prompt)
         logger.info(f"[{self.__class__.__name__}] Task: {user_input[:50]}..., Result: {res[:100]}...")
         return res
@@ -190,4 +205,4 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
         context: RequestContext,
         event_queue: EventQueue,
     ) -> None:
-        logger.info(f"[{self.__class__.__name__}] Task cancelled: {context.task_id}")
+        logger.info(f"[{self.__class__.__name__}] Task cancelled: task_id={context.task_id}, context_id={context.context_id}")

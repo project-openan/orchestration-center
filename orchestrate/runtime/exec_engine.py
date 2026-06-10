@@ -18,6 +18,7 @@
 import asyncio
 import atexit
 import json
+import uuid
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -63,6 +64,7 @@ class DynamicWorkflowEngine:
         self.step_outputs: Dict[str, Dict[str, Any]] = {}
         self.a2at_client = None
         self._httpx_client: Optional[httpx.AsyncClient] = None
+        self.execution_context_id = ""
 
         if _A2AT_AVAILABLE:
             from common.a2at_config import get_a2at_env_path, update_a2at_language
@@ -93,11 +95,12 @@ class DynamicWorkflowEngine:
 
     def _push_event(self, event_type: str, data: Dict[str, Any]):
         log_data = dict(data)
-        if event_type == "agent_response" and isinstance(log_data.get("response"), str):
-            try:
-                log_data["response"] = json.loads(log_data["response"])
-            except (json.JSONDecodeError, TypeError):
-                pass
+        for key in ("request", "response"):
+            if isinstance(log_data.get(key), str):
+                try:
+                    log_data[key] = json.loads(log_data[key])
+                except (json.JSONDecodeError, TypeError):
+                    pass
         try:
             serialized = json.dumps(log_data, indent=4, ensure_ascii=False, default=str)
         except Exception as e:
@@ -111,7 +114,8 @@ class DynamicWorkflowEngine:
                 logger.error(f"Failed to push event: {e}")
 
     async def run(self):
-        logger.info(f"Starting PSOP workflow, total {len(self.workflow.steps)} steps")
+        self.execution_context_id = str(uuid.uuid4())
+        logger.info(f"Starting PSOP workflow, total {len(self.workflow.steps)} steps, context_id={self.execution_context_id}")
         pending = deque([i for i, s in enumerate(self.workflow.steps) if s.layer == 0 and not self._get_step_predecessors(s.name)])
         executed = set()
         defer_count = {}
@@ -257,17 +261,19 @@ class DynamicWorkflowEngine:
                 streaming=agent_card.capabilities.streaming if agent_card.capabilities else False,
             )
             client = ClientFactory(config).create(agent_card)
-            request = new_text_message(text=task_text)
-            # Push request information
+            request_msg = new_text_message(
+                text=task_text,
+                context_id=self.execution_context_id,
+            )
+            send_req = SendMessageRequest(message=request_msg)
+            send_req_json = MessageToJson(send_req, preserving_proto_field_name=True)
             try:
-                request_data = request.model_dump_json() if hasattr(request, 'model_dump_json') else str(request)
-            except Exception as e:
-                logger.warning(f"Failed to serialize agent request for event push: {e}")
-                request_data = str(request)
-
+                req_payload = json.loads(send_req_json)
+            except (json.JSONDecodeError, TypeError):
+                req_payload = send_req_json
             self._push_event("agent_request", {
                 "agent": agent_name,
-                "request": request_data
+                "request": req_payload
             })
             response_text = None
             last_response = None
@@ -276,7 +282,16 @@ class DynamicWorkflowEngine:
 
             from a2a.types import Task, Message
 
-            async for response in client.send_message(SendMessageRequest(message=request)):
+            async for response in client.send_message(send_req):
+                try:
+                    raw_resp = MessageToJson(response, preserving_proto_field_name=True)
+                    resp_payload = json.loads(raw_resp) if raw_resp != "{}" else raw_resp
+                except Exception:
+                    resp_payload = str(response)
+                self._push_event("agent_response", {
+                    "agent": agent_name,
+                    "response": resp_payload
+                })
                 task_result = response.task
                 message_result = response.message
 
@@ -311,23 +326,11 @@ class DynamicWorkflowEngine:
                         except ImportError:
                             pass
 
-                    response_data = MessageToJson(task_result, preserving_proto_field_name=True)
-                    self._push_event("agent_response", {
-                        "agent": agent_name,
-                        "response": response_data
-                    })
-
                 elif isinstance(message_result, Message):
                     if hasattr(message_result, 'parts') and message_result.parts:
                         for part in message_result.parts:
                             if hasattr(part, 'text') and part.text:
                                 response_text = (response_text or "") + part.text
-
-                    response_data = MessageToJson(message_result, preserving_proto_field_name=True)
-                    self._push_event("agent_response", {
-                        "agent": agent_name,
-                        "response": response_data
-                    })
 
             if response_text is not None:
                 return response_text, last_task_result, last_metadata_dict
