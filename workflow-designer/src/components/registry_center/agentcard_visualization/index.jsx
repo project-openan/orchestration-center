@@ -28,6 +28,8 @@ import {
     Cpu,
     Fingerprint,
     Settings,
+    Shield,
+    Puzzle,
     ChevronDown,
     ChevronRight
 } from 'lucide-react';
@@ -288,6 +290,52 @@ const AgentDashboard = ({ agent, isDark }) => {
                                         />
                                     </div>
                                 </InfoCard>
+                                {agent.securitySchemes && Object.keys(agent.securitySchemes).length > 0 && (
+                                    <InfoCard
+                                        title={t('agent_profile.security')}
+                                        icon={Shield}
+                                        theme={theme}
+                                    >
+                                        <div className="space-y-2">
+                                            {Object.entries(agent.securitySchemes).map(([name, scheme]) => (
+                                                <div key={name}
+                                                    className={`flex items-center justify-between p-2 rounded border ${theme.border}`}>
+                                                    <div className="flex items-center gap-2">
+                                                        <Shield className="w-4 h-4 text-amber-500" />
+                                                        <span className={`text-sm font-mono font-medium ${theme.textPrimary}`}>{name}</span>
+                                                    </div>
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-600'}`}>
+                                                        {scheme.httpAuthSecurityScheme?.scheme || scheme.scheme || 'N/A'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </InfoCard>
+                                )}
+                                {agent.capabilities?.extensions && agent.capabilities.extensions.length > 0 && (
+                                    <InfoCard
+                                        title={t('agent_profile.extensions')}
+                                        icon={Puzzle}
+                                        theme={theme}
+                                    >
+                                        <div className="space-y-2">
+                                            {agent.capabilities.extensions.map((ext, idx) => (
+                                                <div key={idx}
+                                                    className={`p-2 rounded border ${theme.border}`}>
+                                                    <div className={`text-xs font-mono truncate ${theme.textSecondary}`}
+                                                        title={ext.uri}>
+                                                        {ext.uri}
+                                                    </div>
+                                                    {ext.required !== undefined && (
+                                                        <span className={`text-[10px] ${ext.required ? 'text-amber-500' : 'text-zinc-500'}`}>
+                                                            {ext.required ? 'required' : 'optional'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </InfoCard>
+                                )}
                                 <InfoCard
                                     title={t('agent_profile.configuration')}
                                     icon={Settings}

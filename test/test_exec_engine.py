@@ -33,7 +33,10 @@ def mock_agent_card():
     card.name = "test_agent"
     card.capabilities = MagicMock()
     card.capabilities.streaming = False
+    card.capabilities.extensions = []
     card.url = "http://test-agent:8000"
+    card.security_schemes = {}
+    card.security_requirements = []
     return card
 
 

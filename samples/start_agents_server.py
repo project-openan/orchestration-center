@@ -138,7 +138,8 @@ async def start_server(agent_card: AgentCard, port: int, host: str = "127.0.0.1"
     agent_class = agent2class.get(agent_name)
 
     if not agent_class:
-        raise ValueError(f"unknown Agent : {agent_name}")
+        logger.info(f"Skipping external agent '{agent_name}': no local executor class defined")
+        return
 
     try:
         agent_impl = agent_class()

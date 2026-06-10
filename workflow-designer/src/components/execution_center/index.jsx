@@ -304,6 +304,13 @@ const LogEntry = React.memo(({ event, isDark, t, isSelected }) => {
             if (results.length === 0) {
                 if (obj.parts) results = results.concat(findText(obj.parts, seen));
                 if (obj.artifacts) results = results.concat(findText(obj.artifacts, seen));
+                if (obj.metadata && typeof obj.metadata === 'object') {
+                    Object.entries(obj.metadata).forEach(([key, val]) => {
+                        if (typeof val === 'string' && val.length > 10) {
+                            results.push(val);
+                        }
+                    });
+                }
             }
 
             if (results.length === 0) {

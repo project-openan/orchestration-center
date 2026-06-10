@@ -149,7 +149,6 @@
       "defaultTask": "Execute {{name}} task",
       "searchPlaceholder": "Search agents..."
     },
-
     "toolbar": {
       "back": "Back",
       "fitView": "Fit View",
@@ -276,7 +275,9 @@
     "preferredTransport": "Preferred Transport",
     "defaultInputModes": "Input Modes",
     "defaultOutputModes": "Output Modes",
-    "documentationUrl": "Documentation"
+    "documentationUrl": "Documentation",
+    "security": "Security",
+    "extensions": "Extensions"
   },
   "common": {
     "loading": "Loading...",

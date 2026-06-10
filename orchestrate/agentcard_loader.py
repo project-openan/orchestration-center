@@ -25,6 +25,61 @@ from google.protobuf.json_format import Parse
 from loguru import logger
 
 
+def _normalize_security_schemes(sec_schemes: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(sec_schemes, dict):
+        return sec_schemes if sec_schemes else {}
+    normalized = {}
+    for name, scheme in sec_schemes.items():
+        if not isinstance(scheme, dict):
+            normalized[name] = scheme
+            continue
+        if any(k in scheme for k in (
+            "httpAuthSecurityScheme", "apiKeySecurityScheme",
+            "oauth2SecurityScheme", "openIdConnectSecurityScheme",
+            "mtlsSecurityScheme",
+        )):
+            normalized[name] = scheme
+            continue
+        if "scheme" in scheme and isinstance(scheme["scheme"], str):
+            http_auth = {"scheme": scheme["scheme"]}
+            normalized[name] = {"httpAuthSecurityScheme": http_auth}
+            continue
+        normalized[name] = scheme
+    return normalized
+
+
+def _normalize_security_requirements(sec_reqs: List[Any]) -> List[Dict[str, Any]]:
+    if not isinstance(sec_reqs, list):
+        return []
+    normalized = []
+    for req in sec_reqs:
+        if not isinstance(req, dict):
+            continue
+        schemes = req.get("schemes")
+        if isinstance(schemes, list):
+            normalized.append({"schemes": {s: {} for s in schemes}})
+        elif isinstance(schemes, dict):
+            normalized.append(req)
+        else:
+            normalized.append(req)
+    return normalized
+
+
+def _normalize_agent_dict(agent_dict: Dict[str, Any]) -> Dict[str, Any]:
+    agent_dict = dict(agent_dict)
+    sec_schemes = agent_dict.get("securitySchemes")
+    if sec_schemes is not None:
+        agent_dict["securitySchemes"] = _normalize_security_schemes(sec_schemes)
+    sec_reqs = agent_dict.get("securityRequirements")
+    if sec_reqs is not None:
+        agent_dict["securityRequirements"] = _normalize_security_requirements(sec_reqs)
+    if agent_dict.get("securitySchemes") and not agent_dict.get("securityRequirements"):
+        scheme_names = list(agent_dict["securitySchemes"].keys())
+        agent_dict["securityRequirements"] = [{"schemes": {s: {} for s in scheme_names}}]
+        logger.debug(f"Auto-populated securityRequirements from securitySchemes: {scheme_names}")
+    return agent_dict
+
+
 class AgentCardLoader:
     """
     Load AgentCards from all YAML/JSON files in a directory.
@@ -68,7 +123,8 @@ class AgentCardLoader:
         cards = []
         for agent_dict in self.get_raw_agent_dicts():
             try:
-                agent_card = Parse(json.dumps(agent_dict), AgentCard())
+                normalized = _normalize_agent_dict(agent_dict)
+                agent_card = Parse(json.dumps(normalized), AgentCard())
                 cards.append(agent_card)
             except Exception as e:
                 logger.warning(f"Failed to parse AgentCard: {agent_dict.get('name', 'unknown')} - {e}")

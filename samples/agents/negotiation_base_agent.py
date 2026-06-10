@@ -61,6 +61,18 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
         ctx_id = context.context_id or "N/A"
         logger.info(f"[{self.__class__.__name__}] execute: task_id={task_id}, context_id={ctx_id}")
 
+        task_t_uri = "https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1"
+        try:
+            if hasattr(context, 'message') and context.message:
+                msg = context.message
+                if msg.metadata and task_t_uri in msg.metadata:
+                    task_t_text = msg.metadata[task_t_uri]
+                    if isinstance(task_t_text, str) and len(task_t_text) > len(user_input or ''):
+                        logger.info(f"[{self.__class__.__name__}] Using TASK-T prompt from message metadata")
+                        user_input = task_t_text
+        except Exception as e:
+            logger.debug(f"[{self.__class__.__name__}] Could not read TASK-T metadata: {e}")
+
         if is_follow_up_task(user_input):
             task = await self._handle_follow_up_task(context, user_input)
         else:

@@ -275,7 +275,9 @@
     "preferredTransport": "首选传输方式",
     "defaultInputModes": "输入模式",
     "defaultOutputModes": "输出模式",
-    "documentationUrl": "查看文档"
+    "documentationUrl": "查看文档",
+    "security": "安全认证",
+    "extensions": "扩展支持"
   },
   "common": {
     "loading": "加载中...",

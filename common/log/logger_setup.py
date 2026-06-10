@@ -49,7 +49,7 @@ def add_module_logger(module_prefix: str):
     old_mask = os.umask(0o027)
     logger.add(sys.stdout, format=LOG_FORMAT, level="INFO", backtrace=False, colorize=True)
 
-    log_file = _LOG_DIR / f"{module_prefix}_{{time:YYYY-MM-DD}}_{os.getpid()}.log"
+    log_file = _LOG_DIR / f"{module_prefix}_{{time:YYYY-MM-DD}}.log"
     logger.add(
         log_file,
         format=LOG_FORMAT,

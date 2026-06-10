@@ -1,255 +1,333 @@
-# Copyright (c) 2026 Huawei Technologies Co., Ltd.
-# All Rights Reserved.
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
-#
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
-
 agents:
-  - name: "RAN Energy Saving Agent"
-    description: "负责RAN能效优化的自主闭环运行，包括意图探索、意图实现、效果评估与报告。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "ran-es-intent-exploration"
-        name: "RAN ES Intent Exploration"
-        description: "评估并确定指定RAN ES意图目标的最佳可能性，考虑当前资源状况和系统能力。"
-        tags: [ "wireless","energy-saving","intent" ]
-      - id: "ran-es-intent-lifecycle-management"
-        name: "RAN ES Intent Lifecycle Management"
-        description: "管理RAN节能意图的生命周期，包括创建、修改、删除、激活、去激活意图，并执行数据采集、分析、解决方案制定与配置。"
-        tags: [ "wireless","energy-saving","intent" ]
-      - id: "ran-es-intent-reporting"
-        name: "RAN ES Intent Reporting"
-        description: "提供意图报告查询、订阅、通知功能，报告意图实现状态、达成值、推荐值及配置修改信息。"
-        tags: [ "wireless","energy-saving","reporting" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8899"
-
-  - name: "Energy Saving Intent Agent"
-    description: "负责设置节能意图，与RAN能效优化智能体交互，进行意图预评估、意图生成与交付，并对节能效果进行评估与调整。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "intent-exploration-request"
-        name: "Intent Exploration Request"
-        description: "发起RAN ES意图探索请求，并获取指定意图目标的最佳可能值。"
-        tags: [ "wireless","energy-saving","intent" ]
-      - id: "intent-generation"
-        name: "Intent Generation"
-        description: "根据探索报告和业务需求生成RAN节能意图内容，包括不同时段、不同RAT的吞吐量和节能目标。"
-        tags: [ "wireless","energy-saving","intent" ]
-      - id: "intent-delivery"
-        name: "Intent Delivery"
-        description: "将生成的节能意图交付给RAN能效优化智能体，并管理意图生命周期（调用意图生命周期管理接口）。"
-        tags: [ "wireless","energy-saving","intent" ]
-      - id: "effect-evaluation"
-        name: "Effect Evaluation"
-        description: "评估不同RAN域的节能效果，根据效果调整意图。"
-        tags: [ "wireless","energy-saving","evaluation" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8900"
-
-  - name: "Live Streaming Agent"
-    description: "负责赛事需求的解析与监控。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "info-parsing"
-        name: "Event Info Parsing"
-        description: "提取赛事的路线与业务需求"
-        tags: [ "live", "info" ]
-      - id: "kqi-monitoring"
-        name: "KQI Monitoring"
-        description: "实时反馈保障任务关键质量指标及任务状态"
-        tags: [ "live", "monitoring" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8901"
-
-  - name: "Assurance Agent"
-    description: "负责保障策略及其恢复策略的生成。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "strategy-generation"
-        name: "Strategy Generation"
-        description: "将赛事保障需求转换为网络需求，包含带宽上下行要求等"
-        tags: [ "assurance", "strategy" ]
-      - id: "recovery-delivery"
-        name: "Recovery Delivery"
-        description: "恢复保障前网络配置"
-        tags: [ "assurance", "recovery" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8902"
-
-  - name: "RAN Agent"
-    description: "负责无线网络的分析、规划与策略执行。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "analysis-eval"
-        name: "Analysis and Evaluation"
-        description: "分析网络负载现状"
-        tags: [ "ran", "analysis" ]
-      - id: "plan-design"
-        name: "Plan Design"
-        description: "根据网络负载现状及网络保障需求规划网络策略方案"
-        tags: [ "ran", "plan" ]
-      - id: "net-exec"
-        name: "Network Policy Execution"
-        description: "执行或恢复网络策略"
-        tags: [ "ran", "exec" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8903"
-
-  - name: "Transport Workbench Agent"
-    description: "负责向不同地市的SPN故障处理Agent下发专线故障诊断指令，并汇总分析诊断结果，生成报告。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "dispatch-diagnosis"
-        name: "Dispatch Diagnosis"
-        description: "向多个地市SPN故障处理Agent同时下发专线故障诊断指令"
-        tags: [ "dispatch", "diagnosis" ]
-      - id: "aggregate-analysis"
-        name: "Aggregate Analysis"
-        description: "收集并汇总各地市SPN Agent的诊断结果，进行综合分析并生成报告"
-        tags: [ "aggregate", "analysis" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8904"
-
-  - name: "SPN Fault Handling Agent City1 OMC"
-    description: "负责地市1的SPN网络专线故障诊断，接收诊断指令并返回诊断结果。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "spn-diagnosis"
-        name: "Leased-line Fault Diagnosis"
-        description: "根据接收到的指令，对地市1的专线进行故障诊断，输出诊断结果"
-        tags: [ "spn", "diagnosis" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8905"
-
-  - name: "SPN Fault Handling Agent City2 OMC"
-    description: "负责地市2的SPN网络专线故障诊断，接收诊断指令并返回诊断结果。"
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "spn-diagnosis"
-        name: "Leased-line Fault Diagnosis"
-        description: "根据接收到的指令，对地市2的专线进行故障诊断，输出诊断结果"
-        tags: [ "spn", "diagnosis" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8906"
-
-  - name: "Uncertainty Simulation Agent"
-    description: "A diagnostic agent that intentionally expresses uncertainty to trigger the orchestration engine's negotiation flow. Used for testing the A2A-T fulfillment negotiation feature."
-    provider:
-      organization: "Huawei"
-      url: ""
-    version: "0.1.0"
-    iconUrl: ""
-    skills:
-      - id: "uncertainty-simulation"
-        name: "Uncertainty Simulation"
-        description: "Simulates an agent that needs more information before completing a task, triggering the engine's negotiation flow"
-        tags: [ "uncertainty", "negotiation", "simulation" ]
-    capabilities:
-      pushNotifications: false
-      streaming: false
-    defaultInputModes: [ "text" ]
-    defaultOutputModes: [ "text" ]
-    supportedInterfaces:
-      - protocolBinding: "HTTP+JSON"
-        protocolVersion: "1.0"
-        url: "http://127.0.0.1:8907"
+- name: RAN Energy Saving Agent
+  description: 负责RAN能效优化的自主闭环运行，包括意图探索、意图实现、效果评估与报告。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: ran-es-intent-exploration
+    name: RAN ES Intent Exploration
+    description: 评估并确定指定RAN ES意图目标的最佳可能性，考虑当前资源状况和系统能力。
+    tags:
+    - wireless
+    - energy-saving
+    - intent
+  - id: ran-es-intent-lifecycle-management
+    name: RAN ES Intent Lifecycle Management
+    description: 管理RAN节能意图的生命周期，包括创建、修改、删除、激活、去激活意图，并执行数据采集、分析、解决方案制定与配置。
+    tags:
+    - wireless
+    - energy-saving
+    - intent
+  - id: ran-es-intent-reporting
+    name: RAN ES Intent Reporting
+    description: 提供意图报告查询、订阅、通知功能，报告意图实现状态、达成值、推荐值及配置修改信息。
+    tags:
+    - wireless
+    - energy-saving
+    - reporting
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8899
+- name: Energy Saving Intent Agent
+  description: 负责设置节能意图，与RAN能效优化智能体交互，进行意图预评估、意图生成与交付，并对节能效果进行评估与调整。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: intent-exploration-request
+    name: Intent Exploration Request
+    description: 发起RAN ES意图探索请求，并获取指定意图目标的最佳可能值。
+    tags:
+    - wireless
+    - energy-saving
+    - intent
+  - id: intent-generation
+    name: Intent Generation
+    description: 根据探索报告和业务需求生成RAN节能意图内容，包括不同时段、不同RAT的吞吐量和节能目标。
+    tags:
+    - wireless
+    - energy-saving
+    - intent
+  - id: intent-delivery
+    name: Intent Delivery
+    description: 将生成的节能意图交付给RAN能效优化智能体，并管理意图生命周期（调用意图生命周期管理接口）。
+    tags:
+    - wireless
+    - energy-saving
+    - intent
+  - id: effect-evaluation
+    name: Effect Evaluation
+    description: 评估不同RAN域的节能效果，根据效果调整意图。
+    tags:
+    - wireless
+    - energy-saving
+    - evaluation
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8900
+- name: Live Streaming Agent
+  description: 负责赛事需求的解析与监控。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: info-parsing
+    name: Event Info Parsing
+    description: 提取赛事的路线与业务需求
+    tags:
+    - live
+    - info
+  - id: kqi-monitoring
+    name: KQI Monitoring
+    description: 实时反馈保障任务关键质量指标及任务状态
+    tags:
+    - live
+    - monitoring
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8901
+- name: Assurance Agent
+  description: 负责保障策略及其恢复策略的生成。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: strategy-generation
+    name: Strategy Generation
+    description: 将赛事保障需求转换为网络需求，包含带宽上下行要求等
+    tags:
+    - assurance
+    - strategy
+  - id: recovery-delivery
+    name: Recovery Delivery
+    description: 恢复保障前网络配置
+    tags:
+    - assurance
+    - recovery
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8902
+- name: RAN Agent
+  description: 负责无线网络的分析、规划与策略执行。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: analysis-eval
+    name: Analysis and Evaluation
+    description: 分析网络负载现状
+    tags:
+    - ran
+    - analysis
+  - id: plan-design
+    name: Plan Design
+    description: 根据网络负载现状及网络保障需求规划网络策略方案
+    tags:
+    - ran
+    - plan
+  - id: net-exec
+    name: Network Policy Execution
+    description: 执行或恢复网络策略
+    tags:
+    - ran
+    - exec
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8903
+- name: Transport Workbench Agent
+  description: 负责向不同地市的SPN故障处理Agent下发专线故障诊断指令，并汇总分析诊断结果，生成报告。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: dispatch-diagnosis
+    name: Dispatch Diagnosis
+    description: 向多个地市SPN故障处理Agent同时下发专线故障诊断指令
+    tags:
+    - dispatch
+    - diagnosis
+  - id: aggregate-analysis
+    name: Aggregate Analysis
+    description: 收集并汇总各地市SPN Agent的诊断结果，进行综合分析并生成报告
+    tags:
+    - aggregate
+    - analysis
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8904
+- name: SPN Fault Handling Agent City1 OMC
+  description: 负责地市1的SPN网络专线故障诊断，接收诊断指令并返回诊断结果。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: spn-diagnosis
+    name: Leased-line Fault Diagnosis
+    description: 根据接收到的指令，对地市1的专线进行故障诊断，输出诊断结果
+    tags:
+    - spn
+    - diagnosis
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8905
+- name: SPN Fault Handling Agent City2 OMC
+  description: 负责地市2的SPN网络专线故障诊断，接收诊断指令并返回诊断结果。
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: spn-diagnosis
+    name: Leased-line Fault Diagnosis
+    description: 根据接收到的指令，对地市2的专线进行故障诊断，输出诊断结果
+    tags:
+    - spn
+    - diagnosis
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8906
+- name: Uncertainty Simulation Agent
+  description: A diagnostic agent that intentionally expresses uncertainty to trigger
+    the orchestration engine's negotiation flow. Used for testing the A2A-T fulfillment
+    negotiation feature.
+  provider:
+    organization: Huawei
+    url: ''
+  version: 0.1.0
+  iconUrl: ''
+  skills:
+  - id: uncertainty-simulation
+    name: Uncertainty Simulation
+    description: Simulates an agent that needs more information before completing
+      a task, triggering the engine's negotiation flow
+    tags:
+    - uncertainty
+    - negotiation
+    - simulation
+  capabilities:
+    pushNotifications: false
+    streaming: false
+    extensions:
+    - uri: https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1
+      description: Extension of structured prompt TASK-T requests.
+      required: false
+  defaultInputModes:
+  - text
+  defaultOutputModes:
+  - text
+  supportedInterfaces:
+  - protocolBinding: HTTP+JSON
+    protocolVersion: '1.0'
+    url: http://127.0.0.1:8907

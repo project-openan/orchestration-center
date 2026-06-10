@@ -53,7 +53,7 @@ pytest test/test_exec_engine.py::TestDynamicWorkflowEngine::test_linear_executio
 ### Entrypoints (all run via `-m`)
 
 - `python -m orchestrate.start` — backend server
-- `python -m samples.start_agents_server` — 8 sample A2A agents
+- `python -m samples.start_agents_server` — 9 sample A2A agents
 
 ### Two API layers in one FastAPI app
 
@@ -78,6 +78,36 @@ The `WorkflowStorage` singleton is accessed via `get_workflow_storage()` (uses `
 
 `.env` for the a2a-t-sdk is auto-generated from `common/config/llm_config.json` via `common/a2at_config.py`.
 
+### Agent authentication
+
+External agents that require authentication (e.g., Bearer token obtained via a login endpoint) are supported via the `common/auth/` module.
+
+| File | Role |
+|---|---|
+| `common/auth/agent_credential_service.py` | `AgentCredentialService` (implements a2a-sdk `CredentialService` — logs in to obtain token, caches with TTL) + `AgentAuthManager` singleton |
+| `common/auth/extension_interceptor.py` | Injects `A2A-Extensions` HTTP header from AgentCard `capabilities.extensions[].uri` |
+| `etc/conf/agent_credentials.json` | Stores per-agent credentials (login_url, method, request_fields, token_field) |
+
+The `DynamicWorkflowEngine` automatically creates `AuthInterceptor` + `ExtensionInterceptor` for agents whose AgentCard declares `securitySchemes` / `securityRequirements` / extensions. Agents without these fields are unaffected.
+
+### AgentCard format normalization
+
+External agent cards may use OpenAPI-style security scheme notation (flat `scheme: "Bearer"`, array-style `securityRequirements`). `AgentCardLoader._normalize_agent_dict()` converts these to the protobuf-compatible format before parsing.  Raw dicts returned by `get_raw_agent_dicts()` preserve the original format.
+
+### TASK-T extension support
+
+When an AgentCard declares the TASK-T extension (`capabilities.extensions[].uri` containing `Task-T`), the engine:
+
+1. Puts the A2AT-generated structured TASK-T prompt into `message.metadata[Task-T-URI]` instead of `parts[].text`
+2. Sends the `A2A-Extensions` HTTP header so the remote agent knows TASK-T is supported
+3. Extracts response text from task metadata as a fallback (besides `artifacts[].parts[].text`)
+
+Sample agents read TASK-T prompts from `message.metadata` in `NegotiationBaseAgentExecutor.execute()`.
+
+### HTTPS / self-signed certificates
+
+The engine's httpx client is created with `verify=False` to support agents behind HTTPS with self-signed certificates. This is safe for internal/development use — for production, configure proper CA verification.
+
 ## Repo layout (what matters)
 
 ```text
@@ -87,13 +117,14 @@ orchestrate/           # Core backend: models, runtime engine, server, registry 
   runtime/exec_engine.py   # DynamicWorkflowEngine
   server/frontend_support_server.py  # FastAPI app & internal API
   server/external_api.py             # External API routes
-common/                # Shared infra: config, LLM, logging, certs, util
+common/                # Shared infra: config, LLM, logging, certs, util, auth
+  auth/                # Agent credential service + extension interceptor (see "Agent authentication")
   custom/              # Pluggable handler pattern (HandlerRegistry)
   llm/                 # LLM abstraction (generic HTTP client + auth strategies)
 workflow-designer/     # React frontend (separate Node project)
 samples/               # Sample A2A agents + start script
 database/              # PostgreSQL support (optional)
-etc/conf/              # server.conf, server.properties, db_config.json
+etc/conf/              # server.conf, server.properties, db_config.json, agent_credentials.json
 test/                  # Unit/module tests (pytest, 12 files)
 tests/                 # Integration tests (1 file, requires running server)
 data/workflow_storage/ # File-based persistence (PSOP, PreFlow, execution records)

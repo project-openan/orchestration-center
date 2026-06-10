@@ -24,6 +24,7 @@ from google.protobuf.json_format import Parse
 from loguru import logger
 
 from orchestrate.registry_client.client_factory import AgentRegistryClientFactory
+from orchestrate.agentcard_loader import _normalize_agent_dict
 
 
 def ok(data: Any = None, message: str = "success") -> dict:
@@ -45,7 +46,7 @@ async def get_agent_cards() -> List[AgentCard]:
         raw = await client.list_exact()
         if not raw:
             raise HTTPException(status_code=404, detail="No available agents found")
-        return [Parse(json.dumps(agent), AgentCard()) for agent in raw]
+        return [Parse(json.dumps(_normalize_agent_dict(agent)), AgentCard()) for agent in raw]
     except HTTPException:
         raise
     except Exception as e:

@@ -26,6 +26,8 @@ from typing import Dict, Any, Optional, Callable, List
 
 import httpx
 from a2a.client import ClientConfig, ClientFactory
+from a2a.client.auth import AuthInterceptor
+from a2a.client.auth import CredentialService
 from a2a.helpers import new_text_message
 from a2a.types import SendMessageRequest
 from google.protobuf.json_format import MessageToJson, MessageToDict
@@ -39,6 +41,8 @@ except ImportError:
     A2ATClient = None
 
 from common.llm import get_llm_instance
+from common.auth import get_auth_manager
+from common.auth.extension_interceptor import ExtensionInterceptor
 from orchestrate.core.model.psop import PSOP, Step, StepType, Task, TaskStatus
 
 class DynamicWorkflowEngine:
@@ -65,6 +69,8 @@ class DynamicWorkflowEngine:
         self.a2at_client = None
         self._httpx_client: Optional[httpx.AsyncClient] = None
         self.execution_context_id = ""
+        self._auth_interceptors: Dict[str, List[Any]] = {}
+        self._setup_agent_auth()
 
         if _A2AT_AVAILABLE:
             from common.a2at_config import get_a2at_env_path, update_a2at_language
@@ -79,13 +85,36 @@ class DynamicWorkflowEngine:
             logger.debug("a2a_t not available, negotiation support disabled")
 
 
+    def _setup_agent_auth(self):
+        auth_manager = get_auth_manager()
+        for card in self.agent_cards:
+            if not hasattr(card, 'name'):
+                continue
+            interceptors = []
+            if card.security_schemes and card.security_requirements:
+                cred_svc = auth_manager.get_service(card.name)
+                if cred_svc is not None:
+                    interceptors.append(AuthInterceptor(cred_svc))
+                    logger.info(f"Agent '{card.name}' configured with AuthInterceptor")
+                else:
+                    logger.debug(f"Agent '{card.name}' has security schemes but no credentials configured, auth disabled")
+            if getattr(card, 'capabilities', None) and card.capabilities.extensions:
+                ext_uris = [ext.uri for ext in card.capabilities.extensions if ext.uri]
+                if ext_uris:
+                    interceptors.append(ExtensionInterceptor(ext_uris))
+                    logger.info(f"Agent '{card.name}' configured with ExtensionInterceptor: {ext_uris}")
+            if interceptors:
+                self._auth_interceptors[card.name] = interceptors
+
     def set_push_callback(self, callback: Callable[[str, Dict[str, Any]], None]):
         self.push_callback = callback
 
     def _get_httpx_client(self) -> httpx.AsyncClient:
         if self._httpx_client is None:
             timeout_config = httpx.Timeout(connect=60, read=60, write=60, pool=10.0)
-            self._httpx_client = httpx.AsyncClient(timeout=timeout_config)
+            self._httpx_client = httpx.AsyncClient(timeout=timeout_config, verify=False)
+            auth_manager = get_auth_manager()
+            auth_manager.set_httpx_client(self._httpx_client)
         return self._httpx_client
 
     async def _close_httpx_client(self):
@@ -179,6 +208,21 @@ class DynamicWorkflowEngine:
         tgt = self._find_step_index(next_name)
         return [tgt] if tgt is not None else []
 
+    def _get_interceptors(self, agent_name: str) -> list:
+        return list(self._auth_interceptors.get(agent_name, []))
+
+    def _get_task_t_uris(self, agent_card) -> list:
+        uris = []
+        if getattr(agent_card, 'capabilities', None) and agent_card.capabilities.extensions:
+            for ext in agent_card.capabilities.extensions:
+                if ext.uri and 'Task-T' in ext.uri:
+                    uris.append(ext.uri)
+        return uris
+
+    def _extract_task_t_uri(self, agent_card) -> Optional[str]:
+        uris = self._get_task_t_uris(agent_card)
+        return uris[0] if uris else None
+
     async def send_message_to_agent(self, agent_name: str, task: str, httpx_client=None):
         return await self._send_with_negotiation(agent_name, task, httpx_client)
 
@@ -232,6 +276,8 @@ class DynamicWorkflowEngine:
             raise RuntimeError(f"Agent not found: {agent_name}")
 
         task_text = task
+        task_t_metadata = None
+        task_t_uri = self._extract_task_t_uri(agent_card)
         skip_prompt_gen = False
         try:
             from common.negotiation_utils import is_follow_up_task
@@ -243,8 +289,12 @@ class DynamicWorkflowEngine:
             try:
                 prompt_result = self.a2at_client.generate_task_prompt(task)
                 if prompt_result.success and prompt_result.prompt_text:
-                    task_text = prompt_result.prompt_text
-                    logger.info(f"[A2AT] Generated task prompt for agent '{agent_name}'")
+                    if task_t_uri:
+                        task_t_metadata = prompt_result.prompt_text
+                        logger.info(f"[A2AT] Generated TASK-T prompt for agent '{agent_name}', will set in metadata")
+                    else:
+                        task_text = prompt_result.prompt_text
+                        logger.info(f"[A2AT] Generated task prompt for agent '{agent_name}'")
                 else:
                     logger.warning(f"[A2AT] Task prompt generation failed, using original task")
             except Exception as e:
@@ -260,11 +310,17 @@ class DynamicWorkflowEngine:
                 ],
                 streaming=agent_card.capabilities.streaming if agent_card.capabilities else False,
             )
-            client = ClientFactory(config).create(agent_card)
+            client = ClientFactory(config).create(agent_card, interceptors=self._get_interceptors(agent_name))
             request_msg = new_text_message(
                 text=task_text,
                 context_id=self.execution_context_id,
             )
+            if task_t_metadata and task_t_uri:
+                from google.protobuf.struct_pb2 import Struct
+                meta = Struct()
+                meta.update({task_t_uri: task_t_metadata})
+                request_msg.metadata.CopyFrom(meta)
+                logger.info(f"[A2AT] Set TASK-T metadata on message for agent '{agent_name}'")
             send_req = SendMessageRequest(message=request_msg)
             send_req_json = MessageToJson(send_req, preserving_proto_field_name=True)
             try:
@@ -315,6 +371,12 @@ class DynamicWorkflowEngine:
                         else:
                             metadata_dict = MessageToDict(metadata, preserving_proto_field_name=True)
                         last_metadata_dict = metadata_dict
+                        if response_text is None and isinstance(metadata_dict, dict):
+                            for key, val in metadata_dict.items():
+                                if isinstance(val, str) and len(val) > 20:
+                                    response_text = val
+                                    logger.info(f"[{agent_name}] Extracted response text from task metadata key '{key}'")
+                                    break
                         try:
                             from common.negotiation_utils import (
                                 extract_negotiation_context_from_task_metadata,
