@@ -19,6 +19,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run unit tests
         run: pytest test/ -v --tb=short
+        env:
+          PYTHONPATH: .
 
   frontend-lint:
     runs-on: ubuntu-latest
