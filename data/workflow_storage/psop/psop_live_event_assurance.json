@@ -1,7 +1,7 @@
 {
   "id": "psop_live_event_assurance",
   "name": "赛事直播应急保障",
-  "description": "解析上海马拉松赛事需求后生成保障策略，LLM根据策略生成结果自动路由到网络优化或应急恢复分支",
+  "description": "面向本市马拉松赛事的端到端通信保障闭环：赛事信息解析与订阅下发、资管转换与带宽保障及功率提升任务下发、无线Agent执行时发现节能SLA冲突经A2A-T协商后关闭一半节能、KQI监控与劣化上报、全量节能关闭与临站协同优化、KQI恢复、赛事结束恢复初始配置。节能SLA冲突协商在无线Agent单步内经引擎协商机制完成，协商内容通过SSE实时推送至前端，不作为独立工作流步骤。",
   "created_at": "2026-06-01T00:00:00Z",
   "steps": [
     {
@@ -9,8 +9,8 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task-event-001",
-          "description": "提取上海马拉松赛事的关键信息并输出结构化赛事数据：赛事路线(外滩→上海体育场，全长42.195km)、预计参赛人数3.5万、直播覆盖时长6小时、直播带宽需求(上行200Mbps/下行500Mbps)、关键保障路段(起终点及20km/30km/40km计时点)。",
+          "task_id": "task-live-001",
+          "description": "作为赛事直播Agent，解析本月本市马拉松赛事需求，输出结构化赛事信息：赛事举办时间、路线（起点→终点及关键路段）、现场直播人数预估、直播带宽上下行需求。并据此向运营商业务保障Agent下发赛事通信保障订阅任务。",
           "agent": "Live Streaming Agent",
           "skill": "赛事信息解析",
           "status": "pending"
@@ -30,8 +30,8 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task-event-002",
-          "description": "根据上海马拉松的赛事需求(42.195km赛道、3.5万参赛者、6小时直播)，生成网络保障策略：带宽保障方案(赛道沿线基站扩容至上行300Mbps)、QoS策略(直播流量标记EF优先级)、覆盖优化(起终点部署应急通信车)、以及策略失败的应急预案(自动回落至保底带宽200Mbps)。同时生成对应的恢复策略预案。",
+          "task_id": "task-live-002",
+          "description": "作为运营商业务保障Agent，接收赛事保障订阅任务。调用资管系统将赛事路线转换为沿线覆盖站点ID及各段带宽上下行要求；制定赛前1小时启动赛事体验保障的计划，对赛事路线覆盖小区启动带宽保障；同时向厂商无线Agent下发网络优化任务：提升赛道沿线基站发射功率、增加覆盖，以保障赛事直播上行带宽需求。",
           "agent": "Assurance Agent",
           "skill": "策略生成",
           "status": "pending"
@@ -40,11 +40,7 @@
       "next": [
         {
           "step": "step3",
-          "condition": "策略生成成功"
-        },
-        {
-          "step": "step4",
-          "condition": "策略生成失败"
+          "condition": ""
         }
       ],
       "layer": 1,
@@ -55,16 +51,16 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task-event-003",
-          "description": "根据前序步骤输出的保障策略，执行网络优化：分析赛道沿线5G基站当前负载(PRB利用率68%，RRC连接数420/小区)，对照保障需求(上行300Mbps)评估是否需要扩容；针对起终点高密度区域规划波束优化和载波聚合；向基站下发QoS策略配置。",
+          "task_id": "task-live-003",
+          "description": "作为厂商无线Agent，执行功率提升与覆盖增强任务。但发现增加功率和频段会违反自身正在运行的节能任务SLA，存在节能与保障冲突，无法单方面执行。据此向任务下发方运营商业务保障Agent提出协商诉求：建议协商关闭部分（一半）节能任务以释放资源完成保障，请保障Agent评估并回复SLA授权方案。收到保障Agent的协商结论后，自行关闭一半节能任务，完成功率提升与覆盖增强配置下发，保障赛事直播上行带宽。",
           "agent": "RAN Agent",
-          "skill": "分析评估",
+          "skill": "网络策略执行",
           "status": "pending"
         }
       ],
       "next": [
         {
-          "step": "end",
+          "step": "step4",
           "condition": ""
         }
       ],
@@ -76,10 +72,117 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task-event-004",
-          "description": "策略生成失败，启动应急预案：恢复赛道沿线基站至原有网络配置，下发保底策略(上行200Mbps、下行500Mbps，QoS标记AF优先级)，确保直播业务最低可用。记录失败原因以便后续排查。",
+          "task_id": "task-live-004",
+          "description": "作为赛事直播Agent，赛事进行中实时显示路线各路段直播KQI。发现部分小区人员密集导致KQI指标下滑、直播出现卡顿。将该劣化事件（含劣化小区、指标、时段）发送给运营商业务保障Agent。",
+          "agent": "Live Streaming Agent",
+          "skill": "KQI监控",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step5",
+          "condition": ""
+        }
+      ],
+      "layer": 1,
+      "context_from": null
+    },
+    {
+      "name": "step5",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "task-live-005",
+          "description": "作为运营商业务保障Agent，接收劣化事件并启动分析。发现接入人数超出预期，原有措施不足。决策：要求无线Agent关闭全部节能措施，并启动劣化小区及邻区临站协同优化以保障体验。",
+          "agent": "Assurance Agent",
+          "skill": "策略生成",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step6",
+          "condition": ""
+        }
+      ],
+      "layer": 1,
+      "context_from": null
+    },
+    {
+      "name": "step6",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "task-live-006",
+          "description": "作为厂商无线Agent，执行保障决策：关闭全部节能措施，对劣化小区及邻区启动临站全局协同优化（功率/频段/邻区切换参数），恢复直播体验。",
+          "agent": "RAN Agent",
+          "skill": "网络策略执行",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step7",
+          "condition": ""
+        }
+      ],
+      "layer": 1,
+      "context_from": null
+    },
+    {
+      "name": "step7",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "task-live-007",
+          "description": "作为赛事直播Agent，复检路线各路段直播KQI，确认劣化已改善、直播恢复流畅。赛事结束后，确认直播保障任务正常完成。",
+          "agent": "Live Streaming Agent",
+          "skill": "KQI监控",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step8",
+          "condition": ""
+        }
+      ],
+      "layer": 1,
+      "context_from": null
+    },
+    {
+      "name": "step8",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "task-live-008",
+          "description": "作为运营商业务保障Agent，综合全流程结果，确认赛事通信保障任务完成。通知无线Agent恢复初始配置（恢复原有功率、覆盖参数，重新启用此前关闭的节能任务）。",
           "agent": "Assurance Agent",
           "skill": "恢复策略下发",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step9",
+          "condition": ""
+        }
+      ],
+      "layer": 1,
+      "context_from": [
+        "*"
+      ]
+    },
+    {
+      "name": "step9",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "task-live-009",
+          "description": "作为厂商无线Agent，接收恢复通知，恢复基站初始配置（功率、覆盖参数），重新启用此前关闭的节能任务，恢复节能SLA。输出恢复完成确认。",
+          "agent": "RAN Agent",
+          "skill": "网络策略执行",
           "status": "pending"
         }
       ],
@@ -94,11 +197,14 @@
     }
   ],
   "related_preflow": null,
-  "user_intent": "上海马拉松赛事的网络直播保障：42.195km赛道、3.5万参赛者、6小时直播。需要生成差异化保障策略，并根据策略生成结果自动选择执行网络优化或应急恢复。",
+  "user_intent": "对本月本市举行的马拉松赛事进行通信保障。需要赛事直播Agent提供赛事时间/路线/人数预估并向保障Agent下发订阅任务；保障Agent调用资管系统把路线转为站点ID与带宽要求、赛前1小时启动带宽保障并向无线Agent下发提升功率任务；无线Agent执行时发现自身节能任务SLA冲突，与保障Agent协商关闭一半节能；直播Agent监控KQI发现劣化并上报；保障Agent分析后要求关闭全部节能并启动临站协同优化；KQI改善赛事结束后，保障Agent通知无线Agent恢复初始配置。",
   "tags": [
     "LiveStreaming",
-    "Conditional",
-    "AutoDerive",
-    "Aggregation"
+    "Assurance",
+    "RAN",
+    "EnergySaving",
+    "Negotiation",
+    "Linear",
+    "ClosedLoop"
   ]
 }
