@@ -17,7 +17,6 @@
 
 import datetime
 import os
-from typing import List
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -27,15 +26,10 @@ from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes
 from loguru import logger
 
 from common.cert.password_generator import PasswordGenerator
-from common.util.cipher_util import encrypt, DEFAULT_ENCODING
 
 
 class CertificateGenerator:
     """Certificate generation utility, providing certificate creation, validation, and related functions."""
-
-    CERT_FILE = "server.cer"
-    KEY_FILE = "server_key.pem"
-    PWD_FILE = "cert_pwd"
 
     KEY_SIZE = 3072
     VALID_YEARS = 99
@@ -46,32 +40,6 @@ class CertificateGenerator:
         self.key_algorithm = key_algorithm
         self.password_generator = PasswordGenerator()
         self.alg = key_algorithm
-
-    def generate_certificates(self, cert_dir: str, cert_usage: List[str]) -> bool:
-        """
-        Generate self-signed certificate.
-        :param cert_dir: Certificate directory path.
-        :param cert_usage: List of certificate usage types. Supports: serverAuth for TLS server auth, dataSigning for data signing
-        :return: True on success, False on failure. False if certificates already exist in the target directory.
-        """
-        try:
-            if self._check_certificates_exists(cert_dir):
-                return False
-
-            if not os.path.exists(cert_dir):
-                os.makedirs(cert_dir, mode=0o700)
-
-            private_key = self._generate_key()
-            self._save_server_cert(cert_dir, private_key, cert_usage)
-            password = self._generate_password()
-            self._save_encrypted_key(cert_dir, private_key, password)
-            self._save_encrypted_password(cert_dir, password)
-            self._set_file_permissions(cert_dir)
-
-            return True
-        except Exception as e:
-            logger.error(f"Certificate generation failed: {e}")
-            return False
 
     def generate_self_signed_cert(self, cert_dir: str, cert_usage: str, password: str) -> bool:
         """
@@ -101,12 +69,6 @@ class CertificateGenerator:
             logger.error(f"Self-signed certificate generation failed: {e}")
             return False
 
-    def _check_certificates_exists(self, cert_dir: str) -> bool:
-        cert_path = os.path.join(cert_dir, self.CERT_FILE)
-        key_path = os.path.join(cert_dir, self.KEY_FILE)
-        pwd_path = os.path.join(cert_dir, self.PWD_FILE)
-        return os.path.exists(cert_path) or os.path.exists(key_path) or os.path.exists(pwd_path)
-
     def _check_self_signed_certificates_exists(self, cert_dir: str) -> bool:
         cert_file = f"server_{self.alg}.cer"
         key_file = f"server_key_{self.alg}.cer"
@@ -119,67 +81,6 @@ class CertificateGenerator:
             return rsa.generate_private_key(public_exponent=65537, key_size=self.KEY_SIZE)
         else:
             raise ValueError(f"Unsupported key algorithm: {self.key_algorithm}")
-
-    def _save_server_cert(self, cert_dir: str, private_key: PrivateKeyTypes, cert_usage: List[str]) -> None:
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.COMMON_NAME, self.SUBJECT),
-        ])
-
-        builder = x509.CertificateBuilder()
-        builder = builder.subject_name(subject)
-        builder = builder.issuer_name(issuer)
-        builder = builder.not_valid_before(datetime.datetime.now(datetime.timezone.utc))
-        builder = builder.not_valid_after(
-            datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=self.VALID_YEARS * 365)
-        )
-        builder = builder.serial_number(x509.random_serial_number())
-        builder = builder.public_key(private_key.public_key())
-
-        extended_key_usage = []
-        if "serverAuth" in cert_usage:
-            extended_key_usage.append(ExtendedKeyUsageOID.SERVER_AUTH)
-        if "dataSigning" in cert_usage:
-            extended_key_usage.append(ExtendedKeyUsageOID.CODE_SIGNING)
-
-        if extended_key_usage:
-            builder = builder.add_extension(
-                x509.ExtendedKeyUsage(extended_key_usage),
-                critical=False
-            )
-
-        builder = builder.add_extension(
-            x509.BasicConstraints(ca=False, path_length=None),
-            critical=True
-        )
-
-        certificate = builder.sign(private_key, hashes.SHA256())
-
-        cert_path = os.path.join(cert_dir, self.CERT_FILE)
-        with open(cert_path, "wb") as f:
-            f.write(certificate.public_bytes(serialization.Encoding.PEM))
-
-    def _generate_password(self) -> bytes:
-        password = self.password_generator.generate_password(16)
-        return password.encode(DEFAULT_ENCODING)
-
-    def _save_encrypted_key(self, cert_dir: str, private_key: PrivateKeyTypes, password: bytes) -> None:
-        encryption_algorithm = serialization.NoEncryption()
-
-        key_path = os.path.join(cert_dir, self.KEY_FILE)
-        with open(key_path, "wb") as f:
-            f.write(private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=encryption_algorithm
-            ))
-
-    def _save_encrypted_password(self, cert_dir: str, password: bytes) -> None:
-        password_str = password.decode(DEFAULT_ENCODING)
-        encrypted_password = encrypt(password_str)
-
-        pwd_path = os.path.join(cert_dir, self.PWD_FILE)
-        with open(pwd_path, "w", encoding=DEFAULT_ENCODING) as f:
-            f.write(encrypted_password)
 
     def _save_self_signed_cert(self, cert_dir: str, private_key: PrivateKeyTypes, cert_usage: str) -> None:
         subject = issuer = x509.Name([
@@ -260,14 +161,5 @@ class CertificateGenerator:
         key_path = os.path.join(cert_dir, key_file)
 
         for file_path in [cert_path, key_path]:
-            if os.path.exists(file_path):
-                os.chmod(file_path, 0o600)
-
-    def _set_file_permissions(self, cert_dir: str) -> None:
-        cert_path = os.path.join(cert_dir, self.CERT_FILE)
-        key_path = os.path.join(cert_dir, self.KEY_FILE)
-        pwd_path = os.path.join(cert_dir, self.PWD_FILE)
-
-        for file_path in [cert_path, key_path, pwd_path]:
             if os.path.exists(file_path):
                 os.chmod(file_path, 0o600)

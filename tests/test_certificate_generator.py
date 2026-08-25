@@ -61,36 +61,6 @@ class TestPasswordGenerator:
         assert len(passwords) > 1
 
 
-class TestCertificateGeneratorLegacyApi:
-    def test_generates_cert_key_and_password_files(self, tmp_path):
-        cert_dir = str(tmp_path / "certs")
-        gen = CertificateGenerator()
-        assert gen.generate_certificates(cert_dir, ["serverAuth"]) is True
-        assert os.path.exists(os.path.join(cert_dir, CertificateGenerator.CERT_FILE))
-        assert os.path.exists(os.path.join(cert_dir, CertificateGenerator.KEY_FILE))
-        assert os.path.exists(os.path.join(cert_dir, CertificateGenerator.PWD_FILE))
-
-    def test_returns_false_without_overwriting_existing_certificates(self, tmp_path):
-        cert_dir = str(tmp_path / "certs")
-        gen = CertificateGenerator()
-        assert gen.generate_certificates(cert_dir, ["serverAuth"]) is True
-        cert_path = os.path.join(cert_dir, CertificateGenerator.CERT_FILE)
-        original_contents = open(cert_path, "rb").read()
-
-        assert gen.generate_certificates(cert_dir, ["serverAuth"]) is False
-        assert open(cert_path, "rb").read() == original_contents
-
-    def test_creates_cert_dir_if_missing(self, tmp_path):
-        cert_dir = str(tmp_path / "nested" / "certs")
-        gen = CertificateGenerator()
-        assert gen.generate_certificates(cert_dir, ["serverAuth"]) is True
-        assert os.path.isdir(cert_dir)
-
-    def test_returns_false_for_unsupported_key_algorithm(self, tmp_path):
-        gen = CertificateGenerator(key_algorithm="DSA")
-        assert gen.generate_certificates(str(tmp_path / "certs"), ["serverAuth"]) is False
-
-
 class TestCertificateGeneratorSelfSignedApi:
     def test_generates_cert_and_key_with_provided_password(self, tmp_path):
         cert_dir = str(tmp_path / "certs")
@@ -117,3 +87,7 @@ class TestCertificateGeneratorSelfSignedApi:
 
         assert gen.generate_self_signed_cert(cert_dir, "serverAuth", "AnotherPass1!") is False
         assert open(key_path, "rb").read() == original_contents
+
+    def test_returns_false_for_unsupported_key_algorithm(self, tmp_path):
+        gen = CertificateGenerator(key_algorithm="DSA")
+        assert gen.generate_self_signed_cert(str(tmp_path / "certs"), "serverAuth", "S3cure!Pass") is False
