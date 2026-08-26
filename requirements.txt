@@ -30,6 +30,7 @@ pymupdf
 limits>=5.8.0
 python-multipart>=0.0.24
 psycopg2-binary>=2.9.10
+cryptography>=41.0.0
 # Development dependencies (install separately for testing):
 pytest>=8.0
 pytest-asyncio>=0.24
