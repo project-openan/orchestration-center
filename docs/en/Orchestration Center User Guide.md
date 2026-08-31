@@ -311,8 +311,21 @@ All services must present valid certificates signed by a trusted CA during TLS h
 For development or internal testing:
 
 ```bash
-python generate_selfsign_cert.py etc/ssl serverAuth
+python -m generate_selfsign_cert etc/ssl serverAuth
 ```
+
+New TLS certificates include SANs for `DNS:localhost`, `IP:127.0.0.1` and `IP:::1` by default.
+For other endpoints, repeat `--dns` / `--ip` for the actual client-facing names; explicit options replace the default SAN list:
+
+```bash
+python -m generate_selfsign_cert etc/ssl-new serverAuth --dns orch.example.test --ip 192.0.2.10
+```
+
+SANs must match the host in the client URL; IP addresses require `--ip`. Setting CN or trusting a certificate does not fix missing SANs.
+Existing certificates are not updated automatically, and the tool refuses to overwrite certificates or private keys.
+For an existing deployment, generate into a new directory, back up and deploy the matching certificate/key pair, then restart.
+Update client trust material where required; do not overwrite the CA store used to authenticate clients.
+`dataSigning` does not add TLS SANs and rejects CLI SAN options.
 
 This generates RSA 3072-bit certificates that comply with the built-in certificate validator. Copy the generated files to the expected names:
 
