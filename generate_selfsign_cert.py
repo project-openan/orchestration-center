@@ -19,23 +19,27 @@
 """Standalone self-signed certificate generation tool for the orchestration center.
 
 Usage:
-    python generate_selfsign_cert.py <cert_dir> <cert_usage>
+    python -m generate_selfsign_cert <cert_dir> <cert_usage> [--dns HOST] [--ip ADDRESS]
 
     cert_dir:   Certificate directory path
     cert_usage: serverAuth (TLS communication) or dataSigning (data signing)
 
 The password for the private key is entered interactively.
+serverAuth defaults to localhost, 127.0.0.1 and ::1; explicit SAN options replace these defaults.
 """
 
+import argparse
 import sys
 
 from common.cert.certificate_generator import CertificateGenerator
 from common.util.password_util import input_password_with_validation
 
 
-def generate_self_signed_cert(cert_dir: str, cert_usage: str, password: str) -> bool:
+def generate_self_signed_cert(cert_dir: str, cert_usage: str, password: str, *,
+                              dns_names: list[str] | None = None,
+                              ip_addresses: list[str] | None = None) -> bool:
     try:
-        generator = CertificateGenerator(key_algorithm='RSA')
+        generator = CertificateGenerator(key_algorithm='RSA', dns_names=dns_names, ip_addresses=ip_addresses)
         success = generator.generate_self_signed_cert(cert_dir, cert_usage, password)
 
         if success:
@@ -52,22 +56,19 @@ def generate_self_signed_cert(cert_dir: str, cert_usage: str, password: str) -> 
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python generate_selfsign_cert.py <cert_dir> <cert_usage>")
-        print("  cert_dir: Certificate directory path")
-        print("  cert_usage: Certificate usage (serverAuth or dataSigning)")
-        sys.exit(1)
-
-    cert_dir = sys.argv[1]
-    cert_usage = sys.argv[2]
-
-    if cert_usage not in ["serverAuth", "dataSigning"]:
-        print("Error: cert_usage must be 'serverAuth' or 'dataSigning'")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("cert_dir", help="New certificate directory; existing files are not overwritten")
+    parser.add_argument("cert_usage", choices=("serverAuth", "dataSigning"))
+    parser.add_argument("--dns", action="append", help="DNS SAN; repeat for multiple hostnames")
+    parser.add_argument("--ip", action="append", help="IP SAN; repeat for IPv4 or IPv6 addresses")
+    args = parser.parse_args()
+    if args.cert_usage == "dataSigning" and (args.dns or args.ip):
+        parser.error("--dns and --ip apply only to serverAuth certificates")
 
     password = input_password_with_validation("Enter private key password")
 
-    if generate_self_signed_cert(cert_dir, cert_usage, password):
+    if generate_self_signed_cert(args.cert_dir, args.cert_usage, password,
+                                 dns_names=args.dns, ip_addresses=args.ip):
         sys.exit(0)
     else:
         sys.exit(1)
