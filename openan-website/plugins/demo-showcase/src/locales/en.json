@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "demos": "Demos"
+  },
+  "title": "Demo Showcase",
+  "subtitle": "Interactive & presentation demos powered by PortalContext",
+  "category": {
+    "interactive": "Interactive Demos",
+    "interactive_desc": "Hands-on demos you can click, type, and interact with",
+    "presentation": "Presentation Demos",
+    "presentation_desc": "Visual demonstrations of framework capabilities"
+  },
+  "back": "Back to all demos",
+  "demo": {
+    "auth_status": "Auth State Inspector",
+    "auth_status_desc": "Real-time view of PortalContext.auth values",
+    "api_call": "Live API Call",
+    "api_call_desc": "Fetch agent cards via PortalContext.api",
+    "sse_stream": "SSE Stream Simulator",
+    "sse_stream_desc": "Simulated server-sent events streaming",
+    "theme_playground": "Theme Playground",
+    "theme_playground_desc": "Toggle dark/light and see CSS variables change",
+    "i18n_showcase": "i18n Showcase",
+    "i18n_showcase_desc": "Switch languages and see translations update live",
+    "context_inspector": "PortalContext Inspector",
+    "context_inspector_desc": "Full dump of all shared services",
+    "navigation_demo": "Navigation Demo",
+    "navigation_demo_desc": "Programmatic navigation between Portal routes"
+  },
+  "auth": {
+    "authenticated": "Authenticated",
+    "not_authenticated": "Not Authenticated",
+    "user": "Current User",
+    "role": "Role",
+    "auth_required": "Auth Required",
+    "login_btn": "Simulate Login",
+    "logout_btn": "Simulate Logout"
+  },
+  "api": {
+    "fetch_btn": "Fetch Agent Cards",
+    "fetching": "Fetching...",
+    "result": "API Response",
+    "count": "cards returned",
+    "error": "API Error"
+  },
+  "sse": {
+    "start_btn": "Start SSE Stream",
+    "stop_btn": "Stop",
+    "events": "Events Received",
+    "waiting": "Waiting for events...",
+    "connected": "SSE Connected",
+    "closed": "SSE Closed"
+  },
+  "theme": {
+    "current": "Current Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "toggle": "Toggle Theme",
+    "sample_text": "The quick brown fox jumps over the lazy dog",
+    "card_title": "Theme Card",
+    "card_body": "This card changes appearance based on the theme."
+  },
+  "i18n": {
+    "current_lang": "Current Language",
+    "switch_en": "Switch to English",
+    "switch_zh": "Switch to Chinese",
+    "greeting": "Hello from the Portal Framework!",
+    "timestamp_label": "Live timestamp (updates every second)",
+    "color_label": "Color",
+    "number_label": "Number",
+    "date_label": "Formatted Date"
+  },
+  "context": {
+    "title": "PortalContext Full Dump",
+    "api_section": "API Client",
+    "auth_section": "Auth Service",
+    "theme_section": "Theme Service",
+    "i18n_section": "i18n Service",
+    "router_section": "Router Service",
+    "base_url": "Base URL",
+    "timeout": "Timeout",
+    "with_credentials": "With Credentials"
+  },
+  "nav_demo": {
+    "title": "Programmatic Navigation",
+    "desc": "Click a button to navigate to another plugin route via PortalContext.navigate()",
+    "go_registry": "Go to Registry Center",
+    "go_orchestration": "Go to Orchestration Center",
+    "go_execution": "Go to Execution Center"
+  }
+}

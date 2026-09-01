@@ -1,0 +1,13 @@
+{
+  "nav": {
+    "hello": "门户验证"
+  },
+  "content": {
+    "title": "插件框架验证",
+    "description": "此 Mock 插件确认 Portal 的可插拔架构端到端可用。",
+    "user_label": "当前用户",
+    "theme_label": "主题",
+    "i18n_label": "语言",
+    "api_label": "API 端点"
+  }
+}

@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Plugin route transition — mirrors the original workflow-designer's
+   animate-in class for a smooth fade when switching plugins. */
+@keyframes portal-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+    animation: portal-fade-in 0.2s ease-out;
+}

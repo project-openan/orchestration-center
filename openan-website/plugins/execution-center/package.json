@@ -1,0 +1,23 @@
+{
+    "name":  "@openan-plugins/execution-center",
+    "version":  "0.1.0",
+    "private":  true,
+    "type":  "module",
+    "exports":  {
+                    ".":  "./src/index.jsx",
+                    "./plugin.manifest":  "./plugin.manifest.js",
+                    "./plugin.manifest.js":  "./plugin.manifest.js"
+                },
+    "dependencies":  {
+                         "@openan/shared-workflow":  "*"
+                     },
+    "peerDependencies":  {
+                             "react":  "^18.0.0",
+                             "react-dom":  "^18.0.0"
+                         },
+    "devDependencies":  {
+                            "@module-federation/vite":  "^1.0.0",
+                            "vite":  "^8.0.1",
+                            "@vitejs/plugin-react":  "^6.0.1"
+                        }
+}

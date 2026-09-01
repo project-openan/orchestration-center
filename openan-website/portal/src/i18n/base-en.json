@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "brand": "OpenAN",
+    "subtitle": "Open Autonomous Networks"
+  },
+  "login": {
+    "title": "Access Password",
+    "username_placeholder": "Username",
+    "placeholder": "Enter access password...",
+    "button": "Enter",
+    "loading": "Verifying...",
+    "error": "Login failed, please check your password",
+    "logout": "Logout"
+  },
+  "portal": {
+    "loading": "Loading...",
+    "no_plugins": "No plugins enabled. Check plugins.config.js"
+  },
+  "plugin_manager": {
+    "title": "Plugin Management",
+    "subtitle": "Enable or disable plugins at runtime",
+    "total": "Total",
+    "active": "Active",
+    "disabled": "Disabled",
+    "enabled": "Enabled",
+    "enable": "Enable",
+    "disable": "Disable",
+    "version": "Version",
+    "routes": "Routes",
+    "no_menu": "No menu items",
+    "view_config": "View manifest",
+    "close": "Close"
+  },
+  "common": {
+    "loading": "Loading...",
+    "add": "Add",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "confirm_delete": "confirm delete?",
+    "delete_success": "Deleted successfully",
+    "delete_failed": "Delete failed",
+    "copied": "Copied!",
+    "copy_raw_json": "Copy Raw JSON",
+    "chars": "chars"
+  }
+}

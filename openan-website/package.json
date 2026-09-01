@@ -1,0 +1,37 @@
+{
+  "name": "openan-website",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "OpenAN Unified Web Framework — Pluggable Portal",
+  "workspaces": [
+    "packages/*",
+    "portal",
+    "plugins/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev-all.js",
+    "dev:portal": "npm -w portal run dev",
+    "build": "npm -w portal run build",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.5.0",
+    "eslint": "9.26.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^15.0.0"
+  },
+  "dependencies": {
+    "@module-federation/runtime": "^2.9.0",
+    "@module-federation/vite": "^1.20.8",
+    "@tisoap/react-flow-smart-edge": "^4.5.0",
+    "@xyflow/react": "^12.11.0",
+    "dagre": "^0.8.5",
+    "libgif": "^0.0.3",
+    "mobile-drag-drop": "^3.0.0-rc.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  }
+}

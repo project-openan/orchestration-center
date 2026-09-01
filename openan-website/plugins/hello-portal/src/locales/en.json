@@ -1,0 +1,13 @@
+{
+  "nav": {
+    "hello": "Hello Portal"
+  },
+  "content": {
+    "title": "Plugin Framework Validation",
+    "description": "This mock plugin confirms the Portal's pluggable architecture works end-to-end.",
+    "user_label": "Current User",
+    "theme_label": "Theme",
+    "i18n_label": "Language",
+    "api_label": "API Endpoint"
+  }
+}

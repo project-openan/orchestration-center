@@ -1,0 +1,49 @@
+{
+  "nav": {
+    "brand": "OpenAN",
+    "subtitle": "开放自治网络"
+  },
+  "login": {
+    "title": "访问密码",
+    "username_placeholder": "用户名",
+    "placeholder": "请输入访问密码...",
+    "button": "进入",
+    "loading": "验证中...",
+    "error": "登录失败，请检查密码",
+    "logout": "退出"
+  },
+  "portal": {
+    "loading": "加载中...",
+    "no_plugins": "没有启用的插件，请检查 plugins.config.js"
+  },
+  "plugin_manager": {
+    "title": "插件管理",
+    "subtitle": "运行时启用或禁用插件",
+    "total": "总数",
+    "active": "已启用",
+    "disabled": "已禁用",
+    "enabled": "已启用",
+    "enable": "启用",
+    "disable": "禁用",
+    "version": "版本",
+    "routes": "路由",
+    "no_menu": "无菜单项",
+    "view_config": "查看清单",
+    "close": "关闭"
+  },
+  "common": {
+    "loading": "加载中...",
+    "add": "添加",
+    "delete": "删除",
+    "confirm": "确定",
+    "cancel": "取消",
+    "save": "保存",
+    "close": "关闭",
+    "confirm_delete": "确认删除？",
+    "delete_success": "删除成功",
+    "delete_failed": "删除失败",
+    "copied": "已复制！",
+    "copy_raw_json": "复制原始 JSON",
+    "chars": "字符"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@openan-plugins/demo-showcase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.jsx",
+    "./plugin.manifest": "./plugin.manifest.js",
+    "./plugin.manifest.js": "./plugin.manifest.js"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}

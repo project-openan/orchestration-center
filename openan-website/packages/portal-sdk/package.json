@@ -1,0 +1,19 @@
+{
+  "name": "@openan/portal-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plugin spec & shared contracts for the OpenAN Portal",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./standalone": "./src/standalone.jsx"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "axios": "^1.16.0"
+  }
+}

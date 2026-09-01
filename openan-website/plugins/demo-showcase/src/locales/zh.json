@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "demos": "演示"
+  },
+  "title": "Demo 展示",
+  "subtitle": "基于 PortalContext 的交互式 & 演示 Demo",
+  "category": {
+    "interactive": "交互式 Demo",
+    "interactive_desc": "可以点击、输入、交互的实战 Demo",
+    "presentation": "演示 Demo",
+    "presentation_desc": "框架能力的可视化演示"
+  },
+  "back": "返回全部 Demo",
+  "demo": {
+    "auth_status": "认证状态查看器",
+    "auth_status_desc": "实时展示 PortalContext.auth 的值",
+    "api_call": "实时 API 调用",
+    "api_call_desc": "通过 PortalContext.api 获取 Agent 卡片",
+    "sse_stream": "SSE 流式模拟",
+    "sse_stream_desc": "模拟服务器推送事件流",
+    "theme_playground": "主题游乐场",
+    "theme_playground_desc": "切换暗色/亮色,查看 CSS 变量变化",
+    "i18n_showcase": "国际化展示",
+    "i18n_showcase_desc": "切换语言,实时查看翻译更新",
+    "context_inspector": "PortalContext 检查器",
+    "context_inspector_desc": "所有共享服务的完整转储",
+    "navigation_demo": "导航演示",
+    "navigation_demo_desc": "通过 PortalContext.navigate() 编程式导航"
+  },
+  "auth": {
+    "authenticated": "已认证",
+    "not_authenticated": "未认证",
+    "user": "当前用户",
+    "role": "角色",
+    "auth_required": "需要认证",
+    "login_btn": "模拟登录",
+    "logout_btn": "模拟登出"
+  },
+  "api": {
+    "fetch_btn": "获取 Agent 卡片",
+    "fetching": "获取中...",
+    "result": "API 响应",
+    "count": "个卡片",
+    "error": "API 错误"
+  },
+  "sse": {
+    "start_btn": "启动 SSE 流",
+    "stop_btn": "停止",
+    "events": "已接收事件",
+    "waiting": "等待事件...",
+    "connected": "SSE 已连接",
+    "closed": "SSE 已关闭"
+  },
+  "theme": {
+    "current": "当前主题",
+    "dark": "暗色",
+    "light": "亮色",
+    "toggle": "切换主题",
+    "sample_text": "敏捷的棕色狐狸跳过了懒惰的狗",
+    "card_title": "主题卡片",
+    "card_body": "此卡片的外观会根据主题变化。"
+  },
+  "i18n": {
+    "current_lang": "当前语言",
+    "switch_en": "切换到英文",
+    "switch_zh": "切换到中文",
+    "greeting": "来自 Portal 框架的问候!",
+    "timestamp_label": "实时时间戳(每秒更新)",
+    "color_label": "颜色",
+    "number_label": "数字",
+    "date_label": "格式化日期"
+  },
+  "context": {
+    "title": "PortalContext 完整转储",
+    "api_section": "API 客户端",
+    "auth_section": "认证服务",
+    "theme_section": "主题服务",
+    "i18n_section": "i18n 服务",
+    "router_section": "路由服务",
+    "base_url": "基础 URL",
+    "timeout": "超时",
+    "with_credentials": "携带凭证"
+  },
+  "nav_demo": {
+    "title": "编程式导航",
+    "desc": "点击按钮通过 PortalContext.navigate() 导航到其他插件路由",
+    "go_registry": "前往注册中心",
+    "go_orchestration": "前往编排中心",
+    "go_execution": "前往执行中心"
+  }
+}

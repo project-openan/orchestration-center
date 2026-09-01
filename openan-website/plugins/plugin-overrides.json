@@ -1,0 +1,8 @@
+{
+    "_comment": "Per-plugin overrides for delivery scenarios. Set enabled:false to exclude a plugin from the build (tree-shaken). Adding a plugin requires NO entry here — drop the folder into plugins/ and it is auto-discovered.",
+    "registry-center": { "enabled": true },
+    "orchestration-center": { "enabled": true },
+    "execution-center": { "enabled": true },
+    "demo-showcase": { "enabled": true },
+    "hello-portal": { "enabled": false }
+}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>OpenAN Portal</title>
+</head>
+<body>
+    <div id="root"></div>
+    <div id="error-display" style="position:fixed;bottom:0;left:0;right:0;max-height:50vh;overflow:auto;background:#1a1a1a;color:#ff5555;font-family:monospace;font-size:12px;padding:12px;display:none;z-index:99999;white-space:pre-wrap;"></div>
+    <script>
+        window.addEventListener('error', function(e) {
+            var d = document.getElementById('error-display');
+            d.style.display = 'block';
+            d.textContent += '[ERROR] ' + (e.error ? e.error.stack : e.message) + '\n';
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            var d = document.getElementById('error-display');
+            d.style.display = 'block';
+            d.textContent += '[PROMISE] ' + (e.reason && e.reason.stack ? e.reason.stack : String(e.reason)) + '\n';
+        });
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

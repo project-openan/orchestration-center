@@ -1,0 +1,14 @@
+{
+    "include":  [
+                    "src"
+                ],
+    "compilerOptions":  {
+                            "emitDeclarationOnly":  true,
+                            "jsx":  "react-jsx",
+                            "outDir":  "dist/types",
+                            "moduleResolution":  "bundler",
+                            "module":  "ESNext",
+                            "target":  "ESNext",
+                            "declaration":  true
+                        }
+}
