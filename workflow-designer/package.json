@@ -1,11 +1,13 @@
 {
   "name": "multi-agent-dp-demo",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
+  "description": "Orchestration Center frontend — runs standalone or integrates into the OpenAN Portal as a plugin (UMD bundle).",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "build:plugin": "vite build --config vite.bundle.config.js",
     "lint": "eslint .",
     "coverage": "vitest run --coverage",
     "preview": "vite preview"
@@ -31,6 +33,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@openan/portal-sdk": "file:./portal-sdk",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/typography": "^0.5.19",
     "@types/react": "^19.2.14",
