@@ -2,6 +2,31 @@
 
 A modern, high-performance orchestration platform for multi-agent systems. This prototype provides a visual interface for designing workflows and managing agent registries.
 
+## Runtime Modes
+
+The website runs **standalone** or integrates into the **OpenAN Portal** as a plugin:
+
+### Standalone (own shell)
+
+```bash
+npm install
+npm run dev          # → http://localhost:3003 (Header / theme / i18n included)
+```
+
+### OpenAN Portal plugin (UMD artifact)
+
+```bash
+npm run build:plugin
+# → dist-plugin/
+#   ├── index.js              UMD, sets window.__OPENAN_PLUGIN__orchestration_center
+#   ├── index.css             compiled styles
+#   └── plugin.manifest.json  runtime metadata
+```
+
+The Portal loads the artifact locally (copy under its `public/plugins/orchestration-center/`) or remotely (served by this repo with CORS). React / react-dom / react-i18next / @openan/portal-sdk stay external — the Portal provides them at runtime.
+
+In plugin mode, `src/index.jsx` consumes `usePortalContext()` (theme + api) and routes every service-layer request through the Portal's axios instance via `setApiClient()`; standalone mode keeps the local instance with the same-origin dev proxy.
+
 ## 🚀 Features
 
 - **Visual Workflow Designer**: Drag-and-drop interface for building complex agent orchestrations, powered by [React Flow](https://reactflow.dev/).

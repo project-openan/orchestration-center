@@ -24,3 +24,4 @@ Thumbs.db
 
 # 测试覆盖
 coverage/
+dist-plugin/

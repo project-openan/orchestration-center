@@ -51,12 +51,33 @@ export const getBaseUrl = () => {
 
 const ORCHESTRATE_BASE = () => `${getBaseUrl()}/rest/v1/orchestrate`;
 
-const api = axios.create({ timeout: 120000 });
+// withCredentials: true so the httpOnly session cookie is sent on every
+// request (and stored from every Set-Cookie response) -- same-origin via
+// the gateway path this makes no difference, but it's what a cross-origin
+// direct-IP deployment needs for the cookie to attach at all.
+const localApi = axios.create({ timeout: 120000, withCredentials: true });
 
-api.interceptors.response.use(
+localApi.interceptors.response.use(
     (response) => response.data,
-    (error) => Promise.reject(error)
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            window.dispatchEvent(new Event('auth-expired'));
+        }
+        return Promise.reject(error);
+    }
 );
+
+// Injectable client — the OpenAN Portal plugin entry calls setApiClient() with
+// PortalContext.api at mount so every request flows through the Portal's
+// axios instance (per-plugin gateway, auth cookie). Standalone mode never
+// calls it and keeps the local instance above.
+let api = localApi;
+
+export function setApiClient(instance) {
+    if (instance && typeof instance.get === 'function') {
+        api = instance;
+    }
+}
 
 // ──── Agent Cards ────
 
