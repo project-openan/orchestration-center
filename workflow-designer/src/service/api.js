@@ -63,9 +63,9 @@ const ORCHESTRATE_BASE = () => `${getBaseUrl()}/rest/v1/orchestrate`;
 // request (and stored from every Set-Cookie response) -- same-origin via
 // the gateway path this makes no difference, but it's what a cross-origin
 // direct-IP deployment needs for the cookie to attach at all.
-const api = axios.create({ timeout: 120000, withCredentials: true });
+const localApi = axios.create({ timeout: 120000, withCredentials: true });
 
-api.interceptors.response.use(
+localApi.interceptors.response.use(
     (response) => response.data,
     (error) => {
         if (error.response && error.response.status === 401) {
@@ -74,6 +74,18 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// Injectable client — the OpenAN Portal plugin entry calls setApiClient() with
+// PortalContext.api at mount so every request flows through the Portal's
+// axios instance (per-plugin gateway, auth cookie). Standalone mode never
+// calls it and keeps the local instance above.
+let api = localApi;
+
+export function setApiClient(instance) {
+    if (instance && typeof instance.get === 'function') {
+        api = instance;
+    }
+}
 
 // ──── Agent Cards ────
 
