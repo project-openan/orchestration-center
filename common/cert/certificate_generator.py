@@ -16,7 +16,9 @@
 #    under the License.
 
 import datetime
+import ipaddress
 import os
+import re
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -36,10 +38,37 @@ class CertificateGenerator:
     ISSUER = "orchestration-center"
     SUBJECT = "orchestration-center"
 
-    def __init__(self, key_algorithm: str = 'RSA'):
+    def __init__(self, key_algorithm: str = 'RSA', *,
+                 dns_names: list[str] | None = None, ip_addresses: list[str] | None = None):
+        """Use loopback SANs by default; explicit lists replace the complete SAN set."""
         self.key_algorithm = key_algorithm
         self.password_generator = PasswordGenerator()
         self.alg = key_algorithm
+        local_defaults = dns_names is None and ip_addresses is None
+        self.dns_names = ["localhost"] if local_defaults else list(dns_names or [])
+        self.ip_addresses = ["127.0.0.1", "::1"] if local_defaults else list(ip_addresses or [])
+
+    def _server_san(self) -> x509.SubjectAlternativeName:
+        names = []
+        for value in self.dns_names:
+            name = value.rstrip(".").encode("idna").decode("ascii").lower()
+            labels = name.split(".")
+            if labels[0] == "*":
+                labels = labels[1:]
+            if not labels or len(name) > 253 or any(
+                    not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label)
+                    for label in labels):
+                raise ValueError("DNS SAN must be a hostname, not a URL or host:port")
+            try:
+                ipaddress.ip_address(name)
+            except ValueError:
+                names.append(x509.DNSName(name))
+            else:
+                raise ValueError("IP addresses must use ip_addresses / --ip, not DNS SAN")
+        names.extend(x509.IPAddress(ipaddress.ip_address(value)) for value in self.ip_addresses)
+        if not names:
+            raise ValueError("A serverAuth certificate requires at least one DNS or IP SAN")
+        return x509.SubjectAlternativeName(list(dict.fromkeys(names)))
 
     def generate_self_signed_cert(self, cert_dir: str, cert_usage: str, password: str) -> bool:
         """
@@ -50,6 +79,10 @@ class CertificateGenerator:
         :return: True on success, False on failure. False if certificates already exist in the target directory.
         """
         try:
+            if cert_usage not in ("serverAuth", "dataSigning"):
+                raise ValueError("Certificate usage must be serverAuth or dataSigning")
+            if cert_usage == "serverAuth":
+                self._server_san()  # Validate before creating files or generating a private key.
             if self._check_self_signed_certificates_exists(cert_dir):
                 return False
 
@@ -71,7 +104,7 @@ class CertificateGenerator:
 
     def _check_self_signed_certificates_exists(self, cert_dir: str) -> bool:
         cert_file = f"server_{self.alg}.cer"
-        key_file = f"server_key_{self.alg}.cer"
+        key_file = f"server_key_{self.alg}.pem"
         cert_path = os.path.join(cert_dir, cert_file)
         key_path = os.path.join(cert_dir, key_file)
         return os.path.exists(cert_path) or os.path.exists(key_path)
@@ -128,6 +161,7 @@ class CertificateGenerator:
                 x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),
                 critical=False
             )
+            builder = builder.add_extension(self._server_san(), critical=False)
 
         builder = builder.add_extension(
             x509.BasicConstraints(ca=False, path_length=None),
@@ -155,7 +189,7 @@ class CertificateGenerator:
 
     def _set_self_signed_file_permissions(self, cert_dir: str) -> None:
         cert_file = f"server_{self.alg}.cer"
-        key_file = f"server_key_{self.alg}.cer"
+        key_file = f"server_key_{self.alg}.pem"
 
         cert_path = os.path.join(cert_dir, cert_file)
         key_path = os.path.join(cert_dir, key_file)
