@@ -339,6 +339,39 @@ echo -n "<password>" > cert_pwd
 
 For production, use certificates from a trusted CA (Let's Encrypt, Alibaba Cloud SSL, or enterprise CA).
 
+### Cross-Node Deployment and Integration
+
+When a client (for example, the workflow execution engine, or any system calling the orchestration REST API) runs on a different node from this service, complete the following:
+
+**1. Server bind address**
+
+`etc/conf/server.conf` defaults to `ip=127.0.0.1`, which listens on loopback only; other nodes cannot connect. For cross-node deployment, set the actual NIC IP or `0.0.0.0`, and open the service port (default 5001) between the nodes.
+
+**2. Certificate SANs must cover the address clients use**
+
+The host or IP in the client URL must appear in the server certificate SAN (see the generation command above). Note:
+
+- Explicit `--dns` / `--ip` options **replace** the default loopback SAN list; if local access is still required, list `localhost` and `127.0.0.1` explicitly as well;
+- When clients connect by IP (for example, `https://192.0.2.10:5001`), the IP must be added with `--ip`; DNS SANs and IP SANs are not interchangeable.
+
+**3. Client integration with self-signed certificates**
+
+| Approach | Suitable for | Notes |
+|---|---|---|
+| Skip certificate-chain verification (for example, engine-side `sslVerify=false`) | Development / testing | Skips only chain verification. Most clients (Java JDK HttpClient in particular) still perform hostname verification, so the certificate SAN must match the accessed address. The two checks are independent; disabling one does not disable the other |
+| Import the trust certificate and keep verification on | Production | Import this service's `trust.cer` into the client trust store and leave certificate verification enabled |
+
+Importing the trust store on a Java client:
+
+```bash
+keytool -importcert -alias openan-orchestration -file trust.cer \
+    -keystore client-trust.jks -storepass <password> -noprompt
+```
+
+Using the workflow execution engine as the integration example, a cross-node deployment requires updating the engine-side orchestration address (`orchUrl`) to the real service address; when verification is enabled, point the engine's CA certificate path at the trust store above and enable `sslVerify`.
+
+If the server enables mutual TLS (`verify_client=true`), clients must additionally present a client certificate signed by `trust.cer`; otherwise the TLS handshake is rejected, regardless of any client-side verification skipping.
+
 
 ## 3. Usage
 
