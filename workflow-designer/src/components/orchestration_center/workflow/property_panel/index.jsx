@@ -337,7 +337,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                                 </label>
                                 <div className="flex flex-col gap-2.5">
                                     {data.subtasks.map((task, idx) => (
-                                        <div key={`${task.agent}-${task.skill}-${idx}`} className={`group/task relative p-3 rounded-xl border transition-all ${isDark ? 'bg-zinc-900 border-zinc-800/50' : 'bg-zinc-50 border-zinc-200/50 shadow-sm'}`}>
+                                        <div key={idx} className={`group/task relative p-3 rounded-xl border transition-all ${isDark ? 'bg-zinc-900 border-zinc-800/50' : 'bg-zinc-50 border-zinc-200/50 shadow-sm'}`}>
                                             <div className="flex justify-between items-center mb-1.5">
                                                 <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tight">{task.agent}</span>
                                                 <div className="flex items-center gap-2">
@@ -422,7 +422,6 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                                 >
                                     <option value="AllSuccess">{t('workflow.panel.stepTypeAllSuccess')}</option>
                                     <option value="AnySuccess">{t('workflow.panel.stepTypeAnySuccess')}</option>
-                                    <option value="SelfLoop">{t('workflow.panel.stepTypeSelfLoop')}</option>
                                 </select>
                             </div>
 

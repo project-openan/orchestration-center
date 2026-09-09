@@ -8,27 +8,6 @@
       "skills": "技能中心"
     }
   },
-  "login": {
-    "title": "访问密码",
-    "username_placeholder": "用户名",
-    "placeholder": "请输入访问密码...",
-    "button": "进入",
-    "loading": "验证中...",
-    "error": "登录失败，请检查密码是否正确",
-    "logout": "退出登录",
-    "register_title": "注册",
-    "register_button": "注册",
-    "confirm_password": "确认密码...",
-    "no_account": "还没有账号？",
-    "have_account": "已有账号？",
-    "password_mismatch": "两次密码不一致",
-    "password_too_short": "密码至少8位",
-    "password_complexity": "密码必须包含大写字母、小写字母和数字",
-    "change_password": "修改密码",
-    "current_password": "当前密码",
-    "new_password": "新密码",
-    "must_change_password": "该账户正在使用默认密码，请设置新密码后继续。"
-  },
   "execution": {
     "title": "工作流执行",
     "execute": "开始执行",
@@ -59,9 +38,6 @@
     "interface_label": "工作流预览",
     "ai_gen": "自然语言编排",
     "native": "原生编排",
-    "select_agent": "选择宿主智能体",
-    "dispatch": "派发",
-    "dispatching": "派发中...",
     "generating_wf": "正在生成工作流...",
     "standby": "待命",
     "interaction": "交互",
@@ -246,8 +222,7 @@
       "contextFromHintLayer0": "执行层节点仅依据任务描述执行，不引用上游步骤输出。",
       "contextFromAll": "所有前驱节点",
       "contextFromAuto": "自动推导（默认）",
-      "contextFromNone": "无可用上游步骤",
-      "stepTypeSelfLoop": "自处理（SelfLoop）：该步骤由当前工作流执行者本地处理，不通过 A2A-T 协议发送给其他智能体。适用于汇总、分析等自身任务。"
+      "contextFromNone": "无可用上游步骤"
     },
     "export": {
       "success": "工作流保存成功",
@@ -270,8 +245,7 @@
     "exit": {
       "title": "确认退出",
       "desc": "您有未保存的修改，退出将丢失这些修改。确定要退出吗？"
-    },
-    "selfLoop": "自处理"
+    }
   },
   "registry": {
     "title": "Agent库",
@@ -365,11 +339,6 @@
   },
   "error": {
     "parse_failed": "解析拖拽的 Agent 模板失败。"
-  },
-  "error_boundary": {
-    "title": "发生错误",
-    "message": "此部分发生了意外错误。",
-    "try_again": "重试"
   },
   "skills": {
     "title": "技能中心",

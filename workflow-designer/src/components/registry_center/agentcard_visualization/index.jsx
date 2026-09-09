@@ -16,18 +16,6 @@
 //    under the License.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-
-const unescapeJsonString = (str) => {
-    if (!str || typeof str !== 'string') return str;
-    return str
-        .replace(/\\n/g, '\n')
-        .replace(/\\t/g, '\t')
-        .replace(/\\r/g, '\r')
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, '\\');
-};
 import {
     Server,
     Globe,
@@ -191,22 +179,32 @@ const AgentDashboard = ({ agent, isDark }) => {
                             icon={Terminal}
                             theme={theme}
                         >
-                            <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {agent.skills.map((skill, index) => {
                                     const uniqueKey = `skill-${skill.id || 'no-id'}-${skill.name}-${index}`;
                                     return (
                                         <div
                                             key={uniqueKey}
-                                            className={`group p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
+                                            className={`group relative p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
                                             <div className="flex justify-between items-start mb-2">
                                                 <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
                                                     {skill.name}
                                                 </span>
                                             </div>
-                                            <p className={`text-sm break-words ${theme.textSecondary} mb-3`}>
+                                            <p className={`text-base ${theme.textSecondary} line-clamp-2 mb-3`}>
                                                 {skill.description}
                                             </p>
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="absolute bottom-[calc(100%-10px)] left-1/2 -translate-x-1/2 invisible opacity-0 translate-y-1
+                                                group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-out z-30 w-full min-w-[200px] max-w-[280px]
+                                                pointer-events-none">
+                                                <div className={`relative px-3 py-2 rounded-lg shadow-xl border text-sm leading-relaxed
+                                                    ${isDark ? 'bg-zinc-800 text-slate-200 border-zinc-700' : 'bg-white text-slate-700 border-slate-200'}`}>
+                                                    {skill.description}
+                                                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-b border-r
+                                                        ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-slate-200'}`} />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 mt-auto">
                                                 {(skill.tags || []).map(tag => (
                                                     <span key={tag}
                                                         className={`text-[10px] px-1.5 py-0.5 rounded border ${theme.border} ${theme.textSecondary}`}>
@@ -216,33 +214,13 @@ const AgentDashboard = ({ agent, isDark }) => {
                                             </div>
                                             {(skill.examples || []).length > 0 && (
                                                 <details className="mt-3">
-                                                    <summary className={`text-xs cursor-pointer ${theme.textSecondary} hover:${theme.textPrimary} select-none`}>
-                                                        示例 ({skill.examples.length})
+                                                    <summary className={`text-xs cursor-pointer ${theme.textSecondary} hover:${theme.textPrimary}`}>
+                                                        {`示例 (${skill.examples.length})`}
                                                     </summary>
-                                                    <div className="mt-3 space-y-4 max-h-96 overflow-y-auto">
+                                                    <div className={`mt-2 space-y-2 max-h-60 overflow-y-auto text-xs leading-relaxed font-mono whitespace-pre-wrap p-2 rounded ${isDark ? 'bg-zinc-900 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
                                                         {skill.examples.map((example, i) => (
-                                                            <div key={i} className={`text-sm leading-relaxed p-3 rounded border ${theme.border} ${isDark ? 'bg-zinc-900/50' : 'bg-slate-50'}`}>
-                                                                <ReactMarkdown
-                                                                    remarkPlugins={[remarkGfm]}
-                                                                    components={{
-                                                                        h1: ({children}) => <h3 className="text-base font-bold mt-0 mb-2">{children}</h3>,
-                                                                        h2: ({children}) => <h3 className="text-base font-bold mt-0 mb-2">{children}</h3>,
-                                                                        h3: ({children}) => <h3 className="text-sm font-bold mt-3 mb-1">{children}</h3>,
-                                                                        p: ({children}) => <p className="my-1">{children}</p>,
-                                                                        ul: ({children}) => <ul className="list-disc pl-5 my-1 space-y-0.5">{children}</ul>,
-                                                                        ol: ({children}) => <ol className="list-decimal pl-5 my-1 space-y-0.5">{children}</ol>,
-                                                                        code: ({children, className}) => {
-                                                                            const isInline = !className;
-                                                                            return isInline
-                                                                                ? <code className="px-1 py-0.5 rounded text-xs font-mono bg-zinc-200 dark:bg-zinc-700">{children}</code>
-                                                                                : <code className={className}>{children}</code>;
-                                                                        },
-                                                                        pre: ({children}) => <pre className="p-3 rounded text-xs font-mono overflow-x-auto bg-zinc-200 dark:bg-zinc-800 my-2">{children}</pre>,
-                                                                        blockquote: ({children}) => <blockquote className="pl-3 border-l-4 border-blue-400 italic my-2 text-zinc-500 dark:text-zinc-400">{children}</blockquote>,
-                                                                    }}
-                                                                >
-                                                                    {unescapeJsonString(example)}
-                                                                </ReactMarkdown>
+                                                            <div key={i} className="pb-2 border-b last:border-b-0 last:pb-0 border-slate-200 dark:border-zinc-700">
+                                                                {example}
                                                             </div>
                                                         ))}
                                                     </div>
@@ -268,170 +246,163 @@ const AgentDashboard = ({ agent, isDark }) => {
                 </div>
 
                 {advancedExpanded && (
-                    <div className="animate-in fade-in duration-300 pl-1 space-y-6">
-                        {(agent.supportedInterfaces || []).length > 0 && (
-                            <InfoCard
-                                title={`${t('agent_profile.supported_interfaces')} (${(agent.supportedInterfaces || []).length})`}
-                                icon={Server}
-                                theme={theme}
-                            >
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {(agent.supportedInterfaces || []).map((iface, index) => (
-                                        <div
-                                            key={`interface-${index}`}
-                                            className={`p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
-                                                    {iface.protocolBinding}
-                                                </span>
-                                                <span className={`text-[10px] px-1 border rounded ${theme.border} ${theme.textSecondary} opacity-60`}>
-                                                    v{iface.protocolVersion}
-                                                </span>
-                                            </div>
-                                            <div className={`text-sm ${theme.textSecondary} truncate font-mono`} title={iface.url}>
-                                                {iface.url}
-                                            </div>
+                    <div className="animate-in fade-in duration-300 pl-1">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                            <div className="col-span-1 md:col-span-8 space-y-6">
+                                {agent.supportedInterfaces && agent.supportedInterfaces.length > 0 && (
+                                    <InfoCard
+                                        title={`${t('agent_profile.supported_interfaces')} (${agent.supportedInterfaces.length})`}
+                                        icon={Server}
+                                        theme={theme}
+                                    >
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {agent.supportedInterfaces.map((iface, index) => (
+                                                <div
+                                                    key={`interface-${index}`}
+                                                    className={`p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
+                                                            {iface.protocolBinding}
+                                                        </span>
+                                                        <span className={`text-[10px] px-1 border rounded ${theme.border} ${theme.textSecondary} opacity-60`}>
+                                                            v{iface.protocolVersion}
+                                                        </span>
+                                                    </div>
+                                                    <div className={`text-sm ${theme.textSecondary} truncate font-mono`} title={iface.url}>
+                                                        {iface.url}
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            </InfoCard>
-                        )}
-
-                        {agent.capabilities?.extensions?.length > 0 && (
-                            <InfoCard
-                                title={`${t('agent_profile.extensions')} (${agent.capabilities.extensions.length})`}
-                                icon={Puzzle}
-                                theme={theme}
-                            >
-                                <div className="space-y-3">
-                                    {agent.capabilities.extensions.map((ext, idx) => (
-                                        <div key={idx}
-                                            className={`p-3 rounded-lg border ${theme.border}`}>
-                                            <div className={`text-sm font-mono break-all ${theme.textPrimary}`}
-                                                title={ext.uri}>
-                                                {ext.uri}
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                {ext.required !== undefined && (
-                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${ext.required ? 'bg-amber-500/10 text-amber-600 border border-amber-500/30' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700'}`}>
-                                                        {ext.required ? 'required' : 'optional'}
-                                                    </span>
-                                                )}
-                                                {ext.description && (
-                                                    <span className={`text-xs ${theme.textSecondary}`}>
-                                                        {ext.description}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </InfoCard>
-                        )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <InfoCard
-                                title={t('agent_profile.capabilities')}
-                                icon={Cpu}
-                                theme={theme}
-                            >
-                                <div className="grid grid-cols-1 gap-3">
-                                    <CapabilityToggle
-                                        label={t('agent_profile.streaming')}
-                                        active={agent.capabilities?.streaming}
-                                        icon={Activity}
-                                        theme={theme}
-                                    />
-                                    <CapabilityToggle
-                                        label={t('agent_profile.stateTransitionHistory')}
-                                        active={agent.capabilities?.stateTransitionHistory}
-                                        icon={Layers}
-                                        theme={theme}
-                                    />
-                                    <CapabilityToggle
-                                        label={t('agent_profile.pushNotifications')}
-                                        active={agent.capabilities?.pushNotifications}
-                                        icon={Zap}
-                                        theme={theme}
-                                    />
-                                </div>
-                            </InfoCard>
-
-                            {agent.securitySchemes && Object.keys(agent.securitySchemes).length > 0 && (
+                                    </InfoCard>
+                                )}
+                            </div>
+                            <div className="col-span-1 md:col-span-4 space-y-6">
                                 <InfoCard
-                                    title={t('agent_profile.security')}
-                                    icon={Shield}
+                                    title={t('agent_profile.capabilities')}
+                                    icon={Cpu}
                                     theme={theme}
                                 >
-                                    <div className="space-y-2">
-                                        {Object.entries(agent.securitySchemes).map(([name, scheme]) => (
-                                            <div key={name}
-                                                className={`flex items-center justify-between p-2 rounded border ${theme.border}`}>
-                                                <div className="flex items-center gap-2">
-                                                    <Shield className="w-4 h-4 text-amber-500" />
-                                                    <span className={`text-sm font-mono font-medium ${theme.textPrimary}`}>{name}</span>
-                                                </div>
-                                                <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-600'}`}>
-                                                    {scheme.httpAuthSecurityScheme?.scheme || scheme.scheme || 'N/A'}
-                                                </span>
-                                            </div>
-                                        ))}
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <CapabilityToggle
+                                            label={t('agent_profile.streaming')}
+                                            active={agent.capabilities.streaming}
+                                            icon={Activity}
+                                            theme={theme}
+                                        />
+                                        <CapabilityToggle
+                                            label={t('agent_profile.stateTransitionHistory')}
+                                            active={agent.capabilities.stateTransitionHistory}
+                                            icon={Layers}
+                                            theme={theme}
+                                        />
+                                        <CapabilityToggle
+                                            label={t('agent_profile.pushNotifications')}
+                                            active={agent.capabilities.pushNotifications}
+                                            icon={Zap}
+                                            theme={theme}
+                                        />
                                     </div>
                                 </InfoCard>
-                            )}
-
-                            <InfoCard
-                                title={t('agent_profile.configuration')}
-                                icon={Settings}
-                                theme={theme}
-                            >
-                                <div className="space-y-1">
-                                    <StatusRow
-                                        label={t('agent_profile.protocolVersion')}
-                                        value={`v${agent.version}`}
+                                {agent.securitySchemes && Object.keys(agent.securitySchemes).length > 0 && (
+                                    <InfoCard
+                                        title={t('agent_profile.security')}
+                                        icon={Shield}
                                         theme={theme}
-                                    />
-                                    <div className="pt-4">
-                                       <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
-                                           {t('agent_profile.defaultInputModes')}
-                                       </span>
-                                       <div className="flex flex-wrap gap-2 mt-2 mb-4">
-                                            {(agent.defaultInputModes || []).map(m => (
-                                               <span key={m}
-                                                     className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
-                                                   {m}
-                                               </span>
-                                           ))}
-                                       </div>
-
-                                       <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
-                                           {t('agent_profile.defaultOutputModes')}
-                                       </span>
-                                       <div className="flex flex-wrap gap-2 mt-2">
-                                            {(agent.defaultOutputModes || []).map(m => (
-                                               <span key={m}
-                                                     className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
-                                                   {m}
-                                               </span>
-                                           ))}
-                                       </div>
-                                    </div>
-                                </div>
-                                {agent.documentationUrl && (
-                                    <a
-                                        href={agent.documentationUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDark
-                                            ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
-                                            : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
-                                        }`}
                                     >
-                                        <Globe className="w-4 h-4" />
-                                        {t('agent_profile.documentationUrl')}
-                                    </a>
+                                        <div className="space-y-2">
+                                            {Object.entries(agent.securitySchemes).map(([name, scheme]) => (
+                                                <div key={name}
+                                                    className={`flex items-center justify-between p-2 rounded border ${theme.border}`}>
+                                                    <div className="flex items-center gap-2">
+                                                        <Shield className="w-4 h-4 text-amber-500" />
+                                                        <span className={`text-sm font-mono font-medium ${theme.textPrimary}`}>{name}</span>
+                                                    </div>
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-600'}`}>
+                                                        {scheme.httpAuthSecurityScheme?.scheme || scheme.scheme || 'N/A'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </InfoCard>
                                 )}
-                            </InfoCard>
+                                {agent.capabilities?.extensions && agent.capabilities.extensions.length > 0 && (
+                                    <InfoCard
+                                        title={t('agent_profile.extensions')}
+                                        icon={Puzzle}
+                                        theme={theme}
+                                    >
+                                        <div className="space-y-2">
+                                            {agent.capabilities.extensions.map((ext, idx) => (
+                                                <div key={idx}
+                                                    className={`p-2 rounded border ${theme.border}`}>
+                                                    <div className={`text-xs font-mono truncate ${theme.textSecondary}`}
+                                                        title={ext.uri}>
+                                                        {ext.uri}
+                                                    </div>
+                                                    {ext.required !== undefined && (
+                                                        <span className={`text-[10px] ${ext.required ? 'text-amber-500' : 'text-zinc-500'}`}>
+                                                            {ext.required ? 'required' : 'optional'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </InfoCard>
+                                )}
+                                <InfoCard
+                                    title={t('agent_profile.configuration')}
+                                    icon={Settings}
+                                    theme={theme}
+                                >
+                                    <div className="space-y-1">
+                                        <StatusRow
+                                            label={t('agent_profile.protocolVersion')}
+                                            value={`v${agent.version}`}
+                                            theme={theme}
+                                        />
+                                        <div className="pt-4">
+                                            <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
+                                                {t('agent_profile.defaultInputModes')}
+                                            </span>
+                                            <div className="flex flex-wrap gap-2 mt-2 mb-4">
+                                                {agent.defaultInputModes.map(m => (
+                                                    <span key={m}
+                                                          className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
+                                                        {m}
+                                                    </span>
+                                                ))}
+                                            </div>
+
+                                            <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
+                                                {t('agent_profile.defaultOutputModes')}
+                                            </span>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {agent.defaultOutputModes.map(m => (
+                                                    <span key={m}
+                                                          className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
+                                                        {m}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {agent.documentationUrl && (
+                                        <a
+                                            href={agent.documentationUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDark
+                                                ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
+                                                : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                                            }`}
+                                        >
+                                            <Globe className="w-4 h-4" />
+                                            {t('agent_profile.documentationUrl')}
+                                        </a>
+                                    )}
+                                </InfoCard>
+                            </div>
                         </div>
                     </div>
                 )}

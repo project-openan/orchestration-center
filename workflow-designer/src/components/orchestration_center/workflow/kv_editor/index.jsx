@@ -88,7 +88,7 @@ const KVEditor = ({title, data = {}, onChange, isDark}) => {
 
             <div className={"space-y-2"}>
                 {Object.entries(data).map(([key, value], inx) => (
-                    <div key={`${key}-${inx}`} className={"flex gap-2 items-center group animate-in fade-in slide-in-from-top-1 duration-200"}>
+                    <div key={inx} className={"flex gap-2 items-center group animate-in fade-in slide-in-from-top-1 duration-200"}>
                         <input
                             placeholder={t('workflow.panel.keyPlaceholder')}
                             className={`w-1/3 px-2.5 py-1.5 rounded-lg border text-[12px] font-mono outline-none transition-all shadow-sm ${theme.input}`}

@@ -20,3 +20,4 @@ etc/conf/server.conf
 etc/conf/db_config.json
 *.token.md
 *token*.md
+workflow-designer/dist-plugin/

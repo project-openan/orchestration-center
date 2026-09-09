@@ -20,13 +20,13 @@ import { useTranslation } from 'react-i18next';
 import { domainColors } from './mock_data';
 
 const SkillDetail = ({ skill, isDark, onClose }) => {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const [showVersions, setShowVersions] = useState(true);
     const domainStyle = domainColors[skill.domain] || domainColors['网'];
 
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);
-        return date.toLocaleDateString(i18n.language || 'zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
     };
 
     const statusColor = (status) => {

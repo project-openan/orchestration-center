@@ -18,7 +18,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     Search, Code2, LayoutDashboard,
-    X, Layers, Server, Radio, Network, Globe, ChevronRight
+    X, Layers, Server, Radio, Network, Globe
 } from 'lucide-react';
 import { getAgentCards } from "@/service/api.js";
 import CodeInspector from "./code_inspector/index.jsx";
@@ -246,9 +246,9 @@ const AgentRegistry = ({ isDark, t }) => {
                         <Server size={20} />
                     </div>
                     <div>
-                        <div className="flex items-center gap-2 text-lg font-black uppercase leading-none">
-                            <span className="text-zinc-900 dark:text-white">{t('registry.title')}</span>
-                        </div>
+                        <h1 className="text-lg font-black text-zinc-900 dark:text-white uppercase leading-none">
+                            {t('registry.title')}
+                        </h1>
                         <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">
                             {agents.length} {t('registry.units')} · {t('registry.online')}
                         </span>

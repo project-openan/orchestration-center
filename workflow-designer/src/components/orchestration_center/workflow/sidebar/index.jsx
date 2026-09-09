@@ -92,7 +92,7 @@ const Sidebar = ({ isDark }) => {
         className={`p-4 text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{t('common.loading')}</div>;
 
     return (
-        <div className="flex items-center px-4 py-0 gap-6 select-none min-w-0">
+        <div className="flex items-center px-4 py-0 gap-6 select-none">
             <style>{`
                 @keyframes scrollTextOneWay {
                     0%, 15% { transform: translateX(0); }
@@ -112,7 +112,7 @@ const Sidebar = ({ isDark }) => {
             <div
                 ref={scrollRef}
                 onWheel={handleWheel}
-                className={`flex items-center space-x-14 overflow-x-auto overflow-y-hidden px-4 pt-3 pb-8 transition-colors min-w-0 flex-1 ${styles.listArea}`}
+                className={`flex items-center space-x-14 overflow-x-auto overflow-y-hidden px-4 pt-3 pb-8 transition-colors ${styles.listArea}`}
             >
                 {agentGroups.map((info) => {
                     const key = info.name || info.id;

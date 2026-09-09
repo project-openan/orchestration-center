@@ -37,6 +37,7 @@ import {
   getExecutionRecords,
   getExecutionRecord,
   deleteExecutionRecord,
+  setApiClient,
   authCheck,
   login,
   logout,
@@ -486,6 +487,50 @@ describe('api service', () => {
         await deleteUser('alice');
         expect(mockApi.delete).toHaveBeenCalledWith(expect.stringContaining('/auth/users/alice'));
       });
+    });
+  });
+
+  describe('OpenAN Portal plugin mode', () => {
+    afterEach(() => {
+      // Remove the Portal context global so later tests run standalone.
+      delete window.__OPENAN_PORTAL_CONTEXT__;
+    });
+
+    it('always routes through the relative gateway when the Portal context is present', async () => {
+      // Simulate the Portal shell on a non-standard port (:9000) with a saved
+      // direct-IP server config — the plugin must ignore both and use the
+      // relative gateway on the Portal's own origin.
+      const mockApi = axios.create();
+      mockLocalStorage.setItem('server_config', JSON.stringify({ mode: 'ip', ip: '192.168.1.1', port: '8080' }));
+      window.__OPENAN_PORTAL_CONTEXT__ = { theme: {}, auth: {} };
+      mockApi.get.mockResolvedValue({ data: [] });
+
+      await getAgentCards();
+
+      const calledUrl = mockApi.get.mock.calls[0][0];
+      expect(calledUrl.startsWith('/api/orchestrate/rest/v1/')).toBe(true);
+    });
+
+    it('falls back to getBaseUrl() when no Portal context is present (standalone)', async () => {
+      const mockApi = axios.create();
+      mockLocalStorage.setItem('server_config', JSON.stringify({ mode: 'ip', ip: '192.168.1.1', port: '8080' }));
+      mockApi.get.mockResolvedValue({ data: [] });
+
+      await getAgentCards();
+
+      const calledUrl = mockApi.get.mock.calls[0][0];
+      expect(calledUrl.startsWith('http://192.168.1.1:8080/rest/v1/')).toBe(true);
+    });
+
+    it('setApiClient reroutes requests through the injected Portal client', async () => {
+      const portalClient = { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), delete: vi.fn() };
+      setApiClient(portalClient);
+
+      await getAgentCards();
+      expect(portalClient.get).toHaveBeenCalledWith(expect.stringContaining('/rest/v1/orchestrate/agent-cards'));
+
+      // Restore the local client for subsequent tests.
+      setApiClient(axios.create());
     });
   });
 });

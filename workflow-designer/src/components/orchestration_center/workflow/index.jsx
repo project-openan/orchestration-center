@@ -24,7 +24,6 @@ import {
     useReactFlow,
     useNodesState,
     useEdgesState,
-    useUpdateNodeInternals,
     addEdge
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -202,7 +201,6 @@ const FlowInner = ({
 }) => {
     const { t } = useTranslation();
     const { screenToFlowPosition, fitView, setCenter, getNode } = useReactFlow();
-    const updateNodeInternals = useUpdateNodeInternals();
     const [rfInstance, setRfInstance] = useState(null);
 
     const themeClasses = useMemo(() => ({
@@ -218,8 +216,8 @@ const FlowInner = ({
     const [viewSelectedNodeId, setViewSelectedNodeId] = useState(null);
     const [viewSelectedElement, setViewSelectedElement] = useState(null);
 
-    const [viewPositionNodes, setViewPositionNodes] = useNodesState([]);
-    const [viewPositionEdges, setViewPositionEdges] = useEdgesState([]);
+    const [viewPositionNodes, setViewPositionNodes, onViewNodesChange] = useNodesState([]);
+    const [viewPositionEdges, setViewPositionEdges, onViewEdgesChange] = useEdgesState([]);
 
     const selectViewNode = useCallback((node, subtaskIndex = null) => {
         setViewSelectedNodeId(node.id);
@@ -324,31 +322,23 @@ const FlowInner = ({
     }, [viewEdges, viewNodes, themeClasses, mode]);
 
     useEffect(() => {
-        if (mode !== 'view') return;
-
-        setViewPositionNodes(prev => {
-            if (processedNodes.length === 0) return [];
-            if (prev.length === 0) return processedNodes;
-
-            const nextNodeIds = new Set(processedNodes.map(node => node.id));
-            const sameGraph = prev.length === processedNodes.length && prev.every(node => nextNodeIds.has(node.id));
-            const prevPositions = sameGraph ? new Map(prev.map(n => [n.id, n.position])) : new Map();
-
-            return processedNodes.map(node => ({
-                ...node,
-                position: prevPositions.get(node.id) || node.position,
-            }));
-        });
-        setViewPositionEdges(processedEdges);
-    }, [processedNodes, processedEdges, mode, setViewPositionNodes, setViewPositionEdges]);
+        if (mode === 'view' && processedNodes.length > 0) {
+            setViewPositionNodes(prev => {
+                if (prev.length === 0) return processedNodes;
+                const prevPositions = new Map(prev.map(n => [n.id, n.position]));
+                return processedNodes.map(node => ({
+                    ...node,
+                    position: prevPositions.get(node.id) || node.position,
+                }));
+            });
+        }
+    }, [processedNodes, mode]);
 
     useEffect(() => {
-        if (mode !== 'view' || viewPositionNodes.length === 0) return;
-        const frame = requestAnimationFrame(() => {
-            viewPositionNodes.forEach(node => updateNodeInternals(node.id));
-        });
-        return () => cancelAnimationFrame(frame);
-    }, [mode, viewPositionNodes, viewSelectedNodeId, updateNodeInternals]);
+        if (mode === 'view') {
+            setViewPositionEdges(processedEdges);
+        }
+    }, [processedEdges, mode]);
 
     const lastCenteredNodeId = useRef(null);
 
@@ -677,8 +667,8 @@ const FlowInner = ({
                 edges={displayEdges}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
-                onNodesChange={mode === 'edit' ? onNodesChangeWithDirty : undefined}
-                onEdgesChange={mode === 'edit' ? onEdgesChangeWithDirty : undefined}
+                onNodesChange={mode === 'edit' ? onNodesChangeWithDirty : onViewNodesChange}
+                onEdgesChange={mode === 'edit' ? onEdgesChangeWithDirty : onViewEdgesChange}
                 onConnect={mode === 'edit' ? onConnect : undefined}
                 onNodeDragStop={(e, n) => { onNodeDragStop(e, n); setIsDirty(true); }}
                 onDrop={mode === 'edit' ? onDrop : undefined}
@@ -698,8 +688,8 @@ const FlowInner = ({
                     }
                 }}
                 nodesConnectable={mode === 'edit'}
-                nodesDraggable={mode === 'edit'}
-                elementsSelectable={mode === 'edit'}
+                nodesDraggable={true}
+                elementsSelectable={true}
                 onInit={setRfInstance}
                 colorMode={isDark ? 'dark' : 'light'}
                 fitView
@@ -753,8 +743,8 @@ const FlowInner = ({
                             <Toolbar isDark={isDark} nodes={editNodes} edges={editEdges} workflowId={workflowId} workflowName={workflowName} workflowDescription={workflowDescription} onCancel={handleCancel} onClear={() => { setEditNodes(initialEditNodes); setEditEdges([]); setIsDirty(true); }} onFitView={() => fitView({ padding: 0.4, duration: 800 })} onSaveSuccess={handleSaveSuccess} />
                         </div>
                     </div>
-                    <div className="absolute inset-x-4 bottom-8 h-auto z-40 pointer-events-none flex justify-center min-h-0">
-                        <div className={`pointer-events-auto flex items-center backdrop-blur-md border rounded-[2rem] overflow-hidden transition-all shadow-2xl max-w-full ${themeClasses.panel}`}>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-8 h-auto z-40 pointer-events-none flex items-center min-h-0">
+                        <div className={`pointer-events-auto flex items-center backdrop-blur-md border rounded-[2rem] overflow-hidden transition-all shadow-2xl ${themeClasses.panel}`}>
                             <Sidebar isDark={isDark} />
                         </div>
                     </div>

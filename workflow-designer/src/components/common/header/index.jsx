@@ -15,14 +15,12 @@
 //    License for the specific language governing permissions and limitations
 //    under the License.
 import {useState} from "react";
-import {Sun, Moon, LayoutDashboard, Share2, PlayCircle, Sparkles, Settings, LogOut, KeyRound} from "lucide-react";
-import PasswordChangeModal from "../password_change/index.jsx";
+import {Sun, Moon, LayoutDashboard, Share2, PlayCircle, Sparkles, Settings} from "lucide-react";
 import SettingsModal from "../setting/index.jsx";
 import openanLogo from "../../../assets/openan-logo.png";
 
-const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange, t, onLogout, currentUser}) => {
+const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange, t}) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [isPasswordChangeOpen, setIsPasswordChangeOpen] = useState(false);
     return (
         <>
         <nav
@@ -75,24 +73,8 @@ const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange,
                     {t('nav.tabs.skills')}
                 </button>
             </div>
-           <div className="flex items-center gap-6">
-               {onLogout && (
-               <>
-               <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
-                   {currentUser || 'admin'}
-               </span>
-               <button onClick={() => setIsPasswordChangeOpen(true)}
-                        className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">
-                        <KeyRound size={18} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all"/>
-                    </button>
-                <button onClick={onLogout}
-                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all">
-                   <LogOut size={14}/>
-                   {t('login.logout')}
-               </button>
-               </>
-               )}
-               <button onClick={() => setIsDark(!isDark)}
+            <div className="flex items-center gap-6">
+                <button onClick={() => setIsDark(!isDark)}
                         className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">
                     {isDark ? <Sun size={20} className="text-amber-400"/> :
                         <Moon size={20} className="text-zinc-500"/>}
@@ -113,7 +95,6 @@ const Header = ({currentTab, onTabChange, isDark, setIsDark, lang, onLangChange,
             </div>
         </nav>
         <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} t={t}/>
-        <PasswordChangeModal isOpen={isPasswordChangeOpen} onClose={() => setIsPasswordChangeOpen(false)} t={t}/>
         </>
     )
 }

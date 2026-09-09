@@ -7,6 +7,7 @@
     "dev": "vite --host",
     "dev:https": "vite --host --mode https",
     "build": "vite build",
+    "build:plugin": "vite build --config vite.bundle.config.js",
     "lint": "eslint .",
     "test": "vitest run",
     "coverage": "vitest run --coverage",

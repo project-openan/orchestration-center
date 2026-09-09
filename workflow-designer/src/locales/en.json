@@ -8,27 +8,6 @@
       "skills": "Skill Center"
     }
   },
-  "login": {
-    "title": "Access Password",
-    "username_placeholder": "Username",
-    "placeholder": "Enter access password...",
-    "button": "Enter",
-    "loading": "Verifying...",
-    "error": "Login failed, please check your password",
-    "logout": "Logout",
-    "register_title": "Register",
-    "register_button": "Register",
-    "confirm_password": "Confirm password...",
-    "no_account": "No account?",
-    "have_account": "Already have an account?",
-    "password_mismatch": "Passwords do not match",
-    "password_too_short": "Password must be at least 8 characters",
-    "password_complexity": "Password must contain uppercase, lowercase, and a number",
-    "change_password": "Change Password",
-    "current_password": "Current Password",
-    "new_password": "New Password",
-    "must_change_password": "This account is using a default password. Choose a new password to continue."
-  },
   "execution": {
     "title": "Execution Center",
     "execute": "Execute",
@@ -59,9 +38,6 @@
     "interface_label": "Interface",
     "ai_gen": "AI Gen",
     "native": "Native",
-    "select_agent": "Select Host Agent",
-    "dispatch": "Dispatch",
-    "dispatching": "Dispatching...",
     "generating_wf": "Generating workflow...",
     "standby": "Standby",
     "interaction": "Interaction",
@@ -246,8 +222,7 @@
       "contextFromHintLayer0": "Execution layer nodes use their task description only; upstream context is not applicable.",
       "contextFromAll": "All predecessors",
       "contextFromAuto": "Auto-derive (default)",
-      "contextFromNone": "No upstream steps available",
-      "stepTypeSelfLoop": "SelfLoop: Task handled locally by the workflow executor, no A2A-T dispatch to other agents. Use for merge, summarize, or other self-processing tasks."
+      "contextFromNone": "No upstream steps available"
     },
     "export": {
       "success": "Workflow saved successfully",
@@ -270,8 +245,7 @@
     "exit": {
       "title": "Confirm exit",
       "desc": "You have unsaved changes. Exiting will discard these changes. Are you sure?"
-    },
-    "selfLoop": "Self-Process"
+    }
   },
   "registry": {
     "title": "Registry center",
@@ -365,11 +339,6 @@
   },
   "error": {
     "parse_failed": "Failed to parse dropped agent template."
-  },
-  "error_boundary": {
-    "title": "Something went wrong",
-    "message": "An unexpected error occurred in this section.",
-    "try_again": "Try Again"
   },
   "skills": {
     "title": "Skill Center",

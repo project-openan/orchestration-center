@@ -136,6 +136,12 @@ const ExecutionStatistics = ({ isDark }) => {
 
     return (
         <div className="h-full p-6 overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-black dark:text-white uppercase">
+                    {t('execution.statistics_title')}
+                </h2>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div className={`${theme.bg} ${theme.border} border rounded-2xl p-6`}>
                     <div className="flex items-center gap-2 mb-4">

@@ -58,7 +58,7 @@ export const EndNode = ({ selected }) => {
     const isConnecting = connection.inProgress;
 
     const targetHandleBaseClasses = `
-        !w-[1px] !h-[1px] !bg-transparent !border-0 !absolute !transform-none !opacity-0
+        !w-0 !h-0 !bg-transparent !border-0 !absolute !transform-none
         z-[100]
         after:content-[''] after:absolute after:bg-transparent
         ${isConnecting ? 'after:pointer-events-auto' : 'after:pointer-events-none'}

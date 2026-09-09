@@ -16,7 +16,7 @@
 //    under the License.
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, Package, Layers, Server, Wrench, ChevronRight } from 'lucide-react';
+import { Search, Package, Layers, Server, Wrench } from 'lucide-react';
 import { mockSkills } from './mock_data';
 import SkillDetail from './skill_detail';
 
@@ -138,9 +138,9 @@ const SkillCenter = ({ isDark }) => {
                         <Layers size={20} />
                     </div>
                     <div>
-                        <div className="flex items-center gap-2 text-lg font-black uppercase leading-none">
-                            <span className="text-zinc-900 dark:text-white">{t('skills.title')}</span>
-                        </div>
+                        <h1 className="text-lg font-black text-zinc-900 dark:text-white uppercase leading-none">
+                            {t('skills.title')}
+                        </h1>
                         <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">
                             {mockSkills.length} {t('skills.total_skills')}
                         </span>
