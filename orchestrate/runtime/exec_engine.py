@@ -135,6 +135,10 @@ class OrchestrationEngine:
         dispatch_metadata = {}
         if psop_model:
             dispatch_metadata["__orch_psop_id__"] = psop_model.id
+            dispatch_metadata["__orch_psop__"] = json.dumps(
+                psop_model.model_dump(mode="json"),
+                ensure_ascii=False,
+            )
             logger.info(f"[Orchestration] Passing psop_id={psop_model.id} to target agent")
 
         try:

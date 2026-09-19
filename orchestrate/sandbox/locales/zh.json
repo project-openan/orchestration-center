@@ -1,0 +1,94 @@
+{
+  "checks": {
+    "structure": {
+      "blank_step_name": {
+        "detail_pass": "所有步骤名称均不为空",
+        "detail_fail": "存在空白步骤名称",
+        "suggestion": "为每个步骤设置唯一的非空名称"
+      },
+      "duplicate_step": {
+        "detail_pass": "步骤名称没有重复",
+        "detail_fail": "存在重复步骤名称",
+        "evidence_occurrences": "{name}：出现 {count} 次",
+        "suggestion": "重命名重复步骤，并同步更新引用它的连线"
+      },
+      "empty_subtasks": {
+        "detail_pass": "所有步骤均已包含任务",
+        "detail_fail": "步骤必须至少包含一个任务",
+        "suggestion": "为每个空步骤添加至少一个任务"
+      },
+      "next_targets": {
+        "detail_pass": "所有出边均指向有效的唯一步骤",
+        "detail_fail": "存在无效的出边",
+        "suggestion": "将每个 next 条件指向已存在的唯一步骤"
+      },
+      "cycle": {
+        "detail_pass": "未检测到循环依赖",
+        "detail_fail": "检测到循环依赖：{path}",
+        "suggestion": "调整一条连线以打断依赖循环"
+      },
+      "reachability": {
+        "detail_pass": "所有步骤均可达",
+        "detail_fail": "检测到不可达或孤立步骤",
+        "evidence_unreachable": "不可达：{name}",
+        "evidence_isolated": "孤立：{name}",
+        "suggestion": "连接不可达或孤立步骤；若不需要，请删除这些步骤"
+      },
+      "context_sources": {
+        "detail_pass": "所有上下文引用均有效",
+        "detail_fail": "存在无效的上下文引用",
+        "evidence_wildcard": "{step}：'*' 不能与其他命名上下文源同时使用",
+        "evidence_missing": "{step}：上下文源 '{source}' 不存在",
+        "evidence_not_ancestor": "{step}：上下文源 '{source}' 不是上游祖先步骤",
+        "suggestion": "在 context_from 中使用已存在的上游步骤名称；若使用 '*'，则不能同时指定其他源"
+      }
+    },
+    "agents": {
+      "duplicate_card": {
+        "detail": "存在重复的 AgentCard 名称",
+        "suggestion": "删除重复卡片，或通过提供方组织信息区分同名卡片"
+      },
+      "missing": {
+        "detail_pass": "所有远端任务 Agent 均已匹配 AgentCard",
+        "detail_fail": "部分任务引用了不存在的 Agent",
+        "suggestion": "检查 task.agent 拼写，或先注册被引用的 AgentCard"
+      },
+      "skill_match": {
+        "detail_pass": "任务技能与 AgentCard 声明匹配",
+        "detail_fail": "部分任务技能与 AgentCard 声明的技能不匹配",
+        "suggestion": "改用 AgentCard 已声明的技能 ID/名称，或更新 AgentCard 技能列表"
+      },
+      "task_t_extension": {
+        "detail_pass": "所有远端任务 Agent 均已声明 Task-T",
+        "detail_fail": "远端任务引用的 Agent 未声明 Task-T 能力",
+        "suggestion": "在 AgentCard 的 capabilities.extensions 中声明 Task-T"
+      },
+      "negotiation_t_extension": {
+        "detail_pass": "协商需求已由 AgentCard 声明覆盖",
+        "detail_fail": "疑似需要协商的任务引用了未声明 Negotiation-T 的 Agent",
+        "suggestion": "在 AgentCard 中声明 Negotiation-T，或移除任务的协商要求"
+      }
+    }
+  },
+  "report": {
+    "risk_intentional_error": "当前选择的是主动注入错误的 Stub 场景；报告中的失败属于预期结果。",
+    "risk_workflow_error": "步骤 {step} 执行失败：{error}",
+    "suggestion_inspect_error": "查看第一条工作流错误事件，并检查受影响的下游步骤。",
+    "suggestion_success_scope": "沙箱通过只验证结构和调度逻辑，不能证明真实 Agent 的业务输出正确。",
+    "risk_static_failed": "静态校验失败；未启动 Stub 执行。",
+    "suggestion_fix_static": "请先修复所有静态校验失败项，再执行沙箱验证。",
+    "suggestion_runner_exception": "请修复沙箱执行器异常后重新验证。",
+    "risk_service_failed": "沙箱验证在生成报告前失败。",
+    "suggestion_check_log": "请检查后端日志后重新执行沙箱验证。"
+  },
+  "stub": {
+    "task_content": "沙箱任务输入\n步骤：{step_name}\n指令：{instruction}",
+    "default_response": "[Stub 响应]\nAgent：{agent}\n技能：{skill}\n场景：{scenario}\n摘要：基于能力“{description}”生成的模拟完成结果",
+    "negotiation_proposal": "请补充沙箱协商所需的缺失信息。",
+    "negotiation_completed": "Stub 任务已在协商后完成。"
+  },
+  "sandbox_control_point": {
+    "self_task_result": "沙箱 SelfLoop 步骤 {step_name} 已完成模拟处理。",
+    "route_allowed": "沙箱默认允许条件路由"
+  }
+}

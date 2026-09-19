@@ -18,30 +18,25 @@
 import asyncio
 import json
 import os
-import secrets as _secrets
 import signal
-import time as _time
 from contextlib import suppress
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
-import uvicorn
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes, create_rest_routes
-from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCard
-from fastapi import FastAPI, Request
 from google.protobuf.json_format import MessageToDict
 from loguru import logger
-from starlette.responses import JSONResponse
 
 from common.custom import HandlerRegistry, InterfaceType
+from common.util.config_util import get_conf
 from orchestrate import AgentCardLoader
+from host_agent.service import start_agent_server
+from host_agent.runtime import HostAgentExecutor
+from samples.spn_host_agent import SpnControlPoint, SpnExtensionLifecycle
 from orchestrate.registry_client.client_factory import AgentRegistryClientFactory
 from orchestrate.workflow_storage_instance import get_workflow_storage
 from samples.agents.spn_domain_agent import SpnDomainAgentExecutor
 from samples.agents.spn_domain_agent_city2 import SpnDomainAgentCity2Executor
-from samples.agents.workbench_agent import WorkbenchAgentExecutor
 
 # Global list to track all agent executors for graceful shutdown
 _agent_executors = []
@@ -143,123 +138,34 @@ async def start_server(
     host: str = "127.0.0.1",
     all_agent_cards: list[AgentCard] | None = None,
 ) -> None:
-    agent2class = {
-        "Host Agent": WorkbenchAgentExecutor,
-        "SPN Domain Agent City1": SpnDomainAgentExecutor,
-        "SPN Domain Agent City2": SpnDomainAgentCity2Executor
-    }
     agent_name = agent_card.name
-    agent_class = agent2class.get(agent_name)
-
-    if not agent_class:
-        logger.info(f"Skipping external agent '{agent_name}': no local executor class defined")
-        return
-
     try:
-        if agent_class is WorkbenchAgentExecutor:
-            agent_impl = agent_class(extension_agent_cards=all_agent_cards)
+        if agent_name == "Host Agent":
+            credentials_path = Path(__file__).parent / "agent_credentials.json"
+            ssl_verify = str(get_conf().get("client_verify_server", "false")).lower() == "true"
+            agent_impl = HostAgentExecutor(
+                extension_agent_cards=all_agent_cards,
+                control_point_factory=SpnControlPoint,
+                extension_lifecycle=SpnExtensionLifecycle(
+                    all_agent_cards,
+                    str(credentials_path),
+                    ssl_verify,
+                ),
+                credentials_config=str(credentials_path),
+            )
+        elif agent_name == "SPN Domain Agent City1":
+            agent_impl = SpnDomainAgentExecutor()
+        elif agent_name == "SPN Domain Agent City2":
+            agent_impl = SpnDomainAgentCity2Executor()
         else:
-            agent_impl = agent_class()
+            logger.info(f"Skipping external agent '{agent_name}': no local executor class defined")
+            return
         _agent_executors.append(agent_impl)
     except Exception as e:
         logger.error(f"Failed to initialize agent '{agent_name}': {e}")
         return
 
-    request_handler = DefaultRequestHandler(
-        agent_executor=agent_impl,
-        task_store=InMemoryTaskStore(),
-        agent_card=agent_card
-    )
-
-    app = FastAPI()
-
-    # --- Auth support: login endpoint for agents declaring securitySchemes ---
-    _VALID_TOKENS = {}  # token -> expiry timestamp
-
-    has_security = agent_card.security_schemes and agent_card.security_requirements
-    if has_security:
-        login_path = "/rest/plat/smapp/v1/oauth/token"
-        logger.info(f"Agent '{agent_name}' auth login endpoint: {login_path}")
-
-        @app.api_route(login_path, methods=["PUT", "POST"])
-        async def _agent_login(request: Request):
-            """Mock login: accept fixed credentials, return accessSession."""
-            body = {}
-            ct = request.headers.get("content-type", "")
-            if "json" in ct:
-                try:
-                    body = await request.json()
-                except Exception:
-                    body = {}
-            else:
-                form = await request.form()
-                body = dict(form)
-            username = body.get("userName") or body.get("username")
-            password = body.get("value") or body.get("password")
-            if username == "admin" and password == "Admin@123":
-                token = _secrets.token_urlsafe(24)
-                _VALID_TOKENS[token] = _time.time() + 3600
-                logger.info(f"[Auth] Login succeeded for agent '{agent_name}', token issued")
-                return {"accessSession": token}
-            logger.warning(f"[Auth] Login failed for agent '{agent_name}': bad credentials")
-            return JSONResponse(status_code=401, content={"error": "Invalid credentials"})
-
-
-    agent_card_routes = create_agent_card_routes(agent_card=agent_card)
-    app.routes.extend(agent_card_routes)
-
-    for iface in agent_card.supported_interfaces:
-        if not iface.url:
-            continue
-        parsed = urlparse(iface.url)
-        path = parsed.path.rstrip("/") or ""
-        if iface.protocol_binding == "JSONRPC":
-            jsonrpc_routes = create_jsonrpc_routes(request_handler=request_handler, rpc_url=path)
-            app.routes.extend(jsonrpc_routes)
-            logger.info(f"Agent '{agent_name}' JSONRPC endpoint: {path}")
-        elif iface.protocol_binding == "HTTP+JSON":
-            rest_routes = create_rest_routes(request_handler=request_handler, path_prefix=path)
-            app.routes.extend(rest_routes)
-            logger.info(f"Agent '{agent_name}' REST endpoint: {path}")
-
-    agent_url = ""
-    if agent_card.supported_interfaces:
-        agent_url = agent_card.supported_interfaces[0].url or ""
-    want_https = agent_url.startswith("https://")
-
-    ssl_kwargs = {}
-    if want_https:
-        ssl_dir = Path(__file__).resolve().parent.parent / "etc" / "ssl"
-        cert_path = ssl_dir / "server.cer"
-        if not cert_path.is_file():
-            cert_path = ssl_dir / "server1.cer"
-        key_path = ssl_dir / "server_key.pem"
-        nopass_key_path = ssl_dir / "server_key_nopass.pem"
-        if cert_path.is_file() and key_path.is_file():
-            actual_key = nopass_key_path if nopass_key_path.is_file() else key_path
-            ssl_kwargs = {"ssl_certfile": str(cert_path), "ssl_keyfile": str(actual_key)}
-            if not nopass_key_path.is_file():
-                pwd_path = ssl_dir / "cert_pwd"
-                if pwd_path.is_file():
-                    ssl_kwargs["ssl_keyfile_password"] = pwd_path.read_text(encoding="utf-8").strip()
-            logger.info(f"Agent {agent_name!r} starting with HTTPS (cert={cert_path.name})")
-        else:
-            logger.warning(f"Agent {agent_name!r} URL is https but SSL certs not found at {ssl_dir}, starting HTTP")
-    else:
-        logger.info(f"Agent {agent_name!r} starting with HTTP")
-    config = uvicorn.Config(app, host=host, port=port, timeout_graceful_shutdown=2, **ssl_kwargs)
-    uvicorn_server = uvicorn.Server(config)
-    try:
-        start_hook = getattr(agent_impl, "start", None)
-        if start_hook is not None:
-            await start_hook()
-        await uvicorn_server.serve()
-    except (SystemExit, asyncio.CancelledError):
-        pass
-    finally:
-        close_hook = getattr(agent_impl, "aclose", None)
-        if close_hook is not None:
-            await close_hook()
+    await start_agent_server(agent_card, agent_impl, port=port, host=host)
 
 
 def _warn_if_chat_llm_unconfigured() -> None:

@@ -19,7 +19,7 @@ from a2a_t.core.metadata import (
 from loguru import logger
 from workflow_engine import A2ATransport, ExtensionSender, ReceivedMessage
 
-from samples.agents.spn_protocol_content import (
+from samples.spn_host_agent.content import (
     RECOVERY_RESULT_REQUIRED_FIELDS,
     authorization_content,
     create_a2at_client,

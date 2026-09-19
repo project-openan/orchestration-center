@@ -1,0 +1,94 @@
+{
+  "checks": {
+    "structure": {
+      "blank_step_name": {
+        "detail_pass": "All step names are nonblank",
+        "detail_fail": "Every step must have a nonblank name",
+        "suggestion": "Set a unique nonblank name for each workflow step"
+      },
+      "duplicate_step": {
+        "detail_pass": "No duplicate step names",
+        "detail_fail": "Duplicate step names found",
+        "evidence_occurrences": "{name}: {count} occurrences",
+        "suggestion": "Rename duplicate steps and update their incoming edges"
+      },
+      "empty_subtasks": {
+        "detail_pass": "All steps contain tasks",
+        "detail_fail": "Steps must contain at least one task",
+        "suggestion": "Add one or more tasks to every step"
+      },
+      "next_targets": {
+        "detail_pass": "Outgoing edges reference valid unique steps",
+        "detail_fail": "One or more outgoing edges are invalid",
+        "suggestion": "Point every next condition at an existing, unique step"
+      },
+      "cycle": {
+        "detail_pass": "No cycles detected",
+        "detail_fail": "Cycle detected: {path}",
+        "suggestion": "Break the dependency cycle by changing one edge"
+      },
+      "reachability": {
+        "detail_pass": "All steps are reachable",
+        "detail_fail": "Unreachable or isolated steps detected",
+        "evidence_unreachable": "unreachable: {name}",
+        "evidence_isolated": "isolated: {name}",
+        "suggestion": "Connect unreachable or isolated steps, or remove them if they are unused"
+      },
+      "context_sources": {
+        "detail_pass": "All context references are valid",
+        "detail_fail": "Invalid context references detected",
+        "evidence_wildcard": "{step}: '*' cannot be combined with named sources",
+        "evidence_missing": "{step}: context source '{source}' does not exist",
+        "evidence_not_ancestor": "{step}: context source '{source}' is not an ancestor",
+        "suggestion": "Use existing upstream step names in context_from, or '*' as the only source"
+      }
+    },
+    "agents": {
+      "duplicate_card": {
+        "detail": "Duplicate AgentCard names found",
+        "suggestion": "Remove duplicate cards or disambiguate provider organization"
+      },
+      "missing": {
+        "detail_pass": "All remote task agents resolve to an AgentCard",
+        "detail_fail": "One or more tasks reference unknown agents",
+        "suggestion": "Check task.agent spelling or register the referenced AgentCard"
+      },
+      "skill_match": {
+        "detail_pass": "Task skills match their AgentCard declarations",
+        "detail_fail": "Some task skills do not match an AgentCard skill declaration",
+        "suggestion": "Use a matching skill id/name or update the AgentCard skills"
+      },
+      "task_t_extension": {
+        "detail_pass": "All remote task agents declare Task-T",
+        "detail_fail": "Remote tasks reference agents without Task-T capability",
+        "suggestion": "Declare Task-T in the AgentCard capabilities.extensions"
+      },
+      "negotiation_t_extension": {
+        "detail_pass": "Negotiation requirements are covered by AgentCard declarations",
+        "detail_fail": "Tasks that appear to require negotiation reference agents without Negotiation-T",
+        "suggestion": "Declare Negotiation-T in the AgentCard or remove negotiation requirements"
+      }
+    }
+  },
+  "report": {
+    "risk_intentional_error": "An intentional Stub error scenario was selected; report failures are expected.",
+    "risk_workflow_error": "Step {step} failed: {error}",
+    "suggestion_inspect_error": "Inspect the first workflow error event and the affected downstream steps.",
+    "suggestion_success_scope": "Sandbox success validates structure and scheduling, not real Agent business output.",
+    "risk_static_failed": "Static validation failed; Stub execution was not started.",
+    "suggestion_fix_static": "Fix all static validation failures before sandbox execution.",
+    "suggestion_runner_exception": "Fix the sandbox runner exception and retry verification.",
+    "risk_service_failed": "Sandbox verification failed before a report could be generated.",
+    "suggestion_check_log": "Inspect the backend log and retry verification."
+  },
+  "stub": {
+    "task_content": "Sandbox task input\nStep: {step_name}\nInstruction: {instruction}",
+    "default_response": "[Stub Response]\nagent: {agent}\nskill: {skill}\nscenario: {scenario}\nsummary: simulated completion based on {description}",
+    "negotiation_proposal": "Please provide missing sandbox negotiation information.",
+    "negotiation_completed": "Stub task completed after negotiation."
+  },
+  "sandbox_control_point": {
+    "self_task_result": "Sandbox SelfLoop step {step_name} completed simulated processing.",
+    "route_allowed": "Sandbox default route allowed"
+  }
+}

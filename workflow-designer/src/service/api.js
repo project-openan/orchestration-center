@@ -249,6 +249,42 @@ export async function getExecutionRecord(executionId) {
 export async function deleteExecutionRecord(executionId) {
     return api.delete(`${ORCHESTRATE_BASE()}/execution-records/${executionId}`);
 }
+
+// ---- Sandbox verification ----
+
+export async function startSandboxRun(workflowId, body) {
+    return api.post(
+        `${ORCHESTRATE_BASE()}/sandbox/${encodeURIComponent(workflowId)}/run`,
+        body
+    );
+}
+
+export async function getSandboxReports() {
+    return api.get(`${ORCHESTRATE_BASE()}/sandbox/verifications`);
+}
+
+export async function getSandboxReport(verificationId) {
+    return api.get(`${ORCHESTRATE_BASE()}/sandbox/verifications/${encodeURIComponent(verificationId)}`);
+}
+
+export async function deleteSandboxReport(verificationId) {
+    return api.delete(`${ORCHESTRATE_BASE()}/sandbox/verifications/${encodeURIComponent(verificationId)}`);
+}
+
+export async function getSandboxEvents(verificationId) {
+    return api.get(`${ORCHESTRATE_BASE()}/sandbox/verifications/${encodeURIComponent(verificationId)}/events`);
+}
+
+export async function getSandboxTemplates(workflowId) {
+    return api.get(`${ORCHESTRATE_BASE()}/sandbox/templates/${encodeURIComponent(workflowId)}`);
+}
+
+export async function saveSandboxTemplates(workflowId, templates) {
+    return api.put(
+        `${ORCHESTRATE_BASE()}/sandbox/templates/${encodeURIComponent(workflowId)}`,
+        templates
+    );
+}
  
  // ---- Access authentication ----
  

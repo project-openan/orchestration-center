@@ -68,7 +68,7 @@ from samples.agents.host_execution import (
     host_event_state,
     host_final_state,
 )
-from samples.agents.spn_protocol_content import (
+from samples.spn_host_agent.content import (
     INFORMATION_NEGOTIATION_PROPOSE_URI,
     NEGOTIATION_ITEMS_SCHEMA,
     create_a2at_client,

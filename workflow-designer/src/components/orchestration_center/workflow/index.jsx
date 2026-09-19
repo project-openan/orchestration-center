@@ -186,6 +186,8 @@ const initialEditNodes = [
     }
 ];
 
+const isBoundaryNode = (node) => node?.type === 'startNode' || node?.type === 'endNode';
+
 const FlowInner = ({
     mode,
     isDark,
@@ -436,7 +438,12 @@ const FlowInner = ({
 
     useEffect(() => {
         if (mode === 'edit' && importedNodes?.length > 0) {
-            setEditNodes(importedNodes.map(node => ({ ...node, zIndex: 100, data: { ...node.data, isDark, editable: true } })));
+            setEditNodes(importedNodes.map(node => ({
+                ...node,
+                zIndex: 100,
+                deletable: !isBoundaryNode(node),
+                data: { ...node.data, isDark, editable: true }
+            })));
             setIsDirty(false);
         }
     }, [importedNodes, setEditNodes, mode]);
@@ -475,10 +482,24 @@ const FlowInner = ({
 
     // Track changes for isDirty
     const onNodesChangeWithDirty = useCallback((changes) => {
-        onNodesChange(changes);
-        const hasChange = changes.some(c => c.type === 'position' || c.type === 'remove' || c.type === 'add' || c.type === 'reset');
+        // Defence in depth: never let a keyboard shortcut, controls action, or
+        // downstream change stream remove the system-managed START/END markers.
+        const safeChanges = changes.filter(
+            (change) => {
+                if (change.type !== 'remove') return true;
+                const node = editNodes.find(item => item.id === change.id);
+                return !isBoundaryNode(node);
+            }
+        );
+        onNodesChange(safeChanges);
+        const hasChange = safeChanges.some(c => c.type === 'position' || c.type === 'remove' || c.type === 'add' || c.type === 'reset');
         if (hasChange) setIsDirty(true);
-    }, [onNodesChange]);
+    }, [onNodesChange, editNodes]);
+
+    const onBeforeDelete = useCallback(async ({ nodes: nodesToDelete = [], edges: edgesToDelete = [] }) => ({
+        nodes: nodesToDelete.filter(node => !isBoundaryNode(node)),
+        edges: edgesToDelete,
+    }), []);
 
     const onEdgesChangeWithDirty = useCallback((changes) => {
         onEdgesChange(changes);
@@ -713,6 +734,7 @@ const FlowInner = ({
                 nodesConnectable={mode === 'edit'}
                 nodesDraggable={mode === 'edit'}
                 elementsSelectable={mode === 'edit'}
+                onBeforeDelete={mode === 'edit' ? onBeforeDelete : undefined}
                 onInit={setRfInstance}
                 colorMode={isDark ? 'dark' : 'light'}
                 fitView

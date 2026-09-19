@@ -821,7 +821,45 @@ for line in resp.iter_lines(decode_unicode=True):
 
     | 状态码 | 说明                      |
     |--------|---------------------------|
-    | 404    | 指定执行记录不存在         |
+| 404    | 指定执行记录不存在         |
+
+---
+
+## 8. 沙箱验证接口
+
+以下接口同时挂载在 `/api/v1/orchestrate`（外部 API，mTLS）和 `/rest/v1/orchestrate`（内部 API，会话/Bearer 认证）下。
+
+### 启动沙箱
+
+- 方法 / URI：`POST /orchestrate/sandbox/{workflow_id}/run`
+- 请求体字段：
+  - `scenario`：`success`、`error`、`delay` 或 `negotiation`
+  - `runtime_intent`：可选文本，最大 10,000 字符
+  - `templates`：可选 Stub 模板数组，最多 200 条
+  - `psop`：可选当前编辑器 PSOP 快照；存在时先校验并优先于按 `workflow_id` 加载
+  - `lang`：`zh` 或 `en`，控制后端报告文案
+- 响应：`202`，返回 `data.verification_id` 和 `data.status: running`
+- 错误码：`400` 快照或模板非法，`404` 工作流不存在，`429` 限流，`500` 服务错误
+
+### 查询、详情与删除
+
+| 方法 | URI | 描述 |
+|------|-----|------|
+| GET    | `/orchestrate/sandbox/verifications` | 查询持久化沙箱报告列表 |
+| GET    | `/orchestrate/sandbox/verifications/{verification_id}` | 获取已完成报告和事件 |
+| GET    | `/orchestrate/sandbox/verifications/{verification_id}/events` | 获取执行事件 |
+| DELETE | `/orchestrate/sandbox/verifications/{verification_id}` | 删除一条持久化报告 |
+
+已完成报告负载包含 `status`、`report` 和 `events`。`report` 包含结论、静态检查、执行路径、上下文链路、Stub 交互、风险、建议和可选错误信息。删除操作不可恢复，响应返回 `data.deleted = <verification_id>`。
+
+### Stub 模板存储
+
+| 方法 | URI | 描述 |
+|------|-----|------|
+| GET | `/orchestrate/sandbox/templates/{workflow_id}` | 查询已保存模板 |
+| PUT | `/orchestrate/sandbox/templates/{workflow_id}` | 替换已保存模板；请求体是 JSON 数组 |
+
+模板最多 200 条；额外字段和非白名单响应变量会被拒绝。
 
 ---
 

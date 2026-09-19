@@ -3,12 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""A2A-T 1.1 business-content helpers for the SPN simulation.
-
-The workflow engine owns A2A envelopes, transport, correlation, and negotiation
-lifecycle.  These helpers stay in the sample business layer and use the latest
-A2A-T SDK to generate and validate the content carried by those envelopes.
-"""
+"""A2A-T 1.1 business-content helpers for the SPN Workbench agent."""
 
 from __future__ import annotations
 

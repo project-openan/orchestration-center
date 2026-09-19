@@ -33,6 +33,7 @@ import {
     Hash,
     Trash2,
     Clock,
+    Check,
     CheckCircle2,
     XCircle,
     RotateCcw,
@@ -42,14 +43,16 @@ import {
     X,
     FileText,
     ChevronUp,
-    Loader
+    Loader,
+    FlaskConical,
 } from 'lucide-react';
-import { getWorkflow, getWorkflowById, getStartProcessStreamUrl, matchWorkflowsTopN, getExecutionRecords, getExecutionRecord, deleteExecutionRecord } from '@/service/api.js';
+import { getWorkflow, getWorkflowById, getStartProcessStreamUrl, matchWorkflowsTopN, getExecutionRecords, getExecutionRecord, deleteExecutionRecord, getSandboxReports, getSandboxReport, deleteSandboxReport } from '@/service/api.js';
 import { getAgentCards, getDispatchStreamUrl } from '@/service/api.js';
 import { transformWorkflowToReactFlow } from '@/components/orchestration_center/workflow/utils/index.jsx';
 import UnifiedWorkflow from '../orchestration_center/workflow/index.jsx';
 import ExecutionStatistics from './execution_statistics/index.jsx';
 import ExecutionTimeline from './timeline/index.jsx';
+import { SandboxReportView } from '@/components/sandbox/SandboxDialog.jsx';
 import {
     getNegotiationPayload,
     getRequestPayload,
@@ -414,6 +417,12 @@ const LogEntry = React.memo(({ event, isDark, t, isSelected }) => {
     );
 });
 
+const LEFT_PANEL_TABS = [
+    { id: 'match', icon: Search, labelKey: 'execution.match_tab' },
+    { id: 'history', icon: History, labelKey: 'execution.history_tab' },
+    { id: 'sandbox', icon: FlaskConical, labelKey: 'execution.sandbox_tab' },
+];
+
 const ExecutionCenter = ({ isDark }) => {
     const { t, i18n } = useTranslation();
     const [activeSubMenu, setActiveSubMenu] = useState('execution');
@@ -439,8 +448,13 @@ const ExecutionCenter = ({ isDark }) => {
     const [isPanelExpanded, setIsPanelExpanded] = useState(false);
     const [isSearchCollapsed, setIsSearchCollapsed] = useState(false);
     const [activeTab, setActiveTab] = useState('match');
+    const [isTabMenuOpen, setIsTabMenuOpen] = useState(false);
     const [executionRecords, setExecutionRecords] = useState([]);
     const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+    const [sandboxReports, setSandboxReports] = useState([]);
+    const [selectedSandboxReport, setSelectedSandboxReport] = useState(null);
+    const [sandboxReportToDelete, setSandboxReportToDelete] = useState(null);
+    const [showSandboxDeleteDialog, setShowSandboxDeleteDialog] = useState(false);
     const [showSelectionDialog, setShowSelectionDialog] = useState(false);
     const [workflowCandidates, setWorkflowCandidates] = useState([]);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -469,6 +483,54 @@ const ExecutionCenter = ({ isDark }) => {
     const [availableTags, setAvailableTags] = useState([]);
     const [showSummary, setShowSummary] = useState(false);
     const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
+
+    const loadSandboxRecords = useCallback(async () => {
+        try {
+            setIsLoadingRecords(true);
+            const response = await getSandboxReports();
+            const reports = response?.data || [];
+            setSandboxReports(reports.filter(report => report.mode === 'sandbox'));
+        } catch (err) {
+            console.error('Failed to load sandbox reports:', err);
+            setError(err?.message || t('execution.load_history_failed'));
+        } finally {
+            setIsLoadingRecords(false);
+        }
+    }, [setError, t]);
+
+    const loadSandboxDetail = useCallback(async (verificationId) => {
+        try {
+            const response = await getSandboxReport(verificationId);
+            const payload = response?.data || {};
+            setSelectedSandboxReport(payload.report || null);
+            setEvents([]);
+            setSelectedId(null);
+        } catch (err) {
+            console.error('Failed to load sandbox report:', err);
+            setError(err?.message || t('execution.load_history_failed'));
+        }
+    }, [setError, t]);
+
+    const handleDeleteSandboxReport = useCallback(async () => {
+        if (!sandboxReportToDelete) return;
+        try {
+            await deleteSandboxReport(sandboxReportToDelete.verification_id);
+            const deletedId = sandboxReportToDelete.verification_id;
+            setSandboxReports(prev => prev.filter(report => report.verification_id !== deletedId));
+            if (selectedSandboxReport?.verification_id === deletedId) {
+                setSelectedSandboxReport(null);
+            }
+        } catch (err) {
+            console.error("Failed to delete sandbox report:", err);
+            setError(err?.response?.data?.detail || t('execution.load_history_failed'));
+        } finally {
+            setShowSandboxDeleteDialog(false);
+            setSandboxReportToDelete(null);
+        }
+    }, [sandboxReportToDelete, selectedSandboxReport, setError, t]);
+
+    const activeTabConfig = LEFT_PANEL_TABS.find(tab => tab.id === activeTab) || LEFT_PANEL_TABS[0];
+    const ActiveTabIcon = activeTabConfig.icon;
 
     // Save search mode to localStorage
     const handleSearchModeChange = useCallback((mode) => {
@@ -519,6 +581,7 @@ const ExecutionCenter = ({ isDark }) => {
         setIsRunning(true);
         setAutoScroll(true);
         setSelectedExecutionId(null);
+        setSelectedSandboxReport(null);
         setSelectedId(null);
         setWorkflowSource(null);
         setMatchedWorkflows([]);
@@ -828,6 +891,7 @@ const ExecutionCenter = ({ isDark }) => {
                 }
                 setIsRunning(false);
                 setRunningId(null);
+                setSelectedSandboxReport(null);
                 setSelectedId(record.psop_id);
                 setWorkflowSource('retrieved');
                 setError(null);
@@ -917,6 +981,7 @@ const ExecutionCenter = ({ isDark }) => {
         setRunningId(idToRun);
         setAutoScroll(true);
         setSelectedExecutionId(null);
+        setSelectedSandboxReport(null);
 
         const url = getStartProcessStreamUrl(idToRun, userIntent, i18n.language, selectedAgent);
         const es = new EventSource(url, { withCredentials: true });
@@ -1242,34 +1307,64 @@ const ExecutionCenter = ({ isDark }) => {
                     </button>
                 ) : (
                     <div className={`w-[280px] rounded-xl border flex flex-col overflow-hidden ${theme.panel} shrink-0`}>
-                        {/* Panel Header with Tabs */}
-                        <div className={`border-b ${theme.header}`}>
-                            <div className="flex items-center justify-between px-2">
-                                <div className="flex flex-1">
+                        {/* Panel Header with View Switcher */}
+                        <div className={`border-b px-3 py-3 ${theme.header}`}>
+                            <div className="flex items-center gap-2">
+                                <div className="relative min-w-0 flex-1">
                                     <button
-                                        onClick={() => setActiveTab('match')}
-                                        className={`flex-1 h-12 flex items-center justify-center gap-2 text-sm font-medium transition-all border-b-2
-                                            ${activeTab === 'match' 
-                                                ? 'text-blue-600 dark:text-blue-400 border-blue-500' 
-                                                : 'text-zinc-500 dark:text-zinc-400 border-transparent hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                                        onClick={() => setIsTabMenuOpen(prev => !prev)}
+                                        className={`w-full h-10 px-3 rounded-xl border flex items-center justify-between gap-2 text-sm font-medium transition-all ${
+                                            isDark
+                                                ? 'border-zinc-800 bg-zinc-900/60 hover:border-zinc-700'
+                                                : 'border-slate-200 bg-white hover:border-slate-300'
+                                        }`}
                                     >
-                                        <Search size={14} />
-                                        {t('execution.match_tab')}
+                                        <span className="flex items-center gap-2 min-w-0">
+                                            <ActiveTabIcon size={14} className="text-zinc-500 dark:text-zinc-400" />
+                                            <span className="truncate">{t(activeTabConfig.labelKey)}</span>
+                                        </span>
+                                        <ChevronDown size={14} className={`shrink-0 text-zinc-400 transition-transform ${isTabMenuOpen ? 'rotate-180' : ''}`} />
                                     </button>
-                                    <button
-                                        onClick={() => { setActiveTab('history'); loadHistoryRecords(); }}
-                                        className={`flex-1 h-12 flex items-center justify-center gap-2 text-sm font-medium transition-all border-b-2
-                                            ${activeTab === 'history' 
-                                                ? 'text-blue-600 dark:text-blue-400 border-blue-500' 
-                                                : 'text-zinc-500 dark:text-zinc-400 border-transparent hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                                    >
-                                        <History size={14} />
-                                        {t('execution.history_tab')}
-                                    </button>
+                                    {isTabMenuOpen && (
+                                        <>
+                                            <div
+                                                className="fixed inset-0 z-20"
+                                                onClick={() => setIsTabMenuOpen(false)}
+                                            />
+                                            <div className={`absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border p-1 shadow-xl ${
+                                                isDark ? 'border-zinc-800 bg-zinc-950' : 'border-slate-200 bg-white'
+                                            }`}>
+                                                {LEFT_PANEL_TABS.map(({ id, icon: Icon, labelKey }) => (
+                                                    <button
+                                                        key={id}
+                                                        onClick={() => {
+                                                            setActiveTab(id);
+                                                            if (id === 'history') loadHistoryRecords();
+                                                            if (id === 'sandbox') loadSandboxRecords();
+                                                            setIsTabMenuOpen(false);
+                                                        }}
+                                                        className={`w-full h-10 px-3 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+                                                            activeTab === id
+                                                                ? id === 'sandbox'
+                                                                    ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400'
+                                                                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                                                : isDark
+                                                                    ? 'text-zinc-400 hover:bg-zinc-900'
+                                                                    : 'text-slate-600 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        <Icon size={14} />
+                                                        <span className="flex-1 text-left truncate">{t(labelKey)}</span>
+                                                        {activeTab === id && <Check size={14} />}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <button
                                     onClick={() => setIsLeftPanelCollapsed(true)}
-                                    className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                    className="p-2 shrink-0 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                                     title={t('execution.collapse')}
                                 >
                                     <PanelLeftClose size={14} className="text-zinc-400" />
@@ -1286,7 +1381,7 @@ const ExecutionCenter = ({ isDark }) => {
                                         <Search size={28} strokeWidth={1.5} />
                                     </div>
                                     <p className="text-sm font-medium">{t('execution.no_match_yet')}</p>
-                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">输入意图开始搜索</p>
+                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{t('execution.match_hint')}</p>
                                 </div>
                             ) : (
                                 matchedWorkflows.map(wf => (
@@ -1361,15 +1456,15 @@ const ExecutionCenter = ({ isDark }) => {
                             {isLoadingRecords ? (
                                 <div className="h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 py-12">
                                     <Loader size={28} className="animate-spin mb-4" />
-                                    <p className="text-sm font-medium">加载中...</p>
+                                    <p className="text-sm font-medium">{t('execution.loading')}</p>
                                 </div>
                             ) : executionRecords.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 py-12">
                                     <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
                                         <History size={28} strokeWidth={1.5} />
                                     </div>
-                                    <p className="text-sm font-medium">暂无执行记录</p>
-                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">执行工作流后将在此保存记录</p>
+                                    <p className="text-sm font-medium">{t('execution.no_history')}</p>
+                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{t('execution.no_history_hint')}</p>
                                 </div>
                             ) : (
                                 executionRecords.map(record => {
@@ -1381,12 +1476,12 @@ const ExecutionCenter = ({ isDark }) => {
                                                 ? 'bg-blue-500 animate-pulse'
                                                 : 'bg-zinc-400';
                                     const statusLabel = record.status === 'success'
-                                        ? '成功'
+                                        ? t('execution.status_success')
                                         : record.status === 'failed'
-                                            ? '失败'
+                                            ? t('execution.status_failed')
                                             : record.status === 'running'
-                                                ? '运行中'
-                                                : record.status || '未知';
+                                                ? t('execution.status_running')
+                                                : record.status || t('execution.unknown_status');
                                     const isSelected = selectedExecutionId === record.execution_id;
                                     return (
                                         <div
@@ -1443,6 +1538,56 @@ const ExecutionCenter = ({ isDark }) => {
                             )}
                         </div>
                     )}
+
+                    {activeTab === 'sandbox' && (
+                        <div className={`flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar ${theme.content}`}>
+                            {sandboxReports.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 py-12">
+                                    <FlaskConical size={28} strokeWidth={1.5} />
+                                    <p className="text-sm font-medium mt-3">{t('execution.sandbox_empty_title')}</p>
+                                    <p className="max-w-[220px] text-xs text-zinc-400 dark:text-zinc-500 mt-1 text-center px-6">
+                                        {t('execution.sandbox_empty_hint')}
+                                    </p>
+                                </div>
+                            ) : sandboxReports.map((report) => (
+                                <div
+                                    key={report.verification_id}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => loadSandboxDetail(report.verification_id)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            loadSandboxDetail(report.verification_id);
+                                        }
+                                    }}
+                                    className="relative group w-full text-left p-3 pr-10 rounded-xl border cursor-pointer transition-all hover:border-violet-500/50"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                            isDark ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700'
+                                        }`}>SANDBOX</span>
+                                        <span className="text-xs font-bold truncate">{report.workflow_name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[10px] opacity-60">{t(`sandbox.scenarios.${report.scenario}`, { defaultValue: report.scenario })}</span>
+                                        <span className="text-[10px] font-bold uppercase opacity-70">{t(`sandbox.verdicts.${report.verdict}`, { defaultValue: report.verdict })}</span>
+                                    </div>
+                                    <button
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            setSandboxReportToDelete(report);
+                                            setShowSandboxDeleteDialog(true);
+                                        }}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
+                                        title={t('common.delete')}
+                                    >
+                                        <Trash2 size={13} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
                 )}
                 {/* Center Panel - Workflow Visualization */}
@@ -1483,7 +1628,7 @@ const ExecutionCenter = ({ isDark }) => {
                                     <Bot size={36} strokeWidth={1.5} />
                                 </div>
                                 <p className="text-base font-medium">{t('execution.standby')}</p>
-                                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">选择或搜索工作流开始执行</p>
+                                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">{t('execution.standby_hint')}</p>
                             </div>
                         )}
 
@@ -1561,7 +1706,7 @@ const ExecutionCenter = ({ isDark }) => {
                             <div>
                                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">{t('execution.interaction')}</h3>
                                 <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                                    {events.length > 0 ? `${events.length} 条事件` : '等待执行'}
+                                    {events.length > 0 ? t('execution.event_count', { count: events.length }) : t('execution.waiting_execution')}
                                 </p>
                             </div>
                         </div>
@@ -1586,12 +1731,16 @@ const ExecutionCenter = ({ isDark }) => {
 
                     {/* Log Content */}
                     <div ref={logScrollRef} onScroll={handleScroll} className={`flex-1 overflow-y-auto p-4 custom-scrollbar ${theme.content}`}>
-                        <ExecutionTimeline events={events} isDark={isDark} isRunning={isRunning || isDispatching} />
+                        {selectedSandboxReport ? (
+                            <SandboxReportView report={selectedSandboxReport} isDark={isDark} />
+                        ) : (
+                            <ExecutionTimeline events={events} isDark={isDark} isRunning={isRunning || isDispatching} />
+                        )}
                     </div>
                 </div>
             </div>
 
-            {showDeleteDialog && (
+            {(showDeleteDialog || showSandboxDeleteDialog) && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/20 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl w-full max-w-md scale-in-center animate-in zoom-in-95 duration-300">
                         <div className="flex flex-col items-center text-center">
@@ -1599,26 +1748,35 @@ const ExecutionCenter = ({ isDark }) => {
                                 <Trash2 size={32} />
                             </div>
                             <h3 className="text-xl font-black dark:text-white mb-2 uppercase tracking-tight">
-                                {t('execution.delete_record_title')}
+                                {showSandboxDeleteDialog ? t('execution.delete_sandbox_title') : t('execution.delete_record_title')}
                             </h3>
                             <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8">
-                                {t('execution.delete_record_confirm')}
+                                {showSandboxDeleteDialog ? t('execution.delete_sandbox_confirm') : t('execution.delete_record_confirm')}
                                 <br />
-                                <span className="font-bold text-zinc-900 dark:text-zinc-100 italic">"{recordToDelete?.psop_name || recordToDelete?.execution_id}"</span>
+                                <span className="font-bold text-zinc-900 dark:text-zinc-100 italic">"
+                                    {showSandboxDeleteDialog
+                                        ? (sandboxReportToDelete?.workflow_name || sandboxReportToDelete?.verification_id)
+                                        : (recordToDelete?.psop_name || recordToDelete?.execution_id)}
+                                "</span>
                             </p>
 
                             <div className="flex gap-4 w-full">
                                 <button
                                     onClick={() => {
-                                        setShowDeleteDialog(false);
-                                        setRecordToDelete(null);
+                                        if (showSandboxDeleteDialog) {
+                                            setShowSandboxDeleteDialog(false);
+                                            setSandboxReportToDelete(null);
+                                        } else {
+                                            setShowDeleteDialog(false);
+                                            setRecordToDelete(null);
+                                        }
                                     }}
                                     className="flex-1 px-6 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
                                 >
                                     {t('common.cancel')}
                                 </button>
                                 <button
-                                    onClick={handleDeleteRecord}
+                                    onClick={showSandboxDeleteDialog ? handleDeleteSandboxReport : handleDeleteRecord}
                                     className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold text-xs uppercase tracking-widest hover:bg-red-600 shadow-lg shadow-red-500/20 active:scale-95 transition-all"
                                 >
                                     {t('common.delete')}

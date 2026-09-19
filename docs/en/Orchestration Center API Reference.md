@@ -821,7 +821,45 @@ for line in resp.iter_lines(decode_unicode=True):
 
     | Status Code | Description                         |
     |-------------|-------------------------------------|
-    | 404         | Specified execution record not found |
+| 404         | Specified execution record not found |
+
+---
+
+## 8. Sandbox Verification Interfaces
+
+These endpoints are available under both `/api/v1/orchestrate` (external, mTLS) and `/rest/v1/orchestrate` (internal, session/bearer auth).
+
+### Start a sandbox run
+
+- Method / URI: `POST /orchestrate/sandbox/{workflow_id}/run`
+- Request body fields:
+  - `scenario`: `success`, `error`, `delay`, or `negotiation`
+  - `runtime_intent`: optional text, max 10,000 characters
+  - `templates`: optional array of Stub overrides, max 200 entries
+  - `psop`: optional current-editor PSOP snapshot; when present it is validated and takes precedence over loading `workflow_id`
+  - `lang`: `zh` or `en`; controls backend report text
+- Response: `202` with `data.verification_id` and `data.status: running`
+- Error codes: `400` invalid snapshot/templates, `404` workflow not found, `429` rate limited, `500` server error
+
+### Query, inspect, and delete reports
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET    | `/orchestrate/sandbox/verifications` | List persisted sandbox reports |
+| GET    | `/orchestrate/sandbox/verifications/{verification_id}` | Get report and events for a completed run |
+| GET    | `/orchestrate/sandbox/verifications/{verification_id}/events` | Get execution events |
+| DELETE | `/orchestrate/sandbox/verifications/{verification_id}` | Delete one persisted report |
+
+A completed report payload contains `status`, `report`, and `events`. The `report` object includes verdict, static checks, execution path, context trace, Stub interactions, risks, suggestions, and optional error. Deletion is permanent; the response returns `data.deleted = <verification_id>`.
+
+### Stub template storage
+
+| Method | URI | Description |
+|--------|-----|-------------|
+| GET | `/orchestrate/sandbox/templates/{workflow_id}` | List saved templates |
+| PUT | `/orchestrate/sandbox/templates/{workflow_id}` | Replace saved templates; body is a JSON array |
+
+Templates are limited to 200 entries. Extra fields and non-whitelisted response variables are rejected.
 
 ---
 

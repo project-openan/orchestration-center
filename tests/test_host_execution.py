@@ -8,7 +8,7 @@ from samples.agents.host_execution import (
     host_event_state,
     host_final_state,
 )
-from samples.agents.workbench_agent import WorkbenchAgentExecutor
+from host_agent.runtime import HostAgentExecutor
 
 
 def test_close_is_not_mapped_to_a_terminal_task_state():
@@ -30,7 +30,7 @@ def test_final_task_state_follows_workflow_outcome(events, expected):
 
 
 def test_workbench_close_event_stays_working_until_terminal_task():
-    executor = WorkbenchAgentExecutor.__new__(WorkbenchAgentExecutor)
+    executor = HostAgentExecutor.__new__(HostAgentExecutor)
     context = SimpleNamespace(task_id="task-1", context_id="context-1")
 
     event = executor._event_to_task_update({"type": "close", "data": {}}, context, "en")

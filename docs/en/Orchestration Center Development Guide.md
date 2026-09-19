@@ -574,6 +574,22 @@ except ValueError:
 - 3. Confirm that array indices and field names in the path are case-sensitive
 
 
+### Host Agent and Sandbox Verification
+
+The top-level `host_agent` package provides the workflow execution host. It handles the A2A server, Workflow Engine invocation, execution-event wrapping, and lifecycle management. Task content, conditional routing, SelfLoop processing, and negotiation replies are injected through ControlPoint implementations. The sample SPN policy is under `samples/spn_host_agent`. Start it with:
+
+```bash
+python -m samples.start_agents_server
+```
+
+The Orchestration Center owns PSOP data submitted by the UI. When the Execution Center dispatches a workflow, it puts a PSOP snapshot into A2A metadata; direct intent execution falls back to the configured Workflow Repository.
+
+Sandbox verification is independent from formal execution. Static validation checks the DAG, `context_from`, Agent/Skill matching, and Task-T/Negotiation-T declarations. Stub execution reuses the real Workflow Engine scheduling path but replaces remote task-content generation and A2A calls with local sandbox input and Stub responses. A saved workflow is loaded by ID; an unsaved or imported editor workflow can submit the current canvas as a `psop` snapshot, which the backend validates with the `PSOP` model. Reports record pass/warning/fail checks, execution path, context trace, Stub interactions, risks, and suggestions.
+
+A sandbox `pass` means workflow structure and engine scheduling were verified with Stub Agents. It does not prove that real Agents will produce correct business output. Sandbox reports and formal execution records are stored separately, and the frontend marks sandbox results with a `SANDBOX` badge. Reports can be deleted one at a time; deletion removes the persisted file and in-process status/event cache.
+
+Backend report text is loaded from `orchestrate/sandbox/locales/{zh,en}.json`. The frontend sends `zh` / `en` when starting a run and maps fixed enum values through `workflow-designer/src/locales/*.json`. Do not concatenate user-visible sentences in business code; maintain both resource files when adding checks or suggestions. The Execution Center uses a compact dropdown for workflow matching, execution history, and sandbox reports; sandbox report entries support hover deletion.
+
 ## 6. Security and TLS Configuration
 
 ### 6.1 Frontend Login Authentication

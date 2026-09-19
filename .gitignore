@@ -6,9 +6,13 @@ venv/
 .venv/
 log/
 .pytest_cache/
+.pytest-tmp/
+.pytest_tmp*/
+.agents/
 workflow-designer/dist/
 workflow-designer/stats.html
 data/
+openspec/
 etc/conf/task_prompt_stubs.json
 .env
 *.pem
@@ -16,6 +20,9 @@ etc/conf/task_prompt_stubs.json
 *.key
 etc/ssl/
 etc/conf/agent_credentials.json
+samples/agentcard/凯通工作台.json
+samples/agentcard/粤东.json
+samples/agentcard/粤西.json
 etc/conf/server.conf
 etc/conf/db_config.json
 *.token.md

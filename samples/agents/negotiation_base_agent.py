@@ -46,7 +46,7 @@ from loguru import logger
 from workflow_engine import A2atMessages
 
 from common.llm import get_llm_instance
-from samples.agents.spn_protocol_content import (
+from samples.spn_host_agent.content import (
     AUTHORIZATION_SCHEMA,
     INFORMATION_NEGOTIATION_ACCEPT_REJECT_URI,
     INFORMATION_NEGOTIATION_PROPOSE_URI,
