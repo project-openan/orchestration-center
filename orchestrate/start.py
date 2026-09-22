@@ -40,7 +40,8 @@ def customized_create_ssl_context(certfile: str | os.PathLike[str],
                                   ssl_version: int,
                                   cert_reqs: int,
                                   ca_certs: str | os.PathLike[str] | None,
-                                  ciphers: str | None) -> ssl.SSLContext:
+                                  ciphers: str | None,
+                                  alpn_protocols: list[str] | None = None) -> ssl.SSLContext:
     """
     Create a custom SSL context for secure connections.
 
@@ -52,6 +53,8 @@ def customized_create_ssl_context(certfile: str | os.PathLike[str],
         cert_reqs: Certificate verification requirements
         ca_certs: Path to CA certificates file (optional)
         ciphers: Cipher suites to use (optional)
+        alpn_protocols: ALPN protocol list advertised by the server,
+            passed by uvicorn >= 0.53 (optional)
 
     Returns:
         SSLContext: Configured SSL context
@@ -71,6 +74,8 @@ def customized_create_ssl_context(certfile: str | os.PathLike[str],
                 ctx.verify_flags |= ssl.VERIFY_CRL_CHECK_LEAF
         if ciphers:
             ctx.set_ciphers(ciphers)
+        if alpn_protocols:
+            ctx.set_alpn_protocols(alpn_protocols)
         return  ctx
     except Exception as e:
         logger.error(f"customized_create_ssl_context error: {e}")
