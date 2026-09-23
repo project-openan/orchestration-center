@@ -193,7 +193,17 @@ def generate_self_signed_cert(cert_dir: str, cert_usage: str, password: str, *,
             print(f"Successfully generated self-signed certificates in {cert_dir}")
             return True
         else:
-            print("Failed to generate certificates")
+            existing = [name for name in ("server_RSA.cer", "server_key_RSA.pem")
+                        if os.path.exists(os.path.join(cert_dir, name))]
+            if existing:
+                print(f"Failed: certificate files already exist in {cert_dir}: "
+                      f"{', '.join(existing)}")
+                print("The tool refuses to overwrite. Remove them to regenerate"
+                      " (regeneration issues a NEW key pair: re-issue client"
+                      " certificates and redistribute trust material), or"
+                      " generate into a different directory.")
+            else:
+                print("Failed to generate certificates (check the error output above)")
             return False
     except Exception as e:
         print(f"Error generating certificates: {e}")

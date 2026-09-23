@@ -27,6 +27,7 @@ import pytest
 
 from common.cert.certificate_generator import CertificateGenerator
 from common.cert.password_generator import PasswordGenerator
+from generate_selfsign_cert import generate_self_signed_cert
 
 
 class TestPasswordGenerator:
@@ -91,3 +92,27 @@ class TestCertificateGeneratorSelfSignedApi:
     def test_returns_false_for_unsupported_key_algorithm(self, tmp_path):
         gen = CertificateGenerator(key_algorithm="DSA")
         assert gen.generate_self_signed_cert(str(tmp_path / "certs"), "serverAuth", "S3cure!Pass") is False
+
+
+def test_cli_reports_existing_certificate_without_overwriting(tmp_path, capsys):
+    cert_dir = tmp_path / "certs"
+    cert_dir.mkdir()
+    existing = cert_dir / "server_RSA.cer"
+    existing.write_bytes(b"original certificate")
+
+    assert not generate_self_signed_cert(str(cert_dir), "serverAuth", "S3cure!Pass")
+
+    assert existing.read_bytes() == b"original certificate"
+    output = capsys.readouterr().out
+    assert "server_RSA.cer" in output
+    assert "different directory" in output
+
+
+def test_cli_reports_generic_failure_without_existing_certificate(tmp_path, capsys):
+    cert_dir = tmp_path / "certs"
+
+    assert not generate_self_signed_cert(str(cert_dir), "serverAuth", "")
+
+    output = capsys.readouterr().out
+    assert "check the error output above" in output
+    assert "already exist" not in output
