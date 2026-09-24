@@ -299,12 +299,14 @@ All services must present valid certificates signed by a trusted CA during TLS h
 |--------|------------|-------------------|---------------------------|
 | `enable_https` | false | true | true |
 | `verify_client` | false | false | true |
-| `client_verify_server` | false | false | true |
+| `client_verify_server` | false (local self-signed testing only) | true | true |
 | `access_password` | empty | SHA-256 hash | SHA-256 hash |
 | `persistence_mode` | file | postgresql | postgresql |
 | Registration | N/A | Enabled | Enabled |
 | Frontend | HTTP | HTTPS (via Nginx) | HTTPS (via Nginx) |
 | Nginx cert | N/A | CA-signed | CA-signed |
+
+The orchestration center verifies peer TLS certificates by default when connecting to the registry and agents. Set `client_verify_server=false` only for controlled local testing with self-signed certificates. If client credentials are needed, specify their file explicitly with `agent_credentials_file` or the `ORCH_AGENT_CREDENTIALS_FILE` environment variable; the service does not automatically load credentials from samples.
 
 ### Generating Self-Signed Certificates
 

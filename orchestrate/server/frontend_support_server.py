@@ -153,7 +153,10 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # httpOnly cookie, which EventSource sends automatically without needing a
 # URL param -- but the key stays in this set as a defense-in-depth net for
 # any future/third-party caller that still passes a token via query string.
-_SENSITIVE_QUERY_PARAM_KEYS = frozenset({"token", "access_token", "password", "api_key", "secret"})
+_SENSITIVE_QUERY_PARAM_KEYS = frozenset({
+    "token", "access_token", "password", "api_key", "secret",
+    "intent", "user_intent", "task",
+})
 
 
 def _redact_sensitive_params(params: dict) -> dict:
@@ -672,8 +675,7 @@ async def generate_from_intent(
     try:
         generate_semaphore.acquire_nowait()
         acquired = True
-        intent_preview = request.user_intent[:80] + "..." if len(request.user_intent) > 80 else request.user_intent
-        logger.info(f"Generating PSOP from intent: {intent_preview}")
+        logger.info("Generating PSOP from intent (length={})", len(request.user_intent))
 
         agent_cards_raw = [MessageToDict(card, preserving_proto_field_name=False) for card in await get_agent_cards()]
         if not agent_cards_raw:
@@ -724,7 +726,7 @@ async def retrieve_by_intent(
     try:
         retrieve_semaphore.acquire_nowait()
         acquired = True
-        logger.info(f"Retrieving PSOP by intent: {request.user_intent[:80]}")
+        logger.info("Retrieving PSOP by intent (length={})", len(request.user_intent))
         psop = SharedHandlers.retrieval().retrieve_psop_by_intent(request.user_intent)
         if not psop:
             return ok(data=None, message="No matching workflow found")
@@ -755,7 +757,7 @@ async def retrieve_topn_by_intent(
         retrieve_semaphore.acquire_nowait()
         acquired = True
         top_n = request.top_n if request.top_n else 3
-        logger.info(f"Retrieving TopN PSOPs by intent (n={top_n}): {request.user_intent[:80]}")
+        logger.info("Retrieving TopN PSOPs by intent (n={}, length={})", top_n, len(request.user_intent))
         results: List[WorkflowSearchResult] = SharedHandlers.retrieval().retrieve_psop_by_intent_topn(request.user_intent, top_n)
         logger.info(f"TopN returned {len(results)} result(s)")
         return ok(data=[r.to_dict() for r in results], message=f"Found {len(results)} matching workflow(s)")
@@ -1029,11 +1031,8 @@ async def execute_workflow(
     if not psop_id:
         raise HTTPException(status_code=400, detail="Missing psop_id parameter")
 
-    acquired = False
     try:
-        execute_semaphore.acquire_nowait()
-        acquired = True
-        logger.info(f"Starting workflow execution: psop_id={psop_id}, user_intent={user_intent[:80] if user_intent else 'N/A'}")
+        logger.info(f"Starting workflow execution: psop_id={psop_id}")
         psop = SharedHandlers.retrieval().get_psop_by_id(psop_id)
         if not psop:
             raise HTTPException(status_code=404, detail=f"Workflow {psop_id} not found")
@@ -1042,7 +1041,10 @@ async def execute_workflow(
         agent_cards = await get_agent_cards()
 
         intent = user_intent or psop.name or psop_id
-        return await dispatch_intent_sse(agent_cards, intent, target_agent=target_agent, lang=lang)
+        return await dispatch_intent_sse(
+            agent_cards, intent, target_agent=target_agent, lang=lang,
+            semaphore=execute_semaphore,
+        )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -1050,9 +1052,6 @@ async def execute_workflow(
     except Exception as e:
         logger.error(f"Failed to execute workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if acquired:
-            execute_semaphore.release()
 
 dispatch_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_START_PROCESS_STREAM, 10)))
 
@@ -1073,11 +1072,8 @@ async def dispatch_to_agent(
     Returns an SSE stream that transparently forwards the host agent's
     execution events to the frontend for real-time visualization.
     """
-    acquired = False
     try:
-        dispatch_semaphore.acquire_nowait()
-        acquired = True
-        logger.info(f"Dispatching intent to agent '{agent_name}': {intent[:80]}")
+        logger.info(f"Dispatching intent to agent '{agent_name}'")
 
         # Resolve the target agent's AgentCard from the registry
         agent_cards = await get_agent_cards()
@@ -1085,7 +1081,10 @@ async def dispatch_to_agent(
         # Use the slim OrchestrationEngine which extracts __sdk_event__ metadata
         # from the A2A-T TaskUpdate stream.
         logger.info(f"Dispatching to {agent_name} via OrchestrationEngine (slim channel)")
-        return await dispatch_intent_sse(agent_cards, intent, target_agent=agent_name, lang=lang)
+        return await dispatch_intent_sse(
+            agent_cards, intent, target_agent=agent_name, lang=lang,
+            semaphore=dispatch_semaphore,
+        )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -1093,9 +1092,6 @@ async def dispatch_to_agent(
     except Exception as e:
         logger.error(f"Dispatch failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if acquired:
-            dispatch_semaphore.release()
 
 @router.delete("/execution-records/{execution_id}")
 async def delete_execution_record(execution_id: str):
