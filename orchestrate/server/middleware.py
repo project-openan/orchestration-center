@@ -40,6 +40,7 @@ class ConnectionLimitMiddleware(BaseHTTPMiddleware):
         self._lock = asyncio.Lock()
 
     async def dispatch(self, request: Request, call_next):
+        release_on_return = True
         async with self._lock:
             if self.active_connections >= self.max_connections:
                 logger.error(f"The server is at maximum connection capacity. ({self.max_connections})")
@@ -56,6 +57,19 @@ class ConnectionLimitMiddleware(BaseHTTPMiddleware):
 
         try:
             response = await call_next(request)
+            if response.headers.get("content-type", "").startswith("text/event-stream"):
+                body_iterator = response.body_iterator
+
+                async def counted_body():
+                    try:
+                        async for chunk in body_iterator:
+                            yield chunk
+                    finally:
+                        async with self._lock:
+                            self.active_connections -= 1
+
+                response.body_iterator = counted_body()
+                release_on_return = False
             return response
         except HTTPException:
             raise
@@ -69,8 +83,9 @@ class ConnectionLimitMiddleware(BaseHTTPMiddleware):
                 }
             )
         finally:
-            async with self._lock:
-                self.active_connections -= 1
+            if release_on_return:
+                async with self._lock:
+                    self.active_connections -= 1
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
     _SSE_PATHS = {"/execute", "/api/v1/orchestrate/execute", "/dispatch", "/rest/v1/orchestrate/dispatch"}
