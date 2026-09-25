@@ -232,7 +232,7 @@ class WorkflowRetrieval:
             raise Exception(f"Failed to retrieve PSOP by intent: {e}") from e
 
     def retrieve_psop_by_intent(self, user_intent: str) -> Optional[PSOP]:
-        logger.info(f"[Retrieval] retrieve_psop_by_intent: intent='{user_intent[:100]}...'")
+        logger.info("[Retrieval] retrieve_psop_by_intent: length={}", len(user_intent))
         try:
             names = self._retrieve_names_by_intent(user_intent, top_n=1)
             if not names:
@@ -250,7 +250,7 @@ class WorkflowRetrieval:
     def retrieve_psop_by_intent_topn(
         self, user_intent: str, top_n: int = 5
     ) -> List[WorkflowSearchResult]:
-        logger.info(f"[Retrieval] retrieve_psop_by_intent_topn: intent='{user_intent[:100]}...', top_n={top_n}")
+        logger.info("[Retrieval] retrieve_psop_by_intent_topn: length={}, top_n={}", len(user_intent), top_n)
         try:
             names = self._retrieve_names_by_intent(user_intent, top_n)
             name_to_summary = {s.name: s for s in self._list_psop_summaries()}

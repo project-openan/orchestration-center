@@ -19,6 +19,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import anyio
 from starlette.responses import StreamingResponse
 
 from orchestrate.server.sse_executor import dispatch_intent_sse
@@ -81,6 +82,81 @@ class TestEmptyAgentCards:
         data = json.loads(chunks[0].removeprefix("data: ").strip())
         assert data["type"] == "error"
         assert "No agent cards" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_slot_is_held_until_stream_is_consumed():
+    semaphore = anyio.Semaphore(1)
+    first = await dispatch_intent_sse([], "first", semaphore=semaphore)
+    with pytest.raises(anyio.WouldBlock):
+        await dispatch_intent_sse([], "second", semaphore=semaphore)
+    assert [chunk async for chunk in first.body_iterator]
+    second = await dispatch_intent_sse([], "second", semaphore=semaphore)
+    assert [chunk async for chunk in second.body_iterator]
+
+
+@pytest.mark.asyncio
+async def test_incomplete_stream_is_not_recorded_as_success():
+    from orchestrate.core.model.execution_record import ExecutionStatus
+
+    with patch("orchestrate.server.sse_executor.OrchestrationEngine", return_value=_StubEngine([{"type": "start", "data": {}}])):
+        with patch("common.custom.HandlerRegistry") as registry, \
+             patch("orchestrate.core.model.execution_record.ExecutionRecord") as record:
+            registry.get_handler.return_value = MagicMock()
+            record.return_value = MagicMock(execution_id="record-1")
+            response = await dispatch_intent_sse([MagicMock()], "intent")
+            assert [chunk async for chunk in response.body_iterator]
+            assert record.call_args.kwargs["status"] == ExecutionStatus.FAILED
+
+
+@pytest.mark.asyncio
+async def test_recorded_events_are_bounded_and_note_truncation():
+    events = [{"type": "progress", "data": {"index": index}} for index in range(5)]
+    events.append({"type": "complete", "data": {}})
+    with patch("orchestrate.server.sse_executor.OrchestrationEngine", return_value=_StubEngine(events)), \
+         patch("orchestrate.server.sse_executor._RECORDED_EVENT_LIMIT", 3), \
+         patch("common.custom.HandlerRegistry") as registry, \
+         patch("orchestrate.core.model.execution_record.ExecutionRecord") as record:
+        registry.get_handler.return_value = MagicMock()
+        record.return_value = MagicMock(execution_id="record-2")
+        response = await dispatch_intent_sse([MagicMock()], "intent")
+        assert len([chunk async for chunk in response.body_iterator]) == 6
+        saved_events = record.call_args.kwargs["events"]
+        assert saved_events[0] == {"type": "events_truncated", "data": {"dropped": 3}}
+        assert saved_events[-1]["type"] == "complete"
+
+
+@pytest.mark.asyncio
+async def test_disconnecting_backpressured_stream_closes_engine_and_records_stop():
+    from orchestrate.core.model.execution_record import ExecutionStatus
+
+    source_closed = asyncio.Event()
+    produced = 0
+
+    class EndlessEngine:
+        async def events(self, intent):
+            nonlocal produced
+            try:
+                while True:
+                    produced += 1
+                    yield {"type": "progress", "data": {"index": produced}}
+            finally:
+                source_closed.set()
+
+    with patch("orchestrate.server.sse_executor.OrchestrationEngine", return_value=EndlessEngine()), \
+         patch("common.custom.HandlerRegistry") as registry, \
+         patch("orchestrate.core.model.execution_record.ExecutionRecord") as record:
+        registry.get_handler.return_value = MagicMock()
+        record.return_value = MagicMock(execution_id="record-disconnected")
+        response = await dispatch_intent_sse([MagicMock()], "intent")
+        await anext(response.body_iterator)
+        await asyncio.sleep(0.01)
+        assert produced <= 66, "a slow consumer must backpressure the engine"
+
+        await response.body_iterator.aclose()
+
+        assert source_closed.is_set()
+        assert record.call_args.kwargs["status"] == ExecutionStatus.STOPPED
 
 
 # ===========================================================================

@@ -16,6 +16,8 @@
 #    under the License.
 
 import hashlib
+
+import bcrypt
 import os
 from unittest.mock import MagicMock, patch
 
@@ -80,14 +82,16 @@ class TestLoginFileMode:
 @pytest.mark.anyio
 class TestRegisterComplexity:
     async def test_rejects_password_with_single_character_type(self, monkeypatch):
-        monkeypatch.setattr(srv, "get_conf", lambda: {"persistence_mode": "postgresql"})
+        monkeypatch.setattr(srv, "get_conf", lambda: {
+            "persistence_mode": "postgresql", "auth.register.enabled": "true"})
         with pytest.raises(HTTPException) as exc_info:
             await srv.register(srv.RegisterRequest(username="alice", password="aaaaaaaa"))
         assert exc_info.value.status_code == 400
         assert "complexity" in exc_info.value.detail.lower()
 
     async def test_accepts_password_meeting_complexity(self, monkeypatch):
-        monkeypatch.setattr(srv, "get_conf", lambda: {"persistence_mode": "postgresql"})
+        monkeypatch.setattr(srv, "get_conf", lambda: {
+            "persistence_mode": "postgresql", "auth.register.enabled": "true"})
         with patch("database.utils.user_store.user_exists", return_value=False), \
              patch("database.utils.user_store.create_user", return_value=True) as mock_create:
             result = await srv.register(srv.RegisterRequest(username="alice", password="Str0ngPass"))
@@ -152,8 +156,11 @@ class TestChangePasswordFileMode:
             with patch.object(srv.os.path, "join", side_effect=_fake_join):
                 result = await srv.change_password(request, _http_request(token))
             assert result["message"] == "Password changed successfully"
-            new_hash = hashlib.sha256(b"NewPassw0rd!").hexdigest()
-            assert conf_path.read_text(encoding="utf-8") == f"access_password={new_hash}\n"
+            written = conf_path.read_text(encoding="utf-8")
+            # 改密后存的是带版本标记的 bcrypt 哈希,且能用新口令验证通过
+            assert written.startswith("access_password=v4:$2")
+            stored_hash = written.split("=", 1)[1].strip()
+            assert srv._verify_access_password(stored_hash, "NewPassw0rd!")
         finally:
             store.revoke(token)
 

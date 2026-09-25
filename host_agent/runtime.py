@@ -140,12 +140,10 @@ class HostAgentExecutor(AgentExecutor):
         lang = detect_language(intent)
         task_id = context.task_id or "N/A"
         context_id = context.context_id or "N/A"
-        logger.info(
-            f"[HostAgent] execute: task_id={task_id}, context_id={context_id}, "
-            f"lang={lang}, intent={intent[:100]}"
-        )
+        logger.info(f"[HostAgent] execute: task_id={task_id}, context_id={context_id}, lang={lang}")
 
-        collected_events: list[dict] = []
+        terminal_event: dict | None = None
+        event_count = 0
         self._execution_tracker.begin(context.task_id)
         await event_queue.enqueue_event(Task(
             id=context.task_id,
@@ -178,24 +176,22 @@ class HostAgentExecutor(AgentExecutor):
                 ssl_verify=self._config.ssl_verify,
                 on_event=event_tracker.transform,
             ):
-                collected_events.append(event)
+                event_count += 1
+                if event.get("type") in {"complete", "error"}:
+                    terminal_event = event
                 await event_queue.enqueue_event(
                     self._event_to_task_update(event, context, lang)
                 )
             logger.info(
                 f"[HostAgent] Workflow execution done ({time.time() - execution_started:.2f}s), "
-                f"{len(collected_events)} events"
+                f"{event_count} events"
             )
 
             await event_queue.enqueue_event(Task(
                 id=context.task_id,
                 context_id=context.context_id,
-                status=TaskStatus(state=host_final_state(collected_events)),
-                metadata={
-                    "__sdk_events__": json.dumps(
-                        collected_events, ensure_ascii=False, default=str
-                    )
-                },
+                status=TaskStatus(state=host_final_state([terminal_event] if terminal_event else [])),
+                metadata={},
             ))
             logger.info(f"[HostAgent] Total execute time: {time.time() - started:.2f}s")
         except asyncio.CancelledError:

@@ -174,7 +174,10 @@ async def orchestrate_sop(
         agent_cards = await get_agent_cards()
         preflow = PreFlow(name=workflow_name or "SOP Workflow", steps_md=sop_text)
         generator = PsopGenerator()
-        psop = generator.generate_psop_workflow(preflow, agent_cards)
+        # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
+        psop = await anyio.to_thread.run_sync(
+            generator.generate_psop_workflow, preflow, agent_cards, abandon_on_cancel=False,
+        )
         psop.user_intent = sop_text[:200]
         psop.related_preflow = preflow.id
 
@@ -214,7 +217,11 @@ async def orchestrate_intent(
         acquired = True
         agent_cards = await get_agent_cards()
         generator = IntentPsopGenerator()
-        psop = generator.generate_psop_from_intent(body.intent, agent_cards, body.name)
+        # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
+        psop = await anyio.to_thread.run_sync(
+            generator.generate_psop_from_intent, body.intent, agent_cards, body.name,
+            abandon_on_cancel=False,
+        )
 
         save_handler = HandlerRegistry.get_handler(InterfaceType.SAVE_PSOP)
         save_handler.handle(psop)
@@ -302,12 +309,11 @@ async def execute_workflow(
 
     Returns an SSE stream with execution progress and results.
     """
-    acquired = False
     try:
-        execute_semaphore.acquire_nowait()
-        acquired = True
         agent_cards = await get_agent_cards()
-        return await dispatch_intent_sse(agent_cards, body.task, lang=lang)
+        return await dispatch_intent_sse(
+            agent_cards, body.task, lang=lang, semaphore=execute_semaphore,
+        )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -315,9 +321,6 @@ async def execute_workflow(
     except Exception as e:
         logger.error(f"Execution failed: {e}")
         raise HTTPException(status_code=500, detail=f"Workflow execution failed: {e}") from e
-    finally:
-        if acquired:
-            execute_semaphore.release()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 6. Execute known PSOP
@@ -336,16 +339,15 @@ async def execute_psop_by_id(
 
     Returns an SSE stream with execution progress and results.
     """
-    acquired = False
     try:
-        execute_semaphore.acquire_nowait()
-        acquired = True
         retrieval = SharedHandlers.retrieval()
         psop = retrieval.get_psop_by_id(psop_id)
         if not psop:
             raise HTTPException(status_code=404, detail=f"PSOP {psop_id} not found")
         intent = user_intent or psop.name or psop_id
-        return await dispatch_intent_sse(await get_agent_cards(), intent, lang=lang)
+        return await dispatch_intent_sse(
+            await get_agent_cards(), intent, lang=lang, semaphore=execute_semaphore,
+        )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -353,9 +355,6 @@ async def execute_psop_by_id(
     except Exception as e:
         logger.error(f"Execution by ID failed: {e}")
         raise HTTPException(status_code=500, detail=f"Workflow execution failed: {e}") from e
-    finally:
-        if acquired:
-            execute_semaphore.release()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 7. Execution records

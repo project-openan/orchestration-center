@@ -25,7 +25,7 @@ from orchestrate.server.middleware import (
     ConnectionLimitMiddleware, TimeoutMiddleware
 )
 from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from starlette import status
 
 
@@ -139,6 +139,24 @@ class TestLoginRateLimiter:
 
 @pytest.mark.anyio
 class TestConnectionLimitMiddleware:
+    async def test_stream_counts_until_body_closes(self):
+        middleware = ConnectionLimitMiddleware(MagicMock(), max_connections=1)
+
+        async def body():
+            yield "data: first\n\n"
+            await asyncio.Event().wait()
+
+        async def call_next(_request):
+            return StreamingResponse(body(), media_type="text/event-stream")
+
+        response = await middleware.dispatch(MagicMock(spec=Request), call_next)
+        assert middleware.active_connections == 1
+        assert await anext(response.body_iterator) == "data: first\n\n"
+        blocked = await middleware.dispatch(MagicMock(spec=Request), call_next)
+        assert blocked.status_code == 503
+        await response.body_iterator.aclose()
+        assert middleware.active_connections == 0
+
     async def test_accepts_when_under_limit(self):
         app = MagicMock()
         middleware = ConnectionLimitMiddleware(app, max_connections=10)

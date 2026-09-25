@@ -98,15 +98,17 @@ def clear_session_cookie(response: Response) -> None:
 def is_auth_enabled() -> bool:
     """Return True when authentication is enabled.
 
-    In PostgreSQL mode: checks if the users table has any user.
+    In PostgreSQL mode: checks if the users table has any user.  Raises
+    RuntimeError when the user store is unreachable -- callers must fail
+    closed (503) instead of treating "cannot determine" as "auth disabled".
     In file mode: checks ``access_password`` in server.conf.
-    
+
     Returns False when TESTING environment variable is set.
     """
     import os
     if os.environ.get('TESTING', '').lower() in ('true', '1', 'yes'):
         return False
-    
+
     conf = get_conf()
     if conf.get("persistence_mode", "file").lower() == "postgresql":
         from database.utils.user_store import has_any_user
@@ -239,7 +241,13 @@ def require_admin(request: Request) -> None:
     request through in that mode, so re-checking here would just lock
     everyone out of a deployment that has authentication turned off.
     """
-    if not is_auth_enabled():
+    try:
+        auth_enabled = is_auth_enabled()
+    except RuntimeError as e:
+        # Fail closed with 503 when the user store is unreachable.
+        logger.error(f"[Auth] Authentication backend unavailable: {e}")
+        raise HTTPException(status_code=503, detail="Authentication backend unavailable")
+    if not auth_enabled:
         return
     token = extract_token(request)
     role = _session_store.get_role(token) if token else None
@@ -281,10 +289,17 @@ def username_must_change_password(username: str | None) -> bool:
         return username in _pending_password_change
 
 
+# Path prefixes that require application-layer token auth. "/psops" is a
+# legacy alias registered at the application root (see
+# frontend_support_server.py) and exposes the same workflow CRUD/execute
+# surface as the internal API -- it must not sit outside the auth gate.
+_PROTECTED_PATH_PREFIXES = ("/rest/v1/orchestrate", "/psops")
+
+
 async def auth_middleware(request: Request, call_next):
     """Token-based auth for internal API; mTLS handles external API at TLS layer.
 
-    Internal API (``/rest/v1/orchestrate/*``):
+    Internal API (``/rest/v1/orchestrate/*``) and the legacy ``/psops`` alias:
         Token-based auth via database-backed users.  Public auth endpoints
         (login/check/register) are exempt.
 
@@ -298,11 +313,23 @@ async def auth_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    # Only the internal API needs application-layer token auth.
-    if not path.startswith("/rest/v1/orchestrate"):
+    # Only the internal API (and its legacy alias) needs application-layer auth.
+    if not path.startswith(_PROTECTED_PATH_PREFIXES):
         return await call_next(request)
 
-    if not is_auth_enabled():
+    try:
+        auth_enabled = is_auth_enabled()
+    except RuntimeError as e:
+        # Fail closed: an unreachable user store must never be read as
+        # "no users -> auth disabled", or a database outage would leave
+        # every endpoint unauthenticated.
+        logger.error(f"[Auth] Authentication backend unavailable: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=error(503, "Authentication backend unavailable"),
+        )
+
+    if not auth_enabled:
         return await call_next(request)
 
     if path in _PUBLIC_AUTH_PATHS:

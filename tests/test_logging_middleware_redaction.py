@@ -44,6 +44,16 @@ class TestRedactSensitiveParams:
         })
         assert result == {"password": "***", "api_key": "***", "secret": "***"}
 
+    def test_redacts_workflow_intent_from_legacy_get_urls(self):
+        result = _redact_sensitive_params({
+            "psop_id": "psop-1", "user_intent": "private customer request",
+            "intent": "private dispatch request", "task": "private external request",
+        })
+        assert result == {
+            "psop_id": "psop-1", "user_intent": "***",
+            "intent": "***", "task": "***",
+        }
+
     def test_redaction_is_case_insensitive(self):
         result = _redact_sensitive_params({"Access_Token": "live-token", "TOKEN": "live-token"})
         assert result == {"Access_Token": "***", "TOKEN": "***"}

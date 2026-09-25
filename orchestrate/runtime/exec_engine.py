@@ -28,6 +28,7 @@ agent card loading) lives in the Workbench Agent.
 
 import asyncio
 import json
+import os
 import time
 from collections.abc import AsyncIterator
 from contextlib import suppress
@@ -53,12 +54,20 @@ class OrchestrationEngine:
 
         self.lang = lang or "zh"
         self._agent_cards = agent_cards
-        self._target_agent = target_agent or get_conf().get("workflow_host_agent_name", "Host Agent")
+        conf = get_conf()
+        self._target_agent = target_agent or conf.get("workflow_host_agent_name", "Host Agent")
 
-        self._ssl_verify = str(get_conf().get("client_verify_server", "false")).lower() == "true"
+        self._ssl_verify = str(conf.get("client_verify_server", "true")).lower() == "true"
 
-        cred_path = Path(__file__).resolve().parent.parent.parent / "samples" / "agent_credentials.json"
-        self._cred_path = str(cred_path) if cred_path.is_file() else None
+        configured_path = os.environ.get("ORCH_AGENT_CREDENTIALS_FILE") or conf.get("agent_credentials_file")
+        self._cred_path = None
+        if configured_path:
+            cred_path = Path(configured_path)
+            if not cred_path.is_absolute():
+                cred_path = Path(__file__).resolve().parent.parent.parent / cred_path
+            if not cred_path.is_file():
+                raise ValueError("Configured agent credentials file does not exist")
+            self._cred_path = str(cred_path)
 
     def _find_target_card(self):
         if not self._target_agent:
@@ -90,7 +99,7 @@ class OrchestrationEngine:
             "timestamp": time.time(),
         }
 
-        logger.info(f"[Orchestration] Searching PSOP for intent: {intent[:80]}")
+        logger.info("[Orchestration] Searching PSOP for target agent {}", self._target_agent)
         retrieval = SharedHandlers.retrieval()
         results = await asyncio.to_thread(retrieval.retrieve_psop_by_intent_topn, intent, 3)
 
@@ -130,7 +139,7 @@ class OrchestrationEngine:
             "timestamp": time.time(),
         }
 
-        logger.info(f"[Orchestration] Dispatching intent to {self._target_agent}: {intent[:80]}")
+        logger.info("[Orchestration] Dispatching to target agent {}", self._target_agent)
 
         dispatch_metadata = {}
         if psop_model:
@@ -146,6 +155,7 @@ class OrchestrationEngine:
                 parts=(Part(text=intent),),
                 metadata=dispatch_metadata,
             )
+            terminal_emitted = False
             async for response in engine_client.stream_message(
                 self._target_agent, content,
             ):
@@ -153,6 +163,8 @@ class OrchestrationEngine:
                 if sdk_event_json:
                     try:
                         event = json.loads(sdk_event_json)
+                        if event.get("type") in {"complete", "error", "cancelled"}:
+                            terminal_emitted = True
                         if event.get("type") == "task_status_changed" and psop_model:
                             for shaped in self._shape_psop_update(event, psop_model):
                                 yield shaped
@@ -160,6 +172,15 @@ class OrchestrationEngine:
                             yield event
                     except (json.JSONDecodeError, TypeError) as e:
                         logger.warning(f"[Orchestration] Failed to parse __sdk_event__: {e}")
+                else:
+                    task_state = str(response.task_state or "").upper()
+                    if "CANCEL" in task_state:
+                        yield {"type": "cancelled", "data": {"reason": "Host Agent task cancelled"}, "timestamp": time.time()}
+                    elif "FAILED" in task_state or "REJECTED" in task_state:
+                        yield {"type": "error", "data": {"error": "Host Agent task failed"}, "timestamp": time.time()}
+                    elif "COMPLETED" in task_state and not terminal_emitted:
+                        terminal_emitted = True
+                        yield {"type": "complete", "data": {}, "timestamp": time.time()}
 
         except Exception as e:
             logger.error(f"[Orchestration] Workflow execution failed: {e}", exc_info=True)
