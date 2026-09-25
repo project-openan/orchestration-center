@@ -288,11 +288,14 @@ class WorkflowStorage:
             Optional[ExecutionRecord]: ExecutionRecord object if found, None otherwise
         """
         try:
+            self._validate_execution_id(execution_id)
             file_path = self.execution_dir / f"{execution_id}.json"
             if not file_path.exists():
                 return None
             with open(file_path, "r", encoding='utf-8') as f:
                 return ExecutionRecord.model_validate_json(f.read())
+        except WorkflowStorageError:
+            raise
         except Exception as e:
             logger.error(f"Failed to load execution record {execution_id}: {e}")
             return None
@@ -305,7 +308,15 @@ class WorkflowStorage:
             List[Dict]: List of execution record summaries sorted by started_at desc
         """
         records = []
-        for f in sorted(self.execution_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+
+        def _safe_mtime(path) -> float:
+            # 并发删除下 stat() 可能失败;失败的文件按最旧处理,不让整个列表接口 500
+            try:
+                return path.stat().st_mtime
+            except OSError:
+                return 0.0
+
+        for f in sorted(self.execution_dir.glob("*.json"), key=_safe_mtime, reverse=True):
             try:
                 with open(f, "r", encoding='utf-8') as fh:
                     record = ExecutionRecord.model_validate_json(fh.read())
@@ -334,12 +345,15 @@ class WorkflowStorage:
             bool: True if deleted, False if not found
         """
         try:
+            self._validate_execution_id(execution_id)
             file_path = self.execution_dir / f"{execution_id}.json"
             if file_path.exists():
                 file_path.unlink()
                 logger.info(f"Execution record deleted: {execution_id}")
                 return True
             return False
+        except WorkflowStorageError:
+            raise
         except Exception as e:
             logger.error(f"Failed to delete execution record {execution_id}: {e}")
             return False
@@ -349,6 +363,19 @@ class WorkflowStorage:
         self.preflow_dir.mkdir(parents=True, exist_ok=True)
         self.execution_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Storage initialized at: psop={self.psop_dir}, preflow={self.preflow_dir}, execution={self.execution_dir}")
+
+    @staticmethod
+    def _validate_execution_id(execution_id: str) -> None:
+        """Reject execution IDs that could escape the storage directory.
+
+        Mirrors _get_file_path's workflow_id rule; the execution-record
+        load/delete paths historically skipped this check, and on Windows a
+        backslash in the route parameter reaches pathlib as a path separator
+        (path traversal). ``fullmatch`` (not ``match`` + ``$``) so a trailing
+        newline cannot slip through either.
+        """
+        if not isinstance(execution_id, str) or not re.fullmatch(r'[\w\-]+', execution_id):
+            raise WorkflowStorageError(f"Invalid execution_id: {execution_id}")
 
     def _get_file_path(self, workflow_id: str, workflow_type: str) -> Path:
         """
@@ -364,7 +391,7 @@ class WorkflowStorage:
         Raises:
             WorkflowStorageError: If workflow type is unknown or workflow_id is invalid
         """
-        if not re.match(r'^[\w\-]+$', workflow_id):
+        if not re.fullmatch(r'[\w\-]+', workflow_id):
             raise WorkflowStorageError(f"Invalid workflow_id: {workflow_id}")
         if workflow_type == "psop":
             return self.psop_dir / f"{workflow_id}.json"

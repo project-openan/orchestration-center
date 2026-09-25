@@ -35,6 +35,7 @@ from typing import Optional
 
 from loguru import logger
 
+from common.util.password_hash import PASSWORD_SCHEME, hash_password, verify_legacy_bcrypt, verify_password
 from database.utils.db_connection import create_connection
 from database.utils.query_execution import execute_query
 
@@ -56,17 +57,38 @@ def _mark_user_exists() -> None:
             _any_user_exists_cache = True
 
 
-# Current on-disk password scheme: password_hash = _hash_password(plaintext, salt).
-# 'legacy' rows instead hold _hash_password(sha256(plaintext), salt) -- the
-# client used to pre-hash the password with SHA-256 before it ever reached
-# the backend, so the "password" that scheme's _hash_password() was ever
-# given is that digest, not the real plaintext.
-_CURRENT_PASSWORD_SCHEME = "v2"
+# Current on-disk password scheme v4 pre-hashes the full UTF-8 password before
+# bcrypt; v3 used bcrypt directly. Both embed their salt. 'v2' rows hold
+# _hash_password(plaintext, salt) (single-round salted SHA-256, kept for
+# transparent upgrade); 'legacy' rows hold _hash_password(sha256(plaintext),
+# salt) -- the client used to pre-hash the password with SHA-256 before it
+# ever reached the backend, so the "password" that scheme's _hash_password()
+# was ever given is that digest, not the real plaintext.
+_CURRENT_PASSWORD_SCHEME = PASSWORD_SCHEME
 
 
 def _hash_password(password: str, salt: str) -> str:
-    """Hash password with salt using SHA-256."""
+    """Hash password with salt using SHA-256 (v2 scheme, verification only)."""
     return hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
+
+
+def _hash_password_bcrypt(password: str) -> str:
+    """Hash the full password under the current, versioned bcrypt scheme."""
+    return hash_password(password)
+
+
+def _verify_password(stored_hash: str, salt: str, scheme: str, password: str) -> bool:
+    """Verify a plaintext password against a stored hash of any scheme."""
+    if scheme == _CURRENT_PASSWORD_SCHEME:
+        return verify_password(password, stored_hash)
+    if scheme == "v3" and stored_hash.startswith("$2"):
+        return verify_legacy_bcrypt(password, stored_hash)
+    if scheme == "legacy":
+        legacy_input = hashlib.sha256(password.encode()).hexdigest()
+        computed_hash = _hash_password(legacy_input, salt)
+    else:
+        computed_hash = _hash_password(password, salt)
+    return _secrets.compare_digest(computed_hash, stored_hash)
 
 
 def _generate_salt() -> str:
@@ -79,13 +101,14 @@ def create_user(username: str, password: str, role: str = "user", must_change_pa
     if conn is None:
         return False
     try:
-        salt = _generate_salt()
-        password_hash = _hash_password(password, salt)
+        # bcrypt (v3) embeds its own salt; the salt column stays empty for
+        # schema compatibility.
+        password_hash = _hash_password_bcrypt(password)
         _, err = execute_query(
             conn,
             "INSERT INTO users (username, password_hash, salt, role, must_change_password, password_scheme) "
             "VALUES (%s, %s, %s, %s, %s, %s)",
-            (username, password_hash, salt, role, must_change_password, _CURRENT_PASSWORD_SCHEME),
+            (username, password_hash, "", role, must_change_password, _CURRENT_PASSWORD_SCHEME),
         )
         if err:
             logger.warning(f"Failed to create user '{username}': {err}")
@@ -97,27 +120,33 @@ def create_user(username: str, password: str, role: str = "user", must_change_pa
         conn.close()
 
 
-def _upgrade_password_scheme(username: str, password: str, salt: str) -> None:
-    """Re-hash a successfully-authenticated legacy row under the current scheme.
+def _upgrade_password_scheme(
+    username: str, password: str, old_hash: str, old_salt: str, old_scheme: str | None
+) -> None:
+    """Re-hash a successfully-authenticated legacy/v2 row under the current scheme.
 
-    Only called after the legacy verification in authenticate_user() has
-    already confirmed ``password`` is correct, so this is a same-password
-    re-hash, not a credential change -- must_change_password is untouched.
+    Only called after verification in authenticate_user() has already
+    confirmed ``password`` is correct, so this is a same-password re-hash,
+    not a credential change -- must_change_password is untouched.
     """
     conn = create_connection()
     if conn is None:
         return
     try:
-        password_hash = _hash_password(password, salt)
+        password_hash = _hash_password_bcrypt(password)
         _, err = execute_query(
             conn,
-            "UPDATE users SET password_hash = %s, password_scheme = %s WHERE username = %s",
-            (password_hash, _CURRENT_PASSWORD_SCHEME, username),
+            "UPDATE users SET password_hash = %s, salt = %s, password_scheme = %s "
+            "WHERE username = %s AND password_hash = %s AND salt = %s "
+            "AND password_scheme IS NOT DISTINCT FROM %s",
+            (password_hash, "", _CURRENT_PASSWORD_SCHEME, username, old_hash, old_salt, old_scheme),
         )
         if err:
             logger.warning(f"Failed to upgrade password scheme for '{username}': {err}")
         else:
-            logger.info(f"Upgraded '{username}' from legacy to '{_CURRENT_PASSWORD_SCHEME}' password scheme")
+            # execute_query does not expose rowcount; a concurrent password
+            # change may make the compare-and-swap a safe no-op.
+            logger.debug(f"Password scheme upgrade attempted for '{username}'")
     finally:
         conn.close()
 
@@ -128,8 +157,8 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     Rows stored under the legacy scheme are verified by reconstructing the
     client-side SHA-256 pre-hash the old frontend used to send, so existing
     accounts keep working with the password their owner already knows --
-    no forced reset. A successful legacy login is opportunistically
-    upgraded to the current scheme.
+    no forced reset. A successful legacy or v2 login is opportunistically
+    upgraded to the current bcrypt scheme.
     """
     conn = create_connection()
     if conn is None:
@@ -150,17 +179,11 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
         must_change_password = bool(row[4])
         scheme = row[5] or "legacy"
 
-        if scheme == "legacy":
-            legacy_input = hashlib.sha256(password.encode()).hexdigest()
-            computed_hash = _hash_password(legacy_input, salt)
-        else:
-            computed_hash = _hash_password(password, salt)
-
-        if not _secrets.compare_digest(computed_hash, stored_hash):
+        if not _verify_password(stored_hash, salt, scheme, password):
             return None
 
-        if scheme == "legacy":
-            _upgrade_password_scheme(username, password, salt)
+        if scheme != _CURRENT_PASSWORD_SCHEME:
+            _upgrade_password_scheme(username, password, stored_hash, salt, row[5])
 
         return {"username": row[0], "role": role, "must_change_password": must_change_password}
     finally:
@@ -227,15 +250,22 @@ def has_any_user() -> bool:
     Cached once True (see the module-level note above) -- callers on a
     hot path (is_auth_enabled()) skip the DB round trip entirely once at
     least one user has ever been observed to exist.
+
+    Raises RuntimeError when the database is unreachable: the caller
+    (auth gate) must fail closed with 503 rather than treat "cannot
+    determine" as "no users -> auth disabled", which would leave every
+    endpoint unauthenticated during a database outage.
     """
     if _any_user_exists_cache:
         return True
     conn = create_connection()
     if conn is None:
-        return False
+        raise RuntimeError("User store unavailable: cannot connect to the database")
     try:
         result, err = execute_query(conn, "SELECT 1 FROM users LIMIT 1", None)
-        found = bool(result and not err)
+        if err:
+            raise RuntimeError(f"User store unavailable: {err}")
+        found = bool(result)
         if found:
             _mark_user_exists()
         return found
@@ -251,13 +281,13 @@ def update_password(username: str, new_password: str) -> bool:
     if conn is None:
         return False
     try:
-        salt = _generate_salt()
-        password_hash = _hash_password(new_password, salt)
+        # bcrypt (v3) embeds its own salt; the salt column stays empty.
+        password_hash = _hash_password_bcrypt(new_password)
         _, err = execute_query(
             conn,
             "UPDATE users SET password_hash = %s, salt = %s, must_change_password = FALSE, "
             "password_scheme = %s WHERE username = %s",
-            (password_hash, salt, _CURRENT_PASSWORD_SCHEME, username),
+            (password_hash, "", _CURRENT_PASSWORD_SCHEME, username),
         )
         if err:
             logger.warning(f"Failed to update password for '{username}': {err}")

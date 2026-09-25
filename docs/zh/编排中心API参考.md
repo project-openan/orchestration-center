@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
 
 内部 API（`/rest/v1/orchestrate/*`）支持可选的令牌认证，提供两种模式：
 
-- **PostgreSQL 模式**：用户存储在数据库中，使用每用户独立 salt 哈希。支持注册和用户管理接口。
+- **PostgreSQL 模式**：用户存储在数据库中，使用版本化密码哈希。支持用户管理；自助注册默认关闭，可通过 `auth.register.enabled=true` 显式开启。
 - **文件模式**：通过 `server.conf` 的 `access_password` 配置单一密码，用户名固定为 `admin`。
 
 设置 `access_password`（文件模式）或 `users` 表有用户（PostgreSQL 模式）时认证开启。开启后所有内部 API 请求必须携带有效令牌。
@@ -88,7 +88,7 @@ curl -H "Authorization: Bearer <令牌>" https://127.0.0.1:5001/rest/v1/orchestr
 
 SSE 端点（`EventSource`）使用同一会话 Cookie 认证，浏览器会自动发送；不再支持查询参数传令牌。
 
-注册新用户（仅 PostgreSQL 模式）：
+注册新用户（仅 PostgreSQL 模式且已设置 `auth.register.enabled=true`）：
 ```bash
 curl -X POST https://127.0.0.1:5001/rest/v1/orchestrate/auth/register \\
   -H "Content-Type: application/json" \\

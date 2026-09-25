@@ -276,7 +276,7 @@ For deployment behind Nginx (recommended):
    python generate_access_password.py
    ```
 
-3. **Users and registration**: When `persistence_mode=postgresql`, the system automatically creates a default `admin` user (password: `OpenAN@2026`) on first startup. New users can self-register via the registration link on the login page. In `file` mode, registration is not available and only the `access_password` config is used.
+3. **Users and registration**: When `persistence_mode=postgresql`, the system automatically creates a default `admin` user (password: `OpenAN@2026`) on first startup. Self-registration is disabled by default; set `auth.register.enabled=true` in PostgreSQL mode to show the registration link. In `file` mode, registration is not available and only the `access_password` config is used.
 
 ### High-Security Mode (mTLS + HTTPS + Login)
 
@@ -300,9 +300,9 @@ All services must present valid certificates signed by a trusted CA during TLS h
 | `enable_https` | false | true | true |
 | `verify_client` | false | false | true |
 | `client_verify_server` | false (local self-signed testing only) | true | true |
-| `access_password` | empty | SHA-256 hash | SHA-256 hash |
+| `access_password` | empty | legacy SHA-256 or versioned bcrypt hash | legacy SHA-256 or versioned bcrypt hash |
 | `persistence_mode` | file | postgresql | postgresql |
-| Registration | N/A | Enabled | Enabled |
+| Registration | N/A | Disabled by default; set `auth.register.enabled=true` to enable | Disabled by default; set `auth.register.enabled=true` to enable |
 | Frontend | HTTP | HTTPS (via Nginx) | HTTPS (via Nginx) |
 | Nginx cert | N/A | CA-signed | CA-signed |
 
@@ -419,7 +419,7 @@ When executing a workflow, the system pushes execution progress in real time via
    If `access_password` is configured or `persistence_mode=postgresql`, the login page is displayed. Enter your username and password to access the main interface.
 
    - Default admin credentials: username `admin`, password `OpenAN@2026` (in PostgreSQL mode, the admin user is auto-created on first startup).
-   - To register a new account (PostgreSQL mode only), click the registration link on the login page.
+   - To register a new account (PostgreSQL mode with `auth.register.enabled=true`), click the registration link on the login page.
    - In `file` mode, the username is `admin` and the password is the value set in `access_password` (before hashing).
    - To change the admin password in file mode, regenerate the hash: `python generate_access_password.py`
 

@@ -18,6 +18,7 @@
 import hashlib
 from unittest.mock import MagicMock, patch
 
+import bcrypt
 import pytest
 
 from database.utils import user_store
@@ -42,7 +43,7 @@ class TestCreateUser:
             params = mock_exec.call_args[0][2]
             assert params[3] == "user"
             assert params[4] is False
-            assert params[5] == "v2"
+            assert params[5] == "v4"
 
     def test_passes_through_role_and_must_change_password(self):
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
@@ -52,16 +53,23 @@ class TestCreateUser:
             assert params[3] == "admin"
             assert params[4] is True
 
-    def test_hashes_the_plaintext_directly(self):
-        """create_user's hash must match _hash_password(plaintext, salt) --
-        i.e. the real password, not some pre-hashed digest of it."""
+    def test_hashes_the_full_password(self):
+        """The versioned hash must verify the full password, not a truncated prefix."""
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
-             patch.object(user_store, "_generate_salt", return_value="fixedsalt"), \
              patch.object(user_store, "execute_query", return_value=(None, None)) as mock_exec:
             user_store.create_user("alice", "S3cure!pw")
             params = mock_exec.call_args[0][2]
-            expected = hashlib.sha256(b"fixedsalt:S3cure!pw").hexdigest()
-            assert params[1] == expected
+            assert params[1].startswith("$2")
+            assert user_store._verify_password(params[1], "", "v4", "S3cure!pw")
+
+    def test_long_multibyte_password_does_not_truncate(self):
+        password = "密" * 40  # 120 UTF-8 bytes, below the API's 256-character limit
+        with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
+             patch.object(user_store, "execute_query", return_value=(None, None)) as mock_exec:
+            assert user_store.create_user("alice", password)
+            stored = mock_exec.call_args[0][2][1]
+            assert user_store._verify_password(stored, "", "v4", password)
+            assert not user_store._verify_password(stored, "", "v4", "密" * 39 + "别")
 
     def test_returns_false_on_db_error(self):
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
@@ -110,13 +118,15 @@ class TestAuthenticateUserV2Scheme:
              patch.object(user_store, "execute_query", return_value=([row], None)):
             assert user_store.authenticate_user("alice", "wrong") is None
 
-    def test_does_not_trigger_scheme_upgrade(self):
+    def test_v2_login_upgrades_to_bcrypt(self):
+        """A successful v2 (salted SHA-256) login is transparently upgraded
+        to the current bcrypt scheme."""
         row = self._row_for("S3cure!pw")
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
              patch.object(user_store, "execute_query", return_value=([row], None)), \
              patch.object(user_store, "_upgrade_password_scheme") as mock_upgrade:
             user_store.authenticate_user("alice", "S3cure!pw")
-            mock_upgrade.assert_not_called()
+            mock_upgrade.assert_called_once_with("alice", "S3cure!pw", row[1], row[2], row[5])
 
     def test_returns_none_when_user_not_found(self):
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
@@ -152,7 +162,7 @@ class TestAuthenticateUserLegacyScheme:
              patch.object(user_store, "execute_query", return_value=([row], None)), \
              patch.object(user_store, "_upgrade_password_scheme") as mock_upgrade:
             user_store.authenticate_user("alice", "MyRealPassword1!")
-            mock_upgrade.assert_called_once_with("alice", "MyRealPassword1!", "salt123")
+            mock_upgrade.assert_called_once_with("alice", "MyRealPassword1!", row[1], row[2], row[5])
 
     def test_failed_login_does_not_upgrade_scheme(self):
         row = self._legacy_row_for("MyRealPassword1!")
@@ -183,18 +193,36 @@ class TestAuthenticateUserLegacyScheme:
             assert result["must_change_password"] is True
 
 
+def test_existing_v3_bcrypt_hash_remains_valid():
+    password = "S3cure!pw"
+    stored = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    assert user_store._verify_password(stored, "", "v3", password)
+    assert not user_store._verify_password(stored, "", "v3", "wrong")
+
+
 class TestUpgradePasswordScheme:
     def test_rehashes_under_current_scheme(self):
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
              patch.object(user_store, "execute_query", return_value=(None, None)) as mock_exec:
-            user_store._upgrade_password_scheme("alice", "MyRealPassword1!", "salt123")
+            user_store._upgrade_password_scheme("alice", "MyRealPassword1!", "oldhash", "salt123", "v2")
             query = mock_exec.call_args[0][1]
             params = mock_exec.call_args[0][2]
-            expected_hash = user_store._hash_password("MyRealPassword1!", "salt123")
             assert "password_scheme" in query
             assert "must_change_password" not in query
-            assert params[0] == expected_hash
-            assert params[1] == "v2"
+            assert params[0].startswith("$2")
+            assert user_store._verify_password(params[0], "", "v4", "MyRealPassword1!")
+            assert params[1] == ""
+            assert params[2] == "v4"
+            assert "password_hash = %s AND salt = %s" in query
+            assert "password_scheme IS NOT DISTINCT FROM %s" in query
+            assert params[3:] == ("alice", "oldhash", "salt123", "v2")
+
+    def test_upgrade_of_long_legacy_password_succeeds(self):
+        password = "A" * 90
+        with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
+             patch.object(user_store, "execute_query", return_value=(None, None)) as mock_exec:
+            user_store._upgrade_password_scheme("alice", password, "oldhash", "salt", "v2")
+            assert user_store._verify_password(mock_exec.call_args[0][2][0], "", "v4", password)
 
 
 class TestUpdatePassword:
@@ -206,7 +234,9 @@ class TestUpdatePassword:
             params = mock_exec.call_args[0][2]
             assert "password_scheme" in query
             assert "must_change_password = FALSE" in query
-            assert "v2" in params
+            assert params[1] == ""
+            assert params[2] == "v4"
+            assert user_store._verify_password(params[0], "", "v4", "NewPassw0rd!")
 
     def test_returns_false_on_db_error(self):
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
@@ -271,14 +301,17 @@ class TestHasAnyUser:
              patch.object(user_store, "execute_query", return_value=([], None)):
             assert user_store.has_any_user() is False
 
-    def test_false_on_db_error(self):
+    def test_raises_on_db_error(self):
         with patch.object(user_store, "create_connection", return_value=_mock_conn()), \
              patch.object(user_store, "execute_query", return_value=(None, RuntimeError("boom"))):
-            assert user_store.has_any_user() is False
+            # fail-closed:DB 异常必须抛错(认证网关据此返回 503),不能当作"无用户"放行
+            with pytest.raises(RuntimeError):
+                user_store.has_any_user()
 
-    def test_false_when_no_connection(self):
+    def test_raises_when_no_connection(self):
         with patch.object(user_store, "create_connection", return_value=None):
-            assert user_store.has_any_user() is False
+            with pytest.raises(RuntimeError):
+                user_store.has_any_user()
 
     def test_true_result_is_cached_and_skips_the_db_on_next_call(self):
         with patch.object(user_store, "create_connection", return_value=_mock_conn()) as mock_create_conn, \

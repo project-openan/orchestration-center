@@ -174,7 +174,10 @@ async def orchestrate_sop(
         agent_cards = await get_agent_cards()
         preflow = PreFlow(name=workflow_name or "SOP Workflow", steps_md=sop_text)
         generator = PsopGenerator()
-        psop = generator.generate_psop_workflow(preflow, agent_cards)
+        # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
+        psop = await anyio.to_thread.run_sync(
+            generator.generate_psop_workflow, preflow, agent_cards, abandon_on_cancel=False,
+        )
         psop.user_intent = sop_text[:200]
         psop.related_preflow = preflow.id
 
@@ -214,7 +217,11 @@ async def orchestrate_intent(
         acquired = True
         agent_cards = await get_agent_cards()
         generator = IntentPsopGenerator()
-        psop = generator.generate_psop_from_intent(body.intent, agent_cards, body.name)
+        # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
+        psop = await anyio.to_thread.run_sync(
+            generator.generate_psop_from_intent, body.intent, agent_cards, body.name,
+            abandon_on_cancel=False,
+        )
 
         save_handler = HandlerRegistry.get_handler(InterfaceType.SAVE_PSOP)
         save_handler.handle(psop)
