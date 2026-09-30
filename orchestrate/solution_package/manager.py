@@ -17,6 +17,7 @@
 
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
@@ -31,18 +32,37 @@ class SolutionPackageManager:
         Initialize SolutionPackageManager.
 
         Args:
-            storage_dir: Storage directory path, defaults to data/solution_packages sibling to orchestrate directory
+            storage_dir: Storage directory path, defaults to data/solution_packages under the repository root
         """
-        if storage_dir is None:
-            # Get absolute path of current file, then find project root (parent of framework)
-            current_file = Path(__file__).resolve()
-            project_root = current_file.parent.parent  # framework directory
-            self.storage_dir = project_root / "data" / "solution_packages"
-        else:
-            self.storage_dir = Path(storage_dir)
+        # manager.py -> solution_package/ -> orchestrate/ -> repo root; runtime
+        # data lives next to data/workflow_storage at the repository root.
+        current_file = Path(__file__).resolve()
+        project_root = current_file.parents[2]
+        self.storage_dir = (
+            Path(storage_dir) if storage_dir
+            else project_root / "data" / "solution_packages"
+        )
+        self.seed_dir = project_root / "samples" / "solution_packages"
 
         self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self._seed_demo_packages()
         logger.info(f"SolutionPackageManager initialized with storage directory: {self.storage_dir}")
+
+    def _seed_demo_packages(self) -> None:
+        """Copy demo packages from samples/ into an empty storage directory.
+
+        Gives a fresh deployment a package to explore without needing the
+        original PDF. Real imports never get overwritten: seeding is skipped
+        as soon as the storage directory holds any package.
+        """
+        if any(self.storage_dir.glob("*.json")):
+            return
+        if not self.seed_dir.is_dir():
+            return
+        for seed_file in sorted(self.seed_dir.glob("*.json")):
+            target = self.storage_dir / seed_file.name
+            shutil.copyfile(seed_file, target)
+            logger.info(f"Seeded demo solution package: {seed_file.name}")
 
     def _get_storage_path(self, pdf_filename: str) -> Path:
         """
