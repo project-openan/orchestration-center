@@ -19,6 +19,7 @@ from enum import Enum
 
 
 class InterfaceType(Enum):
+    AUTHENTICATE_EXTERNAL = "authenticate_external"
     SAVE_PSOP = "save_psop"
     GET_ALL_PSOP = "get_all_psop"
     GET_PSOP_BY_ID = "get_psop_by_id"

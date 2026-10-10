@@ -16,10 +16,11 @@
 #    under the License.
 
 from pathlib import Path
+import pytest
 
 from fastapi.testclient import TestClient
 
-from host_agent.service import create_agent_app
+from host_agent.service import create_agent_app, start_agent_server, HostTlsConfig
 from orchestrate import AgentCardLoader
 from samples.spn_host_agent.auth import SampleFixedCredentialAuth
 
@@ -70,3 +71,22 @@ def test_sample_auth_provider_owns_demo_credentials():
     assert rejected.status_code == 401
     assert accepted.status_code == 200
     assert accepted.json()["accessSession"]
+
+@pytest.mark.asyncio
+async def test_https_missing_material_is_not_silently_http(tmp_path):
+    card = _secured_agent_card()
+    for interface in card.supported_interfaces:
+        interface.url = "https://127.0.0.1:8903"
+    with pytest.raises(ValueError, match="missing"):
+        await start_agent_server(card, _Executor(), 0, tls_config=HostTlsConfig(
+            str(tmp_path / "missing.cer"), str(tmp_path / "missing.pem")))
+
+
+@pytest.mark.asyncio
+async def test_host_http_mixed_protocols_are_rejected():
+    card = _secured_agent_card()
+    del card.supported_interfaces[:]
+    card.supported_interfaces.add(url="http://127.0.0.1:8903", protocol_binding="JSONRPC")
+    card.supported_interfaces.add(url="https://127.0.0.1:8903", protocol_binding="HTTP+JSON")
+    with pytest.raises(ValueError, match="single"):
+        await start_agent_server(card, _Executor(), 0)

@@ -45,22 +45,8 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # No-op when BACKEND_SCHEME=http. When https, the backend's default is
-        # a self-signed cert (see orchestrate/start.py) — nginx's proxy_pass
-        # otherwise refuses to complete the TLS handshake.
-        proxy_ssl_verify off;
-
-        # mTLS upstream (only when the backend sets verify_client=true): the
-        # backend then requires a client certificate at the TLS handshake and
-        # drops connections without one ("socket hang up"). Present a client
-        # cert issued from the backend's own CA (see generate_selfsign_cert
-        # --issue-client) and verify the backend certificate in return.
-        # Uncomment and point at the deployed etc/ssl files:
-        # proxy_ssl_certificate /path/to/etc/ssl/dev-proxy-client.cer;
-        # proxy_ssl_certificate_key /path/to/etc/ssl/dev-proxy-client.key;
-        # proxy_ssl_trusted_certificate /path/to/etc/ssl/trust.cer;
-        # proxy_ssl_verify on;
-        # proxy_ssl_name <san-on-the-backend-certificate>;
+        # Rendered by 15-openan-backend.envsh; independent trust and mTLS options.
+        ${BACKEND_TLS_OPTIONS}
 
         # SSE execution stream (see DynamicWorkflowEngine) — disable
         # buffering and give it room to stay open past nginx's default

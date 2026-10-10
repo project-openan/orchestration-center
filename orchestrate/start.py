@@ -148,10 +148,10 @@ class CustomUvicornServer:
             ssl_certfile=self.conf_obj.ssl_certfile,
             ssl_keyfile=self.conf_obj.ssl_keyfile,
             ssl_keyfile_password=load_cert_password(self.conf_obj.ssl_keyfile_password).decode(DEFAULT_ENCODING),
-            ssl_ca_certs=self.conf_obj.ssl_ca_certs,
+            ssl_ca_certs=self.conf_obj.ssl_ca_certs if self.conf_obj.verify_client != ssl.CERT_NONE else None,
             ssl_cert_reqs=self.conf_obj.verify_client,
             ssl_ciphers=CipherConverter.convert(self.server_config.get(TLS_CIPHER)),
-            timeout_keep_alive=0,
+            timeout_keep_alive=5,
             timeout_graceful_shutdown=2,
             log_level="info",
             proxy_headers=True
@@ -220,7 +220,9 @@ def main():
     storage = initialize_storage(server_config)
     atexit.register(storage.close)
     if not is_enable_https:
-        uvicorn.run(app, host=server_config.get('ip', "127.0.0.1"), port=int(server_config.get('port', 5001)), timeout_graceful_shutdown=2)
+        uvicorn.run(app, host=server_config.get('ip', "127.0.0.1"), port=int(server_config.get('port', 5001)),
+                    forwarded_allow_ips=server_config.get(FORWARDED_ALLOW_IPS, "127.0.0.1"),
+                    timeout_graceful_shutdown=2)
     else:
         try:
             conf_obj = get_conf_singleton()

@@ -21,7 +21,7 @@
 #   docker build -t orchestration-center:latest .
 #
 # Run (local, file persistence):
-#   docker run -p 5001:5001 orchestration-center:latest
+#   See docs/transport-runtime.md for required credentials.
 #
 # Run (local, PostgreSQL):
 #   docker run -e PERSISTENCE_MODE=postgresql \
@@ -58,15 +58,27 @@ ENV PATH="/opt/venv/bin:$PATH" \
     ORCH_IP=0.0.0.0 \
     ORCH_PORT=5001 \
     ORCH_ENABLE_HTTPS=false \
-    ORCH_FORWARDED_ALLOW_IPS="*" \
+    ORCH_FORWARDED_ALLOW_IPS="127.0.0.1" \
     PERSISTENCE_MODE=file
 
-COPY . /opt/orchestration-center/
+COPY orchestrate/ /opt/orchestration-center/orchestrate/
+COPY samples/solution_packages/ /opt/orchestration-center/samples/solution_packages/
+COPY host_agent/ /opt/orchestration-center/host_agent/
+COPY common/ /opt/orchestration-center/common/
+COPY database/ /opt/orchestration-center/database/
+COPY bin/ /opt/orchestration-center/bin/
+COPY etc/conf/server.conf.example /opt/orchestration-center/etc/conf/server.conf
+COPY etc/conf/server.properties etc/conf/log_config.conf /opt/orchestration-center/etc/conf/
+COPY etc/conf/db/ /opt/orchestration-center/etc/conf/db/
+COPY etc/config/models.yaml.example /opt/orchestration-center/etc/config/models.yaml.example
+COPY docker-entrypoint.sh /opt/orchestration-center/docker-entrypoint.sh
 
-RUN useradd -m appuser \
+RUN useradd --uid 10001 -m appuser \
     && mkdir -p /opt/orchestration-center/log /opt/orchestration-center/run /opt/orchestration-center/data \
     && mkdir -p /opt/orchestration-center/etc/ssl \
+    && sed -i 's/\r$//' /opt/orchestration-center/bin/*.sh /opt/orchestration-center/docker-entrypoint.sh \
     && chmod +x /opt/orchestration-center/bin/*.sh /opt/orchestration-center/docker-entrypoint.sh \
+    && chmod 0700 /opt/orchestration-center/etc/ssl  \
     && chown -R appuser:appuser /opt/orchestration-center /opt/venv
 
 WORKDIR /opt/orchestration-center

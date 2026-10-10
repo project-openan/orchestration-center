@@ -101,6 +101,8 @@ def test_handler_crud_uses_one_owned_connection_source(mode, transport, tmp_path
     assert len(rows["execution_records"]) == 1
     record_id = next(iter(rows["execution_records"]))
 
+    monkeypatch.setenv("ORCH_API_TOKEN", "transport-regression-token-000000000000")
+    monkeypatch.setattr(auth, "get_conf", lambda: {"external.auth.mode": "bearer"})
     options, verify = {}, True
     if transport == "https":
         cert, key = _tls_files(tmp_path)
@@ -119,7 +121,8 @@ def test_handler_crud_uses_one_owned_connection_source(mode, transport, tmp_path
             time.sleep(0.01)
         assert runner.started
         with httpx.Client(base_url=f"{transport}://127.0.0.1:{port}", verify=verify,
-                          trust_env=False, timeout=5) as client:
+                          trust_env=False, timeout=5,
+                          headers={"Authorization": "Bearer transport-regression-token-000000000000"}) as client:
             base = "/rest/v1/orchestrate"
             response = client.post(base + "/workflows", json={"psop": sample_psop_dict})
             assert response.status_code == 201, response.text

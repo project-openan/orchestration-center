@@ -1,0 +1,26 @@
+#!/bin/sh
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+# Sourced before nginx's envsubst hook so protocol and TLS directives stay coherent.
+if [ "${BACKEND_SCHEME:-auto}" = auto ]; then
+    if [ "${ORCH_ENABLE_HTTPS:-false}" = true ]; then BACKEND_SCHEME=https; else BACKEND_SCHEME=http; fi
+fi
+BACKEND_TLS_OPTIONS=""
+case "$BACKEND_SCHEME" in
+  http) ;;
+  https)
+    BACKEND_TLS_OPTIONS="proxy_ssl_server_name on; proxy_ssl_name ${BACKEND_HOST};"
+    case "${BACKEND_VERIFY_SERVER:-true}" in
+      true)
+        [ -f "${BACKEND_CA_FILE:-}" ] || { echo "HTTPS upstream verification requires BACKEND_CA_FILE" >&2; exit 1; }
+        BACKEND_TLS_OPTIONS="$BACKEND_TLS_OPTIONS proxy_ssl_verify on; proxy_ssl_trusted_certificate $BACKEND_CA_FILE;" ;;
+      false) BACKEND_TLS_OPTIONS="$BACKEND_TLS_OPTIONS proxy_ssl_verify off;" ;;
+      *) echo "BACKEND_VERIFY_SERVER must be true or false" >&2; exit 1 ;;
+    esac
+    if [ -n "${BACKEND_CLIENT_CERT:-}" ] || [ -n "${BACKEND_CLIENT_KEY:-}" ]; then
+      [ -f "${BACKEND_CLIENT_CERT:-}" ] && [ -f "${BACKEND_CLIENT_KEY:-}" ] || { echo "Both upstream mTLS files are required" >&2; exit 1; }
+      BACKEND_TLS_OPTIONS="$BACKEND_TLS_OPTIONS proxy_ssl_certificate $BACKEND_CLIENT_CERT; proxy_ssl_certificate_key $BACKEND_CLIENT_KEY;"
+    fi ;;
+  *) echo "BACKEND_SCHEME must be http, https or auto" >&2; exit 1 ;;
+esac
+export BACKEND_SCHEME BACKEND_TLS_OPTIONS

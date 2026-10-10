@@ -1,0 +1,42 @@
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Feature switches and deployment/access configuration. Runtime policies live
+# in server.properties; database connection templates live in etc/conf/db/.
+# Copy this public template; never commit actual configuration or credentials.
+ip=127.0.0.1
+port=5001
+enable_https=false
+ssl_certfile=etc/ssl/server.cer
+ssl_keyfile=etc/ssl/server_key.pem
+ssl_keyfile_password=etc/ssl/cert_pwd
+ssl_ca_certs=etc/ssl/trust.cer
+verify_client=true
+# Outbound server verification is independent of inbound client authentication.
+client_verify_server=true
+
+# SHA-256 frontend password hash (generate_access_password.py), or bootstrap
+# database users with OC_ADMIN_INITIAL_PASSWORD. Supply via protected runtime
+# config/ORCH_ACCESS_PASSWORD, never bake into an image.
+access_password=
+access_token_ttl=43200
+security.dev_insecure_mode=false
+
+# auto preserves existing verified mTLS deployments; other transports require
+# machine Bearer authentication. custom uses AUTHENTICATE_EXTERNAL extension.
+external.auth.mode=auto
+external.auth.token_env=ORCH_API_TOKEN
+# Optional browser-facing scheme, independent of backend TLS. Empty uses the
+# request scheme as resolved by Uvicorn's restricted trusted-proxy middleware.
+public_scheme=
+forwarded_allow_ips=127.0.0.1
+
+persistence_mode=file
+agent_registry_url=http://127.0.0.1:5000
+# Outbound authentication material is separate from the server's TLS identity.
+agent_registry.token_env=REGISTRY_ACCESS_TOKEN
+agent_registry.ca_file=
+agent_registry.client_cert=
+agent_registry.client_key=
+agent_registry.client_key_password_env=REGISTRY_CLIENT_KEY_PASSWORD

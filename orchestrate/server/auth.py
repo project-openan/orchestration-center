@@ -23,8 +23,9 @@ Internal API (``/rest/v1/orchestrate/*``):
     are in-memory with configurable TTL.
 
 External API (``/api/v1/*``):
-    Protected by mTLS at the TLS layer when enable_https=true and
-    verify_client=true.
+    Independently authenticated using a machine Bearer token, verified mTLS,
+    or a configured business authentication extension. Browser cookies never
+    substitute for machine credentials.
 """
 
 import secrets
@@ -74,14 +75,12 @@ def _is_https_enabled() -> bool:
     return str(get_conf().get("enable_https", True)).lower() == "true"
 
 
-def set_session_cookie(response: Response, token: str, ttl: int) -> None:
+def set_session_cookie(response: Response, token: str, ttl: int, request: Request | None = None) -> None:
     """Attach the session cookie to a response after a successful login.
 
-    ``secure`` tracks ``enable_https`` rather than being hardcoded True:
-    a Secure cookie is silently dropped by the browser over plain HTTP, and
-    enable_https=false is the shipped default (see #10) -- hardcoding this
-    would make login appear to succeed while never actually authenticating
-    any subsequent request.
+    Secure follows the explicit public scheme, or the request scheme resolved
+    by Uvicorn's trusted-proxy policy. Backend TLS alone does not determine
+    the browser-facing transport.
     """
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -89,9 +88,20 @@ def set_session_cookie(response: Response, token: str, ttl: int) -> None:
         max_age=ttl,
         path=SESSION_COOKIE_PATH,
         httponly=True,
-        secure=_is_https_enabled(),
+        secure=_public_https(request),
         samesite="lax",
     )
+
+
+def _public_https(request: Request | None) -> bool:
+    scheme = str(get_conf().get("public_scheme", "")).strip().lower()
+    if scheme:
+        if scheme not in {"http", "https"}:
+            raise ValueError("public_scheme must be http or https")
+        return scheme == "https"
+    # Uvicorn resolves trusted proxy headers before reaching the application.
+    # Do not inspect caller-supplied X-Forwarded-Proto here.
+    return request.url.scheme == "https" if request is not None else _is_https_enabled()
 
 
 def clear_session_cookie(response: Response) -> None:
@@ -305,20 +315,32 @@ _PROTECTED_PATH_PREFIXES = ("/rest/v1/orchestrate", "/psops")
 
 
 async def auth_middleware(request: Request, call_next):
-    """Token-based auth for internal API; mTLS handles external API at TLS layer.
+    """User sessions for internal API; separate machine identity for external API.
 
     Internal API (``/rest/v1/orchestrate/*``) and the legacy ``/psops`` alias:
         Token-based auth via database-backed users.  Public auth endpoints
         (login/check/register) are exempt.
 
     External API (``/api/v1/*``):
-        Protected by mTLS at the TLS layer when enable_https=true and
-        verify_client=true.  No application-layer check needed here.
+        Independently checked using Bearer, verified mTLS transport evidence
+        or the configured custom authentication provider.
     """
     path = request.url.path
 
     # CORS preflight always allowed.
     if request.method == "OPTIONS":
+        return await call_next(request)
+
+    if path == "/api/v1" or path.startswith("/api/v1/"):
+        from orchestrate.server.external_auth import authenticate_external
+        from orchestrate.server.security_preflight import dev_insecure_mode_enabled, is_loopback_bind
+        conf = get_conf()
+        if not (dev_insecure_mode_enabled(conf) and is_loopback_bind(str(conf.get("ip", "127.0.0.1")))):
+            try:
+                request.state.machine_identity = await authenticate_external(request, conf)
+            except HTTPException as exc:
+                return JSONResponse(status_code=exc.status_code, content=error(exc.status_code, exc.detail),
+                                    headers=exc.headers)
         return await call_next(request)
 
     # Only the internal API (and its legacy alias) needs application-layer auth.

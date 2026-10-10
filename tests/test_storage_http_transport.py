@@ -62,6 +62,10 @@ def test_storage_failure_over_actual_listener(mode, transport, tmp_path, monkeyp
     for module in (psop_processor, execution_record_processor, user_store):
         monkeypatch.setattr(module, "create_connection", lambda: None)
 
+    from orchestrate.server import external_auth
+    monkeypatch.setenv("ORCH_API_TOKEN", "transport-regression-token-000000000000")
+    monkeypatch.setattr(auth, "get_conf", lambda: {"external.auth.mode": "bearer"})
+
     options = {}
     verify = True
     if transport == "https":
@@ -84,7 +88,8 @@ def test_storage_failure_over_actual_listener(mode, transport, tmp_path, monkeyp
             time.sleep(0.01)
         assert runner.started, "HTTP listener failed to start"
         with httpx.Client(base_url=f"{transport}://127.0.0.1:{port}", verify=verify,
-                          trust_env=False, timeout=5) as client:
+                          trust_env=False, timeout=5,
+                          headers={"Authorization": "Bearer transport-regression-token-000000000000"}) as client:
             for path in (
                 "/rest/v1/orchestrate/workflows", "/rest/v1/orchestrate/workflows/absent",
                 "/rest/v1/orchestrate/execution-records", "/api/v1/orchestrate/psop/absent",

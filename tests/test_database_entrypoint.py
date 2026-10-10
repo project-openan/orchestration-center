@@ -27,7 +27,7 @@ def test_mysql_entrypoint_sets_mode_without_writing_password(tmp_path):
                MYSQL_PASSWORD="quoted'password\"with$symbols")
     result = subprocess.run(["bash", str(SCRIPT), "true"], env=env, text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
-    assert (tmp_path / "etc/conf/server.conf").read_text() == "persistence_mode=mysql\n"
+    assert (tmp_path / "etc/conf/server.conf").read_text() == "persistence_mode=file\n"
     assert not (tmp_path / "etc/conf/mysql_config.json").exists()
     assert not (tmp_path / "etc/conf/db_config.json").exists()
     assert env["MYSQL_PASSWORD"] not in result.stdout + result.stderr

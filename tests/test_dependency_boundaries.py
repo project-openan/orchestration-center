@@ -113,8 +113,8 @@ def test_business_registration_cold_start_routes_every_interface(mode, entrypoin
             InterfaceType.GET_EXECUTION_RECORD: file_handlers.GetExecutionRecordHandler,
             InterfaceType.DELETE_EXECUTION_RECORD: file_handlers.DeleteExecutionRecordHandler,
         }}
-        assert set(expected) == set(InterfaceType)
-        assert set(HandlerRegistry._defaults) == {{item.value for item in InterfaceType}}
+        assert set(expected) == set(InterfaceType) - {{InterfaceType.AUTHENTICATE_EXTERNAL}}
+        assert set(HandlerRegistry._defaults) == {{item.value for item in expected}}
         assert set(HandlerRegistry._overrides) == set(HandlerRegistry._defaults)
         for interface, file_class in expected.items():
             wanted = (file_class if {mode!r} == 'file'

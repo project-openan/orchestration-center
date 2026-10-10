@@ -51,7 +51,7 @@ class TestLoginFileMode:
             "persistence_mode": "file", "access_password": stored_hash,
         })
         response = Response()
-        result = await srv.login(srv.LoginRequest(username="admin", password="MyRealPassword1!"), response)
+        result = await srv.login(srv.LoginRequest(username="admin", password="MyRealPassword1!"), response, _http_request())
         assert result["data"]["auth_required"] is True
         assert "session_token=" in response.headers["set-cookie"]
 
@@ -62,7 +62,7 @@ class TestLoginFileMode:
             "persistence_mode": "file", "access_password": stored_hash,
         })
         with pytest.raises(HTTPException) as exc_info:
-            await srv.login(srv.LoginRequest(username="admin", password="wrong-password"), Response())
+            await srv.login(srv.LoginRequest(username="admin", password="wrong-password"), Response(), _http_request())
         assert exc_info.value.status_code == 401
 
     async def test_previously_client_hashed_value_no_longer_works(self, monkeypatch):
@@ -75,7 +75,7 @@ class TestLoginFileMode:
         })
         old_client_hash = hashlib.sha256(b"MyRealPassword1!").hexdigest()
         with pytest.raises(HTTPException) as exc_info:
-            await srv.login(srv.LoginRequest(username="admin", password=old_client_hash), Response())
+            await srv.login(srv.LoginRequest(username="admin", password=old_client_hash), Response(), _http_request())
         assert exc_info.value.status_code == 401
 
 

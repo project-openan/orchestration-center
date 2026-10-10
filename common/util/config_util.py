@@ -36,7 +36,29 @@ def get_conf():
     save_config_path = os.path.join(root_path, "etc", "conf","server.properties")
     load_configs(base_config_path, config)
     load_configs(save_config_path, config)
+    apply_env_overrides(config)
     return config
+
+
+def apply_env_overrides(config: dict) -> None:
+    """Explicit deployment aliases; never materialize credentials into files."""
+    aliases = {
+        "ORCH_IP": "ip", "ORCH_PORT": "port", "ORCH_ENABLE_HTTPS": "enable_https",
+        "ORCH_VERIFY_CLIENT": "verify_client", "ORCH_CLIENT_VERIFY_SERVER": "client_verify_server",
+        "ORCH_FORWARDED_ALLOW_IPS": "forwarded_allow_ips", "ORCH_PUBLIC_SCHEME": "public_scheme",
+        "ORCH_ACCESS_PASSWORD": "access_password", "ORCH_EXTERNAL_AUTH_MODE": "external.auth.mode",
+        "ORCH_SSL_CERTFILE": "ssl_certfile", "ORCH_SSL_KEYFILE": "ssl_keyfile",
+        "ORCH_SSL_KEYFILE_PASSWORD": "ssl_keyfile_password", "ORCH_SSL_CA_CERTS": "ssl_ca_certs",
+        "REGISTRY_CA_FILE": "agent_registry.ca_file", "REGISTRY_CLIENT_CERT": "agent_registry.client_cert",
+        "REGISTRY_CLIENT_KEY": "agent_registry.client_key",
+        "AGENT_REGISTRY_URL": "agent_registry_url", "PERSISTENCE_MODE": "persistence_mode",
+    }
+    for name, key in aliases.items():
+        if name in os.environ:
+            config[key] = os.environ[name]
+    if os.environ.get("PORT"):
+        config["port"] = os.environ["PORT"]
+    config["forwarded_allow_ips"] = str(config.get("forwarded_allow_ips", "127.0.0.1")).strip('"\'')
 
 
 def load_configs(config_path, config):

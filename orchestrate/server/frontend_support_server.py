@@ -140,6 +140,8 @@ async def _cleanup_resources():
     """Clean up lingering async resources on shutdown."""
     logger.info("Cleaning up server resources...")
     await sandbox_service.aclose()
+    from orchestrate.server.external_auth import close_external_auth
+    await close_external_auth()
     from database.utils.db_connection import close_database
     close_database()
 
@@ -272,7 +274,8 @@ def _registration_enabled(conf: dict) -> bool:
 
 
 @router.post("/auth/login")
-async def login(request: LoginRequest, response: Response, _: Any = Depends(LoginRateLimiter(config))):
+async def login(request: LoginRequest, response: Response, http_request: Request,
+                _: Any = Depends(LoginRateLimiter(config))):
     if not is_auth_enabled():
         return ok(data={"auth_required": False}, message="Authentication disabled")
     conf = get_conf()
@@ -289,7 +292,7 @@ async def login(request: LoginRequest, response: Response, _: Any = Depends(Logi
             else:
                 clear_must_change_password(user["username"])
             token, ttl = get_session_store().create(user["username"], role)
-            set_session_cookie(response, token, ttl)
+            set_session_cookie(response, token, ttl, http_request)
             logger.info(f"Login successful (DB): {user['username']}")
             return ok(data={
                 "auth_required": True, "expires_in": ttl,
@@ -304,7 +307,7 @@ async def login(request: LoginRequest, response: Response, _: Any = Depends(Logi
     stored = conf.get("access_password", "")
     if request.username == "admin" and _verify_access_password(stored, request.password):
         token, ttl = get_session_store().create("admin", "admin")
-        set_session_cookie(response, token, ttl)
+        set_session_cookie(response, token, ttl, http_request)
         logger.info("Login successful (config): admin")
         return ok(data={"auth_required": True, "expires_in": ttl, "username": "admin", "role": "admin"})
     logger.warning(f"Login failed: username={request.username}")
@@ -1300,6 +1303,7 @@ async def get_execution_record(execution_id: str):
 app.include_router(router)
 app.include_router(external_router)
 app.include_router(sandbox_router, prefix="/rest/v1/orchestrate")
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

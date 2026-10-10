@@ -64,9 +64,10 @@ class TestLoginSetsSessionCookie:
         attributes = {a.strip().split("=")[0].lower(): a.strip() for a in set_cookie.split(";")}
         assert attributes["path"] == f"Path={SESSION_COOKIE_PATH}"
 
-    def test_secure_flag_follows_enable_https_true(self, client, monkeypatch):
+    def test_secure_flag_follows_explicit_public_https(self, client, monkeypatch):
         monkeypatch.setattr(srv, "is_auth_enabled", lambda: True)
         conf = _file_mode_conf("MyRealPassword1!", enable_https="true")
+        conf["public_scheme"] = "https"
         monkeypatch.setattr(srv, "get_conf", lambda: conf)
         monkeypatch.setattr(auth_module, "get_conf", lambda: conf)
 

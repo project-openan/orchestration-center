@@ -15,17 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Fail-closed startup check for the shipped server configuration.
+"""Fail-closed startup policy for independent user and machine authentication.
 
-Implements the contract in ``docs/design/security-design.md`` section 6.3.
-
-The external API (``/api/v1/*``) has no application-layer guard: ``auth_middleware``
-covers ``/rest/v1/orchestrate`` and the legacy ``/psops`` alias only, so those routes
-are protected by mTLS and nothing else -- and mTLS only exists while
-``enable_https=true``. The image defaults (``ORCH_IP=0.0.0.0`` with
-``ORCH_ENABLE_HTTPS=false``, see Dockerfile and docker-compose.yml) are exactly the
-combination that leaves them open to anyone who can reach the port. This check turns
-that combination into a startup failure instead of a silent default.
+HTTP and HTTPS without client verification use application credentials.
+Verified mTLS remains available; only explicit loopback demos bypass checks.
 """
 
 import ipaddress
@@ -34,6 +27,7 @@ from dataclasses import dataclass
 from typing import Tuple
 
 from loguru import logger
+from orchestrate.server.external_auth import external_auth_configured, external_auth_mode
 
 # Config key allowing a credential-less bind. Lowercased by get_conf().
 DEV_INSECURE_MODE_KEY = "security.dev_insecure_mode"
@@ -97,6 +91,10 @@ def credential_configured(conf: dict) -> bool:
     if str(conf.get("access_password", "")).strip():
         return True
 
+    from common.util.persistence_mode import is_db_mode
+    if not is_db_mode(conf):
+        return False  # File mode never consumes the database bootstrap password.
+
     initial_password_file = str(conf.get(ADMIN_INITIAL_PASSWORD_FILE_KEY, "")).strip()
     if initial_password_file and os.path.isfile(initial_password_file):
         return True
@@ -140,18 +138,22 @@ def security_preflight(conf: dict) -> PreflightResult:
     credential = credential_configured(conf)
     dev_mode = dev_insecure_mode_enabled(conf)
 
-    if https_enabled:
-        # Rows 1-2: TLS is the transport guard; which routes additionally need a
-        # principal is a per-route decision, not this check's.
-        return PreflightResult(True, credential, loopback, dev_mode)
+    scheme = str(conf.get("public_scheme", "")).strip().lower()
+    if scheme not in {"", "http", "https"}:
+        raise SecurityPreflightError("public_scheme must be http or https")
+    try:
+        external_ready = external_auth_configured(conf)
+        mtls = external_auth_mode(conf) == "mtls" and external_ready
+    except ValueError as exc:
+        raise SecurityPreflightError(str(exc)) from exc
 
-    if credential:
-        # Row 3: authenticated, but the transport is plaintext.
-        return PreflightResult(False, True, loopback, dev_mode, (PLAINTEXT_WARNING,))
+    if external_ready and (credential or mtls):
+        warnings = () if https_enabled else (PLAINTEXT_WARNING,)
+        return PreflightResult(https_enabled, credential, loopback, dev_mode, warnings)
 
     if dev_mode and loopback:
         # Row 4: the one cell the dev flag unlocks.
-        return PreflightResult(False, False, True, True, (DEV_INSECURE_WARNING,))
+        return PreflightResult(https_enabled, credential, True, True, (DEV_INSECURE_WARNING,))
 
     # Row 5, and the dev flag is not an exception to it: off-loopback, the exposure
     # is real regardless of who set the flag.
@@ -161,16 +163,16 @@ def security_preflight(conf: dict) -> PreflightResult:
 def _refusal_message(bind_address: str, dev_mode: bool) -> str:
     lines = [
         f"Refusing to start: the external API (/api/v1/*) would be reachable without "
-        f"authentication (enable_https=false, no credential configured, ip={bind_address}).",
+        f"authentication (user or machine credential unavailable, ip={bind_address}).",
         "",
-        "auth_middleware guards /rest/v1/orchestrate and /psops only, so with HTTPS off "
-        "those routes have neither mTLS nor an application-layer check.",
+        "HTTPS alone does not authenticate callers. Configure external.auth.mode=auto/bearer "
+        "with ORCH_API_TOKEN (at least 32 bytes), or verified mTLS. Also configure user authentication.",
         "",
         "Two ways to fix it:",
         "  1. configure a credential: set access_password in etc/conf/server.conf (generate "
         "one with 'python generate_access_password.py'), or name a first-boot source with "
         f"admin_initial_password_file, or export {ADMIN_INITIAL_PASSWORD_ENV};",
-        "  2. bind a loopback address (ip=127.0.0.1) if this instance is only reachable locally.",
+        "  2. for local demos only, bind ip=127.0.0.1 and explicitly set security.dev_insecure_mode=true.",
     ]
     if dev_mode:
         lines += [

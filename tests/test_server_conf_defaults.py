@@ -23,7 +23,7 @@ API (/api/v1/*) ended up with no authentication at all -- auth_middleware
 only guards the internal API by design, and mTLS was the only thing meant
 to cover the external one.
 
-This test reads the actual shipped file, not a fixture, so it fails the
+This test reads the public image configuration template, not a fixture, so it fails the
 moment that regression is reintroduced -- by anyone, including a future
 docs/config edit that doesn't touch this test file at all.
 """
@@ -35,7 +35,7 @@ import ssl
 from common.util.conf_obj import ConfObj
 
 _SERVER_CONF_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "etc", "conf", "server.conf"
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "etc", "conf", "server.conf.example"
 )
 
 

@@ -91,3 +91,25 @@ jobs:
         run: npm run test
       - name: Build
         run: npm run build
+
+  container-transport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install httpx
+      - name: Build image and test real HTTP/HTTPS entrypoint
+        run: python tests/container_smoke.py
+
+  frontend-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build frontend and verify the real nginx entrypoint
+        run: python tests/frontend_container_smoke.py

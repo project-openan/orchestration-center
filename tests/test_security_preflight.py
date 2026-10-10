@@ -43,6 +43,8 @@ from orchestrate.server.security_preflight import (
 def _no_ambient_bootstrap_credential(monkeypatch):
     """The check reads the process environment; keep the ambient one out of it."""
     monkeypatch.delenv(ADMIN_INITIAL_PASSWORD_ENV, raising=False)
+    # HTTP needs an independent machine credential, not just the UI password.
+    monkeypatch.setenv("ORCH_API_TOKEN", "test-only-machine-token-at-least-32-bytes")
 
 
 def _conf(**overrides):
@@ -78,14 +80,15 @@ class TestCredentialConfigured:
     def test_named_initial_password_file_counts(self, tmp_path):
         path = tmp_path / "admin_pw"
         path.write_text("secret")
-        assert credential_configured(_conf(admin_initial_password_file=str(path))) is True
+        assert credential_configured(_conf(persistence_mode="postgresql", admin_initial_password_file=str(path))) is True
 
     def test_missing_initial_password_file_does_not_count(self, tmp_path):
         assert credential_configured(_conf(admin_initial_password_file=str(tmp_path / "absent"))) is False
 
     def test_environment_bootstrap_counts(self, monkeypatch):
         monkeypatch.setenv(ADMIN_INITIAL_PASSWORD_ENV, "secret")
-        assert credential_configured(_conf()) is True
+        assert credential_configured(_conf(persistence_mode="postgresql")) is True
+        assert credential_configured(_conf()) is False
 
     def test_database_user_counts(self, monkeypatch):
         conf = _conf(persistence_mode="postgresql")
@@ -169,7 +172,7 @@ class TestShippedServerConf:
     """Reads the shipped file, not a fixture: the default must stay fail-closed."""
 
     _PATH = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "etc", "conf", "server.conf"
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "etc", "conf", "server.conf.example"
     )
 
     @staticmethod

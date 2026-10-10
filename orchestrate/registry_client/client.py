@@ -29,24 +29,22 @@ class AgentRegistryClient:
     Async client SDK for interacting with Agent Registry REST API.
     """
 
-    def __init__(self, base_url: str, timeout: int = 30, ssl_verify: bool = True):
+    def __init__(self, base_url: str, timeout: int = 30, ssl_verify: bool = True,
+                 *, headers: Optional[dict] = None, tls_options: Optional[dict] = None):
         self.base_url = base_url
         self.timeout = timeout
         self.ssl_verify = ssl_verify
+        self.headers = headers or {}
+        self.tls_options = tls_options or {}
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            ssl_context = create_client_ssl_context(verify_server=self.ssl_verify)
+            ssl_context = (create_client_ssl_context(verify_server=self.ssl_verify, **self.tls_options)
+                           if self.base_url.lower().startswith('https://') else True)
             self._client = httpx.AsyncClient(
-                timeout=self.timeout, verify=ssl_context, follow_redirects=True,
-                # The registry center sets timeout_keep_alive=0 (Connection:
-                # close after each response).  Disabling keepalive entirely
-                # avoids "Server disconnected" errors from stale pooled
-                # connections.
-                limits=httpx.Limits(
-                    max_keepalive_connections=0, keepalive_expiry=0.0
-                ),
+                timeout=self.timeout, verify=ssl_context, headers=self.headers,
+                follow_redirects=False,
             )
         return self._client
 

@@ -123,11 +123,13 @@ class TestAuthMiddleware:
         response = await auth_middleware(request, _call_next)
         assert response.status_code == 200
 
-    async def test_external_api_paths_bypass_token_auth(self, monkeypatch):
+    async def test_external_api_requires_machine_auth(self, monkeypatch):
         monkeypatch.setattr(auth_module, "is_auth_enabled", lambda: True)
         request = _make_request("/api/v1/orchestrate/sop")
+        monkeypatch.setattr(auth_module, "get_conf", lambda: {"enable_https": "false"})
+        monkeypatch.setenv("ORCH_API_TOKEN", "test-only-machine-token-at-least-32-bytes")
         response = await auth_middleware(request, _call_next)
-        assert response.status_code == 200
+        assert response.status_code == 401
 
     async def test_bypasses_entirely_when_auth_disabled(self, monkeypatch):
         monkeypatch.setattr(auth_module, "is_auth_enabled", lambda: False)

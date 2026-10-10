@@ -15,6 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
+
 from common.util.config_util import get_conf
 from orchestrate.registry_client.client import AgentRegistryClient
 
@@ -35,7 +37,21 @@ class AgentRegistryClientFactory:
                 get_conf().get("client_verify_server", "true"),
             )
         ).lower() == "true"
-        return AgentRegistryClient(url, timeout_seconds, ssl_verify=verify_server)
+        conf = {**get_conf(), **self.config}
+        token_name = str(conf.get("agent_registry.token_env", "REGISTRY_ACCESS_TOKEN"))
+        token = os.environ.get(token_name, "") if token_name else ""
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        options = {}
+        for key, argument in (("agent_registry.ca_file", "ca_certs_path"),
+                              ("agent_registry.client_cert", "cert_path"),
+                              ("agent_registry.client_key", "key_path")):
+            if conf.get(key):
+                options[argument] = conf[key]
+        password_name = str(conf.get("agent_registry.client_key_password_env", "REGISTRY_CLIENT_KEY_PASSWORD"))
+        if password_name and os.environ.get(password_name):
+            options["key_password"] = os.environ[password_name]
+        return AgentRegistryClient(url, timeout_seconds, ssl_verify=verify_server,
+                                   headers=headers, tls_options=options)
 
     def create_from_env(self) -> AgentRegistryClient:
         return self.create_client()

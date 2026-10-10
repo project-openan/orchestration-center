@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ssl
 import os.path
 import re
 from abc import ABC, abstractmethod
@@ -87,9 +88,9 @@ class PathValidatorLink(AbstractValidatorLink):
             PathValidator(conf_obj.ssl_keyfile, suffix=".pem", is_required=True, conf_tip="ssl_keyfile"),
             PathValidator(conf_obj.ssl_keyfile_password, suffix="", is_required=True,
                           conf_tip="ssl_keyfile_password"),
-            PathValidator(conf_obj.ssl_ca_certs, suffix=".cer", is_required=True, conf_tip="ssl_ca_certs"),
-            PathValidator(conf_obj.ssl_crl_file, suffix=".crl", is_required=False, conf_tip="ssl_crl_file"),
-        ]
+        ] + ([PathValidator(conf_obj.ssl_ca_certs, suffix=".cer", is_required=True, conf_tip="ssl_ca_certs"),
+              PathValidator(conf_obj.ssl_crl_file, suffix=".crl", is_required=False, conf_tip="ssl_crl_file")]
+             if conf_obj.verify_client != ssl.CERT_NONE else [])
 
 
 class CommonContentValidator:
@@ -235,8 +236,8 @@ class CerContentValidatorLink(AbstractValidatorLink):
         conf_obj = self.conf_obj
         return [
             CerContentValidator(conf_obj.ssl_certfile, conf_tip="ssl_certfile"),
-            CerContentValidator(conf_obj.ssl_ca_certs, conf_tip="ssl_ca_certs")
-        ]
+        ] + ([CerContentValidator(conf_obj.ssl_ca_certs, conf_tip="ssl_ca_certs")]
+             if conf_obj.verify_client != ssl.CERT_NONE else [])
 
 
 class CertValidator:
@@ -261,6 +262,9 @@ class CertValidator:
                                      server_path=self.conf_obj.ssl_certfile, conf_tip="ssl_keyfile").validate()
         if not result.is_valid:
             return result
+        if self.conf_obj.verify_client == ssl.CERT_NONE:
+            self.conf_obj.crl_list_data = None
+            return ValidationResult(True, "")
         crl_validator = CRLValidator(cert_path=self.conf_obj.ssl_crl_file, conf_tip="ssl_crl_file")
         result = crl_validator.validate()
         if result.is_valid:

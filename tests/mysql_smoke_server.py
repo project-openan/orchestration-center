@@ -14,10 +14,15 @@ os.environ.pop("TESTING", None)
 
 from common.util import config_util
 
-conf = dict(config_util.get_conf())
+conf = {}
+config_util.load_configs(str(Path(__file__).resolve().parents[1] / "etc/conf/server.conf.example"), conf)
+config_util.load_configs(str(Path(__file__).resolve().parents[1] / "etc/conf/server.properties"), conf)
+os.environ["ORCH_API_TOKEN"] = "test-only-sql-machine-token-000000000000000"
 conf.update(persistence_mode="mysql", ip="127.0.0.1", port=sys.argv[1],
             enable_https="true" if len(sys.argv) > 2 else "false")
 conf["auth.register.enabled"] = "true"
+conf["external.auth.mode"] = "bearer"
+conf["verify_client"] = "false"
 config_util.get_conf = lambda: conf
 
 from database.utils import mysql_connection
