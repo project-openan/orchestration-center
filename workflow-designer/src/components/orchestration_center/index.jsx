@@ -90,6 +90,7 @@ const OrchestrationCenter = ({ isDark }) => {
     const { t, i18n } = useTranslation();
     const [workflows, setWorkflows] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
+    const [openedFromPackage, setOpenedFromPackage] = useState(false);
     const [currentWf, setCurrentWf] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeView, setActiveView] = useState('welcome'); // 'welcome' | 'detail' | 'ai' | 'editor'
@@ -638,6 +639,7 @@ const OrchestrationCenter = ({ isDark }) => {
                         onBack={() => setActiveView('welcome')}
                         onImportPdf={handleImportPdfFromPackage}
                         onViewWorkflow={(wfId) => {
+                            setOpenedFromPackage(true);
                             setSelectedId(wfId);
                         }}
                         loading={loading && loadingStatus !== LOADING_STAGES.IDLE}
@@ -811,6 +813,20 @@ const OrchestrationCenter = ({ isDark }) => {
                 <div
                     className="px-10 py-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center  bg-white dark:bg-zinc-900 backdrop-blur-md shrink-0">
                     <div className="flex items-center gap-4">
+                        {activeView === 'detail' && openedFromPackage && (
+                            <button
+                                onClick={() => {
+                                    setActiveView('packages');
+                                    setSelectedId(null);
+                                    setCurrentWf(null);
+                                    setOpenedFromPackage(false);
+                                }}
+                                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                            >
+                                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                {t('orchestration.back_to_packages')}
+                            </button>
+                        )}
                         {(activeView === 'editor' || activeView === 'ai') && (
                             <button
                                 onClick={() => {
