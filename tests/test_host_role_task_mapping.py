@@ -48,7 +48,7 @@ def repeated_task_snapshot(first_step_type="AllSuccess"):
             task_id="old", agent="Legacy", skill="existing", description="Existing task")])))
         workflow.steps.append(Step.model_validate(dict(name="local", type="SelfLoop", subtasks=[dict(
             task_id="self", agent="Host", skill="merge", description="Local merge")])))
-    return freeze_role_execution(template, result, cards, "center-execution")
+    return freeze_role_execution(template, result, cards, "center-execution", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
 
 
 @pytest.mark.asyncio

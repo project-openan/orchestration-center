@@ -7,10 +7,15 @@
 
 This returns a proposed execution copy. Host verification and full-card freezing
 must be connected before these results may be dispatched in production.
+
+``evaluate_selection_units`` is the single rule core shared by formal
+resolution (all-or-nothing) and execution preview (collects every unit's
+diagnostics), so the two paths cannot drift apart.
 """
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 from orchestrate.core.model.instance_binding import (
     InstanceRegistry, ObservedInstance, ResolutionContext, ResolutionPolicy,
@@ -39,6 +44,145 @@ class ResolutionResult:
     context: ResolutionContext
 
 
+@dataclass
+class SelectionUnit:
+    """One candidate-selection unit: an independent task or a binding group."""
+
+    kind: str  # "task" | "group"
+    key: str
+    members: list = field(default_factory=list)
+
+
+@dataclass
+class UnitEvaluation:
+    """Per-unit filter and selection outcome; ``error`` replaces raising."""
+
+    kind: str
+    key: str
+    members: list = field(default_factory=list)
+    task_ids: list[str] = field(default_factory=list)
+    binding_group: Optional[str] = None
+    candidates: list = field(default_factory=list)
+    exclusions: dict = field(default_factory=dict)
+    mappings: dict = field(default_factory=dict)
+    chosen: Optional[ObservedInstance] = None
+    reason: Optional[str] = None
+    error: Optional[ResolutionError] = None
+
+    @property
+    def detail(self) -> dict:
+        return dict(task_ids=list(self.task_ids), binding_group=self.binding_group,
+                    exclusions=deepcopy(self.exclusions),
+                    candidates=[i.instance_id for i in self.candidates])
+
+
+def selection_units(psop: PSOP) -> list[SelectionUnit]:
+    """Group role tasks into selection units in first-appearance order."""
+    units: dict[tuple, SelectionUnit] = {}
+    for step in psop.steps:
+        for task in step.subtasks:
+            if task.binding != "role":
+                continue
+            # Namespace group IDs independently of task IDs.
+            key = ("group", task.binding_group) if task.binding_group else ("task", task.task_id)
+            units.setdefault(key, SelectionUnit(kind=key[0], key=key[1])).members.append(task)
+    return list(units.values())
+
+
+def _hard_filters(unit: SelectionUnit, registry: InstanceRegistry,
+                  observed: dict, context: ResolutionContext) -> UnitEvaluation:
+    """Shared candidate filtering; the only place eligibility is decided."""
+    evaluation = UnitEvaluation(kind=unit.kind, key=unit.key, members=list(unit.members),
+                                task_ids=[t.task_id for t in unit.members],
+                                binding_group=unit.key if unit.kind == "group" else None)
+    for instance in sorted(registry.instances, key=lambda i: i.instance_id):
+        reasons = []
+        card = observed.get(instance.instance_id)
+        if not instance.enabled or instance.technical_status != "passed":
+            reasons.append("TECHNICAL_ADMISSION_REQUIRED")
+        if instance.instance_id not in context.authorized_instance_ids:
+            reasons.append("NOT_AUTHORIZED")
+        if not any(scope.covers(context.scope) for scope in instance.scopes):
+            reasons.append("OUT_OF_SCOPE")
+        if card is None:
+            reasons.append("INSTANCE_NOT_VISIBLE")
+        elif (card.agent_name, card.endpoint) != (instance.agent_name, instance.endpoint):
+            reasons.append("INSTANCE_SNAPSHOT_MISMATCH")
+        if card is not None and not card.prerequisites_passed:
+            reasons.append("PREREQUISITES_NOT_MET")
+        index = {(s.role_id, s.role_version, s.skill_id): s for s in instance.skills}
+        for task in unit.members:
+            mapping = index.get((task.agent, task.role_version, task.skill))
+            if mapping is None:
+                reasons.append("MISSING_ROLE_SKILL")
+            elif card is not None and card.skills.get(mapping.instance_skill_id) != mapping.execution_skill:
+                reasons.append("INSTANCE_SKILL_MISMATCH")
+        if reasons:
+            evaluation.exclusions[instance.instance_id] = sorted(set(reasons))
+        else:
+            evaluation.candidates.append(instance)
+            evaluation.mappings[instance.instance_id] = index
+    return evaluation
+
+
+def evaluate_unit(unit: SelectionUnit, registry: InstanceRegistry, observed: dict,
+                  context: ResolutionContext, policy: ResolutionPolicy) -> UnitEvaluation:
+    """Filter candidates then apply overrides, priority and tie-break.
+
+    Never raises: a failed selection is returned as ``evaluation.error`` so
+    preview can collect every unit's diagnostics and formal resolution can
+    raise it unchanged.
+    """
+    evaluation = _hard_filters(unit, registry, observed, context)
+    overrides = {policy.task_overrides[t.task_id] for t in unit.members if t.task_id in policy.task_overrides}
+    if unit.kind == "group" and unit.key in policy.group_overrides:
+        overrides.add(policy.group_overrides[unit.key])
+    if len(overrides) > 1:
+        evaluation.error = ResolutionError("INVALID_OVERRIDE", "Conflicting group overrides", **evaluation.detail)
+        return evaluation
+    if overrides:
+        chosen = next((i for i in evaluation.candidates if i.instance_id in overrides), None)
+        if chosen is None:
+            evaluation.error = ResolutionError("INVALID_OVERRIDE", "Override fails hard constraints", **evaluation.detail)
+            return evaluation
+        evaluation.chosen = chosen
+        evaluation.reason = "explicit_override"
+        return evaluation
+    if not evaluation.candidates:
+        code = "BINDING_GROUP_UNSATISFIED" if unit.kind == "group" else "NO_ELIGIBLE_INSTANCE"
+        evaluation.error = ResolutionError(
+            code, "No instance satisfies all required skills and scope", **evaluation.detail)
+        return evaluation
+    best = max(i.priority for i in evaluation.candidates)
+    top = [i for i in evaluation.candidates if i.priority == best]
+    if len(top) > 1 and policy.tie_break == "error":
+        evaluation.error = ResolutionError("AMBIGUOUS_BINDING", "Equal-priority candidates", **evaluation.detail)
+        return evaluation
+    evaluation.chosen = min(top, key=lambda i: i.instance_id)
+    evaluation.reason = "instance_id_tie_break" if len(top) > 1 else "highest_priority"
+    return evaluation
+
+
+def evaluate_selection_units(psop: PSOP, registry: InstanceRegistry, observations: list[ObservedInstance],
+                             context: ResolutionContext, policy: ResolutionPolicy):
+    """Evaluate every selection unit without raising.
+
+    Returns ``(evaluations, error)``. ``error`` carries a global pre-unit
+    failure (overrides referencing unknown role tasks or groups); unit-level
+    failures stay on their ``UnitEvaluation.error``.
+    """
+    tasks = [t for step in psop.steps for t in step.subtasks if t.binding == "role"]
+    ids = {t.task_id for t in tasks}
+    groups = {t.binding_group for t in tasks if t.binding_group}
+    if set(policy.task_overrides) - ids or set(policy.group_overrides) - groups:
+        return [], ResolutionError(
+            "INVALID_OVERRIDE", "Override refers to unknown role task or group",
+            task_ids=[t.task_id for t in tasks])
+    observed = {o.instance_id: o for o in observations}
+    return ([evaluate_unit(unit, registry, observed, context, policy) for unit in selection_units(psop)],
+            None)
+
+
 def resolve_role_bindings(
     psop: PSOP,
     catalog: RoleCatalog,
@@ -64,76 +208,20 @@ def resolve_role_bindings(
     observed = {o.instance_id: o for o in observations}
     if len(observed) != len(observations):
         raise ResolutionError("INSTANCE_SNAPSHOT_MISMATCH", "Duplicate observed instance ID")
-    ids = {t.task_id for t in tasks}
-    groups = {t.binding_group for t in tasks if t.binding_group}
-    if set(policy.task_overrides) - ids or set(policy.group_overrides) - groups:
-        raise ResolutionError("INVALID_OVERRIDE", "Override refers to unknown role task or group")
 
-    units = {}
-    for task in tasks:
-        # Namespace group IDs independently of task IDs.
-        key = ("group", task.binding_group) if task.binding_group else ("task", task.task_id)
-        units.setdefault(key, []).append(task)
+    evaluations, global_error = evaluate_selection_units(psop, registry, observations, context, policy)
+    if global_error is not None:
+        raise global_error
+    for evaluation in evaluations:
+        if evaluation.error is not None:
+            raise evaluation.error
+
     selected = {}
     records = []
-    for (kind, key), members in units.items():
-        exclusions = {}
-        candidates = []
-        mappings = {}
-        for instance in sorted(registry.instances, key=lambda i: i.instance_id):
-            reasons = []
-            card = observed.get(instance.instance_id)
-            if not instance.enabled or instance.technical_status != "passed":
-                reasons.append("TECHNICAL_ADMISSION_REQUIRED")
-            if instance.instance_id not in context.authorized_instance_ids:
-                reasons.append("NOT_AUTHORIZED")
-            if not any(scope.covers(context.scope) for scope in instance.scopes):
-                reasons.append("OUT_OF_SCOPE")
-            if card is None:
-                reasons.append("INSTANCE_NOT_VISIBLE")
-            elif (card.agent_name, card.endpoint) != (instance.agent_name, instance.endpoint):
-                reasons.append("INSTANCE_SNAPSHOT_MISMATCH")
-            if card is not None and not card.prerequisites_passed:
-                reasons.append("PREREQUISITES_NOT_MET")
-            index = {(s.role_id, s.role_version, s.skill_id): s for s in instance.skills}
-            for task in members:
-                mapping = index.get((task.agent, task.role_version, task.skill))
-                if mapping is None:
-                    reasons.append("MISSING_ROLE_SKILL")
-                elif card is not None and card.skills.get(mapping.instance_skill_id) != mapping.execution_skill:
-                    reasons.append("INSTANCE_SKILL_MISMATCH")
-            if reasons:
-                exclusions[instance.instance_id] = sorted(set(reasons))
-            else:
-                candidates.append(instance)
-                mappings[instance.instance_id] = index
-
-        overrides = {policy.task_overrides[t.task_id] for t in members if t.task_id in policy.task_overrides}
-        if kind == "group" and key in policy.group_overrides:
-            overrides.add(policy.group_overrides[key])
-        detail = dict(task_ids=[t.task_id for t in members],
-                      binding_group=key if kind == "group" else None,
-                      exclusions=exclusions,
-                      candidates=[i.instance_id for i in candidates])
-        if len(overrides) > 1:
-            raise ResolutionError("INVALID_OVERRIDE", "Conflicting group overrides", **detail)
-        if overrides:
-            chosen = next((i for i in candidates if i.instance_id in overrides), None)
-            if chosen is None:
-                raise ResolutionError("INVALID_OVERRIDE", "Override fails hard constraints", **detail)
-            reason = "explicit_override"
-        else:
-            if not candidates:
-                code = "BINDING_GROUP_UNSATISFIED" if kind == "group" else "NO_ELIGIBLE_INSTANCE"
-                raise ResolutionError(code, "No instance satisfies all required skills and scope", **detail)
-            best = max(i.priority for i in candidates)
-            top = [i for i in candidates if i.priority == best]
-            if len(top) > 1 and policy.tie_break == "error":
-                raise ResolutionError("AMBIGUOUS_BINDING", "Equal-priority candidates", **detail)
-            chosen = min(top, key=lambda i: i.instance_id)
-            reason = "instance_id_tie_break" if len(top) > 1 else "highest_priority"
-        for task in members:
-            mapping = mappings[chosen.instance_id][(task.agent, task.role_version, task.skill)]
+    for evaluation in evaluations:
+        chosen = evaluation.chosen
+        for task in evaluation.members:
+            mapping = evaluation.mappings[chosen.instance_id][(task.agent, task.role_version, task.skill)]
             selected[task.task_id] = (chosen, mapping)
             records.append({
                 "task_id": task.task_id, "binding_group": task.binding_group,
@@ -142,11 +230,11 @@ def resolve_role_bindings(
                 "agent": chosen.agent_name, "endpoint": chosen.endpoint,
                 "instance_skill_id": mapping.instance_skill_id,
                 "execution_skill": mapping.execution_skill,
-                "selection_reason": reason,
+                "selection_reason": evaluation.reason,
                 "selected_priority": chosen.priority,
-                "candidates": [i.instance_id for i in candidates],
-                "candidate_priorities": {i.instance_id: i.priority for i in candidates},
-                "exclusions": deepcopy(exclusions),
+                "candidates": [i.instance_id for i in evaluation.candidates],
+                "candidate_priorities": {i.instance_id: i.priority for i in evaluation.candidates},
+                "exclusions": deepcopy(evaluation.exclusions),
             })
 
     names = {}

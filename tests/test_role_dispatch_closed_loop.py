@@ -244,7 +244,7 @@ def expanded_snapshot(port_auth, port_taskt, port_multi, port_other):
         ResolutionPolicy(policy_version="expanded-v1"),
     )
     assert len(result.bindings) == 3
-    return freeze_role_execution(template, result, cards, "execution-expanded"), live_cards
+    return freeze_role_execution(template, result, cards, "execution-expanded", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"), live_cards
 
 
 @pytest.mark.asyncio
@@ -386,7 +386,7 @@ def auth_only_snapshot(port_auth, card_builder=auth_card):
     )
     assert len(result.bindings) == 1
     cards = [freeze_agent_card("technical-auth", "Technical Auth", endpoint, canonical)]
-    return freeze_role_execution(template, result, cards, "execution-auth"), live
+    return freeze_role_execution(template, result, cards, "execution-auth", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"), live
 
 
 def watched_auth_app(executor, login_calls, raw_auth_keys, auth_values, token=TOKEN,

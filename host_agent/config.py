@@ -41,6 +41,10 @@ class HostAgentConfig:
     # injected AuthProvider, beyond what the card's schemes imply.
     custom_auth_headers: tuple[str, ...] = ()
     role_dispatch_key: str = field(default_factory=lambda: os.environ.get("ORCH_ROLE_DISPATCH_KEY", ""), repr=False)
+    # Deployment admission (REQ74 P4): role dispatch is disabled by default;
+    # the signature key alone never enables the capability.
+    role_execution_mode: str = "disabled"
+    deployment_environment: str = "production"
 
     def __post_init__(self) -> None:
         if not self.orchestration_url:
@@ -49,6 +53,12 @@ class HostAgentConfig:
             raise ValueError("registry_url is required")
         if self.max_negotiation_exchanges < 1:
             raise ValueError("max_negotiation_exchanges must be positive")
+
+    def role_execution_admitted(self) -> tuple[bool, list[str]]:
+        """Shared deployment-policy decision (see host_agent.role_contract)."""
+        from host_agent.role_contract import role_execution_admitted
+
+        return role_execution_admitted(self.role_execution_mode, self.deployment_environment)
 
 
 @dataclass(frozen=True, slots=True)

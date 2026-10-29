@@ -56,6 +56,22 @@ def _suppress_module_side_effects(monkeypatch):
    performing I/O during test collection."""
    monkeypatch.setenv("PYTEST_RUNNING", "1")
 
+
+@pytest.fixture(autouse=True)
+def role_execution_pilot_admission(monkeypatch):
+   """REQ74 tests run in an explicit technical-pilot admission state.
+
+   Production default is a closed gate; patching the configuration readers
+   covers every consumer of ``role_execution_admission``. Only the dedicated
+   admission tests override this with their own decision.
+   """
+   monkeypatch.setattr("orchestrate.runtime.role_admission.configured_role_execution_mode",
+                       lambda: "pilot")
+   monkeypatch.setattr("orchestrate.runtime.role_admission.configured_deployment_environment",
+                       lambda: "technical_pilot")
+   monkeypatch.setattr("host_agent.config.HostAgentConfig.role_execution_admitted",
+                       lambda self: (True, []))
+
 @pytest.fixture
 def sample_psop_dict():
     """Return a minimal valid PSOP dictionary for tests."""

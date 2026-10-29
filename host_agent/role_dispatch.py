@@ -40,7 +40,12 @@ from host_agent.dispatch_auth import DispatchValidationError
 from host_agent.role_contract import RoleSnapshot
 
 TASK_T_URI = "https://projects.tmforum.org/a2aproject/telecommunication/extensions/Task-T/v1"
-SUPPORTED_EXTENSIONS = frozenset({TASK_T_URI})
+NEGOTIATION_T_URI = "https://projects.tmforum.org/a2aproject/telecommunication/extensions/Negotiation-T/v1"
+# Task-T carries the business prompt; Negotiation-T is the SDK's native
+# information-exchange round trip (negotiation agents answer a Task-T request
+# with an INPUT_REQUIRED PROPOSE and expect a REPLY). Authorization-T and
+# Notification-T activations stay outside the host support set.
+SUPPORTED_EXTENSIONS = frozenset({TASK_T_URI, NEGOTIATION_T_URI})
 ROLE_DISPATCH_FAILED = "ROLE_DISPATCH_FAILED"
 
 _SAFE_MESSAGES = {

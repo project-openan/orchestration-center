@@ -54,7 +54,7 @@ def prepared(port_a=18991, port_b=18992, city="a"):
 
 def test_snapshot_roundtrip_and_input_isolation():
     template, result, cards = prepared()
-    snapshot = freeze_role_execution(template, result, cards, "execution-1")
+    snapshot = freeze_role_execution(template, result, cards, "execution-1", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
     wire = snapshot.model_dump_json()
     cards[0].card["name"] = "mutated"
     result.execution_psop.name = "mutated"
@@ -69,7 +69,7 @@ def test_authorization_set_order_does_not_change_digest():
 
 @pytest.mark.parametrize("change", ["endpoint", "role", "skill", "graph", "missing_card", "unauthorized"])
 def test_snapshot_semantic_tampering_rejected_even_with_new_hash(change):
-    payload = freeze_role_execution(*prepared(), "execution-1").model_dump(mode="json")
+    payload = freeze_role_execution(*prepared(), "execution-1", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc").model_dump(mode="json")
     if change == "endpoint":
         payload["cards"][0]["endpoint"] = "http://wrong.test"
     elif change == "role":
@@ -121,7 +121,7 @@ def test_two_real_a2a_endpoints_match_resolved_snapshots():
         for city in ("a", "b"):
             template, result, cards = prepared(port_a, port_b, city)
             before = template.model_dump_json()
-            snapshot = freeze_role_execution(template, result, cards, str(uuid4()))
+            snapshot = freeze_role_execution(template, result, cards, str(uuid4()), catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
             request = {**snapshot.context.scope.model_dump(), "skill_id": snapshot.bindings[0].instance_skill_id}
             response = send(snapshot.cards[0].endpoint, request)
             task = response["task"]

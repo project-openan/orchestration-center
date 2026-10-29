@@ -188,6 +188,13 @@ class HostAgentExecutor(AgentExecutor):
             metadata = self._orchestration_metadata(context)
             role_dispatch = any(key in metadata for key in ("__orch_binding__", "__orch_cards__", PROOF_KEY))
             if role_dispatch:
+                # Deployment admission first (REQ74 P4): a valid signature on a
+                # closed deployment must not reach workflow verification.
+                admitted, reasons = self._config.role_execution_admitted()
+                if not admitted:
+                    raise DispatchValidationError(
+                        "Role execution is not admitted on this host",
+                        reason="ROLE_EXECUTION_NOT_ADMITTED")
                 verify_dispatch(metadata, self._config.role_dispatch_key, intent=intent)
             processed_intent = await self._process_intent(intent)
             try:

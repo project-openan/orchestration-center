@@ -54,3 +54,5 @@ class ExecutionRecord(BaseModel):
     resolution_snapshot: Optional[Dict[str, Any]] = Field(None, description="Immutable resolution envelope, independent of final task statuses and event retention")
     template_fingerprint: Optional[str] = None
     snapshot_fingerprint: Optional[str] = None
+    confirm_fingerprint: Optional[str] = Field(None, description="Preview confirmation digest the execution was confirmed against; absent for legacy entries without a confirmation digest")
+    overrides_applied: Optional[Dict[str, Any]] = Field(None, description="Manual re-selection traceability: task_overrides, group_overrides and tie_break applied to the resolution")

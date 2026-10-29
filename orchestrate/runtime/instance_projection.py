@@ -14,6 +14,7 @@ network probes.
 """
 
 from typing import Literal, Optional
+from dataclasses import dataclass
 from uuid import uuid4
 
 from loguru import logger
@@ -26,6 +27,7 @@ from orchestrate.core.model.instance_binding import (
 )
 from orchestrate.core.model.psop import PSOP
 from orchestrate.core.model.role_execution_snapshot import RoleExecutionSnapshot
+from orchestrate.runtime.role_admission import role_execution_admission
 from orchestrate.runtime.role_resolver import ResolutionError
 
 
@@ -39,6 +41,9 @@ class ResolutionRequest(BaseModel):
     task_overrides: dict[str, str] = Field(default_factory=dict)
     group_overrides: dict[str, str] = Field(default_factory=dict)
     tie_break: Optional[Literal["error", "instance_id"]] = None
+    # Confirmation digest from a preview; formal resolution refuses to
+    # dispatch when the re-read arrangement no longer matches it.
+    confirm_fingerprint: Optional[str] = Field(None, max_length=128)
 
 
 def bind_resolution_identity(resolution: ResolutionRequest, request) -> ResolutionRequest:
@@ -226,22 +231,92 @@ def resolve_execution_plan(
             (CATALOG_VERSION_UNAVAILABLE).
         ValueError: the frozen envelope fails snapshot validation.
     """
-    from orchestrate.core.catalog_gate import (
-        configured_catalog_path, has_role_tasks, load_approved_catalog,
-    )
-    from orchestrate.core.model.card_snapshot import freeze_agent_card
     from orchestrate.core.model.role_execution_snapshot import freeze_role_execution
     from orchestrate.runtime.role_resolver import resolve_role_bindings
+
+    from orchestrate.core.catalog_gate import has_role_tasks
 
     if not has_role_tasks(psop):
         raise ResolutionError(
             "RESOLUTION_INPUT_INVALID",
             "resolve_execution_plan called for a workflow without role tasks",
         )
+    # Deployment admission (REQ74 P4): one gate ahead of every center entry
+    # (internal, external, by-id, by-intent), before any resolution work.
+    admitted, reasons = role_execution_admission()
+    if not admitted:
+        raise ResolutionError(
+            "ROLE_EXECUTION_NOT_ENABLED",
+            "Role execution is not admitted on this deployment: " + ", ".join(reasons),
+        )
+    inputs = assemble_resolution_inputs(psop, request, agent_cards)
+    result = resolve_role_bindings(
+        psop, inputs.catalog, inputs.registry, inputs.observations, inputs.context, inputs.policy,
+    )
+    snapshot = freeze_resolution_snapshot(
+        psop, result, inputs.cards_by_identity, uuid4().hex,
+        catalog_fingerprint=inputs.catalog_fingerprint,
+    )
+    _verify_confirmation(snapshot, inputs.policy, request)
+    return snapshot
+
+
+def _verify_confirmation(snapshot, policy, request: ResolutionRequest | None) -> None:
+    """Compare the freshly frozen arrangement with the previewed digest.
+
+    The digest is a consistency check, not an authorization token: a mismatch
+    means the workflow, catalog, scope, policy, chosen instances or cards
+    changed after the caller confirmed, so the execution is refused with
+    ``RESOLUTION_MISMATCH`` instead of silently dispatching other instances.
+    On a match the returned snapshot is the exact frozen envelope that is
+    dispatched -- it is never re-resolved.
+    """
+    if request is None or not request.confirm_fingerprint:
+        return
+    from orchestrate.core.model.role_execution_snapshot import resolution_fingerprint
+
+    actual = resolution_fingerprint(snapshot, policy)
+    if actual != request.confirm_fingerprint:
+        raise ResolutionError(
+            "RESOLUTION_MISMATCH",
+            "The confirmed arrangement has changed; preview again before executing",
+        )
+
+
+@dataclass
+class ResolutionInputs:
+    """Trusted resolution inputs assembled once and shared by every path."""
+
+    catalog: object
+    registry: InstanceRegistry
+    observations: list
+    context: ResolutionContext
+    policy: ResolutionPolicy
+    cards_by_identity: dict
+    catalog_fingerprint: str
+
+
+def assemble_resolution_inputs(psop: PSOP, request: ResolutionRequest | None, agent_cards) -> ResolutionInputs:
+    """Load catalog, registry, identity, authorization and live card projections.
+
+    Shared by formal resolution and execution preview so both consume the
+    same trusted inputs. Raises ``RoleReferenceError`` when the approved
+    catalog release is unavailable and ``ResolutionError`` for invalid
+    inputs or an unconfigured/unloadable registry.
+    """
+    from orchestrate.core.catalog_gate import (
+        configured_catalog_path, load_approved_catalog,
+    )
+
     catalog = load_approved_catalog(
         configured_catalog_path(), psop.catalog_version,
         subject=f"role workflow id={psop.id} catalog_version={psop.catalog_version}",
     )
+    # Content digest of the exact release: a same-version catalog edit must
+    # invalidate the arrangement (REQ74 P5 confirmation-digest guarantee).
+    from orchestrate.core.model.role_execution_snapshot import content_digest
+
+    catalog_fingerprint = content_digest(catalog.model_dump(mode="json"))
     registry_path = configured_registry_path()
     if not registry_path:
         logger.warning(
@@ -264,11 +339,20 @@ def resolve_execution_plan(
         ) from error
     context, policy = build_context_and_policy(request)
     cards_by_identity = _cards_by_identity(agent_cards)
-    result = resolve_role_bindings(
-        psop, catalog, registry,
-        project_observations(registry, agent_cards, cards_by_identity),
-        context, policy,
+    observations = project_observations(registry, agent_cards, cards_by_identity)
+    return ResolutionInputs(
+        catalog=catalog, registry=registry, observations=observations,
+        context=context, policy=policy, cards_by_identity=cards_by_identity,
+        catalog_fingerprint=catalog_fingerprint,
     )
+
+
+def freeze_resolution_snapshot(template: PSOP, result, cards_by_identity: dict,
+                               execution_id: str, *, catalog_fingerprint: str) -> RoleExecutionSnapshot:
+    """Freeze selected full cards into the dispatch envelope."""
+    from orchestrate.core.model.card_snapshot import freeze_agent_card
+    from orchestrate.core.model.role_execution_snapshot import freeze_role_execution
+
     frozen_cards = []
     frozen_ids = set()
     for binding in result.bindings:
@@ -286,4 +370,5 @@ def resolve_execution_plan(
             binding["instance_id"], binding["agent"], binding["endpoint"],
             _card_payload(card),
         ))
-    return freeze_role_execution(psop, result, frozen_cards, uuid4().hex)
+    return freeze_role_execution(template, result, frozen_cards, execution_id,
+                                 catalog_fingerprint=catalog_fingerprint)

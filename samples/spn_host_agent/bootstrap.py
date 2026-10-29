@@ -48,6 +48,11 @@ def create_spn_host_executor(all_agent_cards: list | None = None) -> HostAgentEx
             orchestration_url=orchestration_url,
             registry_url=registry_url,
             ssl_verify=ssl_verify,
+            # REQ74 P4 deployment admission: the sample Host must honor the
+            # same server.conf keys as the center, or a configured pilot could
+            # never pass this composition path.
+            role_execution_mode=str(conf.get("role_execution_mode", "disabled")),
+            deployment_environment=str(conf.get("deployment_environment", "production")),
         ),
         control_point_factory=create_control_point,
         extension_lifecycle=SpnExtensionLifecycle(

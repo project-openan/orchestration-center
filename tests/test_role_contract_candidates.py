@@ -36,7 +36,7 @@ def _candidate(mutate):
     live = ParseDict(payload, AgentCard())
     canonical = MessageToDict(live)
     rebuilt = freeze_agent_card(frozen.instance_id, frozen.agent_name, frozen.endpoint, canonical)
-    return freeze_role_execution(template, result, [rebuilt], "execution-candidates"), live
+    return freeze_role_execution(template, result, [rebuilt], "execution-candidates", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"), live
 
 
 def _raw_candidate(mutate):
@@ -51,7 +51,7 @@ def _raw_candidate(mutate):
     payload = deepcopy(frozen.card)
     mutate(payload)
     rebuilt = freeze_agent_card(frozen.instance_id, frozen.agent_name, frozen.endpoint, payload)
-    return freeze_role_execution(template, result, [rebuilt], "execution-candidates")
+    return freeze_role_execution(template, result, [rebuilt], "execution-candidates", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
 
 
 def _unwrap_reason(exc_info):

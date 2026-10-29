@@ -47,13 +47,15 @@ import {
     FlaskConical,
 } from 'lucide-react';
 import { getWorkflow, getWorkflowById, getStartProcessStreamUrl, matchWorkflowsTopN, getExecutionRecords, getExecutionRecord, deleteExecutionRecord, getSandboxReports, getSandboxReport, deleteSandboxReport } from '@/service/api.js';
-import { getAgentCards, getDispatchStreamUrl } from '@/service/api.js';
+import { getAgentCards, getDispatchStreamUrl, previewRoleExecution } from '@/service/api.js';
+import { streamRoleExecution } from '@/service/roleStream.js';
 import { transformWorkflowToReactFlow } from '@/components/orchestration_center/workflow/utils/index.jsx';
 import UnifiedWorkflow from '../orchestration_center/workflow/index.jsx';
 import { annotateWorkflowErrors, formatWorkflowError } from './workflowErrors.js';
 import { projectRoleExecution, roleTemplateFromEvents } from './workflowProjection.js';
 import ExecutionStatistics from './execution_statistics/index.jsx';
 import ExecutionTimeline from './timeline/index.jsx';
+import RolePreviewPanel from './RolePreviewPanel.jsx';
 import { SandboxReportView } from '@/components/sandbox/SandboxDialog.jsx';
 import {
     getNegotiationPayload,
@@ -509,6 +511,231 @@ const ExecutionCenter = ({ isDark }) => {
     const [showSummary, setShowSummary] = useState(false);
     const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
+    // Shared SSE event state machine for every execution transport
+    // (EventSource GET streams and the confirmed POST stream). Returns true
+    // when the event ends the execution, so the caller can close its source.
+    const applyExecutionEvent = useCallback((data, { dispatch = false } = {}) => {
+        setEvents(prev => [...prev, data]);
+        switch (data.type) {
+            case 'start':
+                if (dispatch) {
+                    setAutoScroll(true);
+                    setSelectedId('dispatch');
+                    setWorkflowSource('retrieved');
+                    setMatchedWorkflows([{ workflow_id: 'dispatch', name: data.data?.workflow || 'Workflow', description: userIntent || '' }]);
+                }
+                break;
+            case 'resolution':
+                setExecutionTemplate(previous => previous || roleTemplateFromEvents([data]));
+                break;
+            case 'psop_update':
+                try {
+                    const status = typeof data.data.psop === 'string'
+                        ? JSON.parse(data.data.psop)
+                        : data.data.psop;
+                    setExecutionTemplate(previous => previous || roleTemplateFromEvents([data]));
+                    setPsopStatus(status);
+                } catch (e) {
+                    console.error('Failed to parse psop_update data:', e);
+                }
+                break;
+            case 'dispatch_result':
+            case 'complete':
+            case 'close':
+                setIsRunning(false);
+                setIsDispatching(false);
+                setRunningId(null);
+                return true;
+            case 'dispatch_error':
+            case 'error':
+                setWorkflowError(data.data || data);
+                setError(formatWorkflowError(data.data || data));
+                setIsRunning(false);
+                setIsDispatching(false);
+                setRunningId(null);
+                return true;
+            default:
+                break;
+        }
+        return false;
+    }, [userIntent]);
+
+    // Role execution preview (REQ74): scope inputs + pre-execution arrangement
+    const [roleScope, setRoleScope] = useState({ tenant: '', site: '', business_object: '' });
+    const [rolePreview, setRolePreview] = useState(null);
+    const [rolePreviewStale, setRolePreviewStale] = useState(false);
+    const [isPreviewing, setIsPreviewing] = useState(false);
+    const [previewError, setPreviewError] = useState(null);
+    // Manual re-selection from the preview panel; null means fully automatic.
+    const [roleOverrides, setRoleOverrides] = useState(null);
+    const [isConfirming, setIsConfirming] = useState(false);
+    // The arrangement collapses into a one-row summary bar once execution
+    // starts (or on demand) so the workflow graph gets the vertical space.
+    const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
+    const roleAbortRef = useRef(null);
+
+    const clearRolePreview = useCallback(() => {
+        roleAbortRef.current?.abort();
+        roleAbortRef.current = null;
+        setRolePreview(null);
+        setRolePreviewStale(false);
+        setPreviewError(null);
+        setRoleOverrides(null);
+        setIsConfirming(false);
+        setIsPreviewCollapsed(false);
+    }, []);
+
+    const handleTogglePreviewCollapse = useCallback(() => {
+        setIsPreviewCollapsed(prev => !prev);
+    }, []);
+
+    const handleRoleScopeChange = useCallback((field, value) => {
+        setRoleScope(prev => ({ ...prev, [field]: value }));
+        // Edited inputs invalidate the previous preview immediately, so a
+        // stale arrangement can never be confirmed for execution.
+        setRolePreviewStale(true);
+    }, []);
+
+    const requestRolePreview = useCallback(async (overrides, explicitId) => {
+        const id = explicitId || selectedId;
+        if (!id) return;
+        const parts = [roleScope.tenant, roleScope.site, roleScope.business_object]
+            .map(part => (part || '').trim()).filter(Boolean);
+        if (parts.length > 0 && parts.length < 3) {
+            setPreviewError(t('execution.scope_incomplete'));
+            return;
+        }
+        setIsPreviewing(true);
+        setPreviewError(null);
+        try {
+            const data = await previewRoleExecution({
+                psop_id: id,
+                ...(parts.length === 3 ? { scope: parts.join('/') } : {}),
+                ...(overrides?.task_overrides ? { task_overrides: overrides.task_overrides } : {}),
+                ...(overrides?.group_overrides ? { group_overrides: overrides.group_overrides } : {}),
+            });
+            setRolePreview(data);
+            setRolePreviewStale(false);
+        } catch (err) {
+            console.error('Failed to preview role execution:', err);
+            setPreviewError(err?.message || err?.detail || t('execution.preview_failed'));
+        } finally {
+            setIsPreviewing(false);
+        }
+    }, [selectedId, roleScope, t]);
+
+    const handlePreviewRoleExecution = useCallback(() => {
+        requestRolePreview(roleOverrides);
+    }, [requestRolePreview, roleOverrides]);
+
+    const handleOverrideUnit = useCallback((unit, instanceId) => {
+        if (isPreviewing || isRunning) return;
+        const next = {
+            task_overrides: { ...(roleOverrides?.task_overrides || {}) },
+            group_overrides: { ...(roleOverrides?.group_overrides || {}) },
+        };
+        if (unit.binding_group) {
+            next.group_overrides[unit.binding_group] = instanceId;
+        } else if (unit.task_ids[0]) {
+            next.task_overrides[unit.task_ids[0]] = instanceId;
+        }
+        setRoleOverrides(next);
+        // The digest must cover the overrides, so the arrangement is
+        // re-previewed with them applied before it can be confirmed.
+        requestRolePreview(next);
+    }, [roleOverrides, isPreviewing, isRunning, requestRolePreview]);
+
+    const handleResetUnit = useCallback((unit) => {
+        if (isPreviewing || isRunning) return;
+        const next = {
+            task_overrides: { ...(roleOverrides?.task_overrides || {}) },
+            group_overrides: { ...(roleOverrides?.group_overrides || {}) },
+        };
+        if (unit.binding_group) {
+            delete next.group_overrides[unit.binding_group];
+        } else if (unit.task_ids[0]) {
+            delete next.task_overrides[unit.task_ids[0]];
+        }
+        const hasOverrides = Object.keys(next.task_overrides).length > 0
+            || Object.keys(next.group_overrides).length > 0;
+        setRoleOverrides(hasOverrides ? next : null);
+        requestRolePreview(hasOverrides ? next : null);
+    }, [roleOverrides, isPreviewing, isRunning, requestRolePreview]);
+
+    const canConfirmRoleExecution = Boolean(
+        selectedId
+        && rolePreview?.can_execute
+        && rolePreview?.resolution_fingerprint
+        && !rolePreviewStale
+        && !isPreviewing
+        && !isConfirming
+        && !isRunning
+    );
+
+    // A template saved elsewhere (orchestration center) invalidates the
+    // arrangement preview: the confirm digest would reject it server-side.
+    useEffect(() => {
+        const onWorkflowSaved = (event) => {
+            if (event.detail?.workflow_id && event.detail.workflow_id === selectedId) {
+                setRolePreviewStale(true);
+            }
+        };
+        window.addEventListener('orchestrate:workflow-saved', onWorkflowSaved);
+        return () => window.removeEventListener('orchestrate:workflow-saved', onWorkflowSaved);
+    }, [selectedId]);
+
+    const handleConfirmRoleExecution = useCallback(() => {
+        if (!canConfirmRoleExecution) return;
+        const fingerprint = rolePreview.resolution_fingerprint;
+        const overrides = roleOverrides || { task_overrides: {}, group_overrides: {} };
+        const parts = [roleScope.tenant, roleScope.site, roleScope.business_object]
+            .map(part => (part || '').trim()).filter(Boolean);
+
+        setError(null);
+        setEvents([]);
+        setPsopStatus(null);
+        setExecutionTemplate(null);
+        setWorkflowError(null);
+        setNodes([]);
+        setEdges([]);
+        setIsRunning(true);
+        setRunningId(selectedId);
+        setAutoScroll(true);
+        setSelectedExecutionId(null);
+        setSelectedSandboxReport(null);
+        setIsConfirming(true);
+        // Free the vertical space for the execution graph; the collapsed
+        // summary bar keeps the arrangement one click away.
+        setIsPreviewCollapsed(true);
+
+        const controller = new AbortController();
+        roleAbortRef.current = controller;
+        streamRoleExecution({
+            psop_id: selectedId,
+            ...(parts.length === 3 ? { scope: parts.join('/') } : {}),
+            task_overrides: overrides.task_overrides,
+            group_overrides: overrides.group_overrides,
+            confirm_fingerprint: fingerprint,
+            user_intent: userIntent || undefined,
+            lang: i18n.language || undefined,
+        }, {
+            onEvent: (data) => { applyExecutionEvent(data); },
+            onDone: () => setIsConfirming(false),
+            onError: (err) => {
+                console.error('Role execution failed:', err);
+                setIsConfirming(false);
+                setIsRunning(false);
+                setRunningId(null);
+                setError(err?.message || t('execution.confirm_failed'));
+            },
+        }, controller.signal).finally(() => {
+            if (roleAbortRef.current === controller) roleAbortRef.current = null;
+        });
+    }, [
+        canConfirmRoleExecution, rolePreview, roleOverrides, roleScope, selectedId,
+        userIntent, i18n.language, t, applyExecutionEvent,
+    ]);
+
     const loadSandboxRecords = useCallback(async () => {
         try {
             setIsLoadingRecords(true);
@@ -569,7 +796,8 @@ const ExecutionCenter = ({ isDark }) => {
         setWorkflowError(null);
         setNodes([]);
         setEdges([]);
-    }, []);
+        clearRolePreview();
+    }, [clearRolePreview]);
 
     // Fetch agent cards for dispatch dropdown
     useEffect(() => {
@@ -616,6 +844,7 @@ const ExecutionCenter = ({ isDark }) => {
         setMatchedWorkflows([]);
         setNodes([]);
         setEdges([]);
+        clearRolePreview();
 
         const url = getDispatchStreamUrl(userIntent, selectedAgent, i18n.language);
         const es = new EventSource(url, { withCredentials: true });
@@ -623,47 +852,9 @@ const ExecutionCenter = ({ isDark }) => {
         es.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                setEvents(prev => [...prev, data]);
                 console.log('[SSE event]', data.type, data.data?.step || data.data?.agent || '', JSON.stringify(data.data).slice(0, 120));
-
-               switch (data.type) {
-                    case 'start':
-                        setAutoScroll(true);
-                        setSelectedId('dispatch');
-                        setWorkflowSource('retrieved');
-                        setMatchedWorkflows([{ workflow_id: 'dispatch', name: data.data?.workflow || 'Workflow', description: userIntent || '' }]);
-                        break;
-                    case 'resolution':
-                        setExecutionTemplate(previous => previous || roleTemplateFromEvents([data]));
-                        break;
-                    case 'psop_update':
-                        try {
-                            const status = typeof data.data.psop === 'string'
-                                ? JSON.parse(data.data.psop)
-                                : data.data.psop;
-                            setExecutionTemplate(previous => previous || roleTemplateFromEvents([data]));
-                            setPsopStatus(status);
-                        } catch (e) {
-                            console.error('Failed to parse psop_update data:', e);
-                        }
-                        break;
-                    case 'dispatch_result':
-                    case 'complete':
-                    case 'close':
-                        setIsRunning(false);
-                        setIsDispatching(false);
-                        setRunningId(null);
-                        es.close();
-                        break;
-                    case 'dispatch_error':
-                    case 'error':
-                        setWorkflowError(data.data || data);
-                        setError(formatWorkflowError(data.data || data));
-                        setIsRunning(false);
-                        setIsDispatching(false);
-                        setRunningId(null);
-                        es.close();
-                        break;
+                if (applyExecutionEvent(data, { dispatch: true })) {
+                    es.close();
                 }
             } catch (err) {
                 console.error("Failed to parse dispatch event data:", err);
@@ -680,7 +871,7 @@ const ExecutionCenter = ({ isDark }) => {
         };
 
         setEventSource(es);
-    }, [userIntent, selectedAgent, eventSource, i18n.language]);
+    }, [userIntent, selectedAgent, eventSource, i18n.language, clearRolePreview, applyExecutionEvent]);
 
     // Update exact filter
     const updateFilter = useCallback((key, value) => {
@@ -736,7 +927,8 @@ const ExecutionCenter = ({ isDark }) => {
                     tags: item.tags || [],
                     description: item.description,
                     created_at: item.created_at,
-                    status: item.status || 'unknown'
+                    status: item.status || 'unknown',
+                    binding: item.binding
                 }));
 
                 // Apply filters
@@ -862,6 +1054,7 @@ const ExecutionCenter = ({ isDark }) => {
         setMatchedWorkflows([]);
         setWorkflowSource(null);
         setError(null);
+        clearRolePreview();
 
         try {
             const raw = await matchWorkflowsTopN(userIntent, 3);
@@ -898,7 +1091,12 @@ const ExecutionCenter = ({ isDark }) => {
         setWorkflowError(null);
         setMatchedWorkflows(workflowCandidates);
         setWorkflowCandidates([]);
+        clearRolePreview();
     };
+
+    // ──── Role execution preview (REQ74) ────
+    const selectedWorkflow = matchedWorkflows.find(wf => wf.workflow_id === selectedId);
+    const isRoleWorkflow = selectedWorkflow?.binding === 'role';
 
     const loadHistoryRecords = useCallback(async () => {
         setIsLoadingRecords(true);
@@ -922,6 +1120,7 @@ const ExecutionCenter = ({ isDark }) => {
                 setSelectedExecutionId(executionId);
                 setExecutionTemplate(roleTemplateFromEvents(record.events));
                 setPsopStatus(record.final_psop || null);
+                clearRolePreview();
                 const displayEvents = (record.events || []).filter(e => {
                     const t = e.type;
                     return t === 'step_start' || t === 'step_complete' ||
@@ -949,7 +1148,7 @@ const ExecutionCenter = ({ isDark }) => {
             console.error("Failed to load execution record detail:", err);
             setError(t('execution.load_history_failed'));
         }
-    }, [t]);
+    }, [t, clearRolePreview]);
 
     const handleDeleteRecord = useCallback(async () => {
         if (!recordToDelete) return;
@@ -1011,9 +1210,26 @@ const ExecutionCenter = ({ isDark }) => {
             eventSource.close();
             setEventSource(null);
         }
+        roleAbortRef.current?.abort();
+        roleAbortRef.current = null;
         setIsRunning(false);
+        setIsConfirming(false);
         setRunningId(null);
     }, [eventSource]);
+
+    // Every page entry that starts a role workflow must enter the preview/
+    // confirm chain (REQ74): the legacy GET execution cannot carry the scope,
+    // manual re-selections or the confirmation digest.
+    const startRoleWorkflowFromList = useCallback((workflowId) => {
+        clearRolePreview();
+        setSelectedId(workflowId);
+        setWorkflowSource('retrieved');
+        setPsopStatus(null);
+        setExecutionTemplate(null);
+        setWorkflowError(null);
+        setIsSearchCollapsed(false);
+        requestRolePreview(null, workflowId);
+    }, [clearRolePreview, requestRolePreview]);
 
     // Start execution
     const startExecution = useCallback((overrideId) => {
@@ -1044,37 +1260,8 @@ const ExecutionCenter = ({ isDark }) => {
         es.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                setEvents(prev => [...prev, data]);
-
-                switch (data.type) {
-                    case 'resolution':
-                        setExecutionTemplate(previous => previous || roleTemplateFromEvents([data]));
-                        break;
-                    case 'psop_update':
-                        try {
-                            const status = typeof data.data.psop === 'string'
-                                ? JSON.parse(data.data.psop)
-                                : data.data.psop;
-                            setExecutionTemplate(previous => previous || roleTemplateFromEvents([data]));
-                            setPsopStatus(status);
-                        } catch (e) {
-                            console.error("Failed to parse psop_update data:", e);
-                        }
-                        break;
-                    case 'complete':
-                    case 'close':
-                        setIsRunning(false);
-                        setRunningId(null);
-                        es.close();
-                        break;
-                    case 'dispatch_error':
-                    case 'error':
-                        setWorkflowError(data.data || data);
-                        setError(formatWorkflowError(data.data || data));
-                        setIsRunning(false);
-                        setRunningId(null);
-                        es.close();
-                        break;
+                if (applyExecutionEvent(data)) {
+                    es.close();
                 }
             } catch (err) {
                 console.error("Failed to parse event data:", err);
@@ -1090,7 +1277,7 @@ const ExecutionCenter = ({ isDark }) => {
         };
 
         setEventSource(es);
-    }, [selectedId, userIntent, selectedAgent]);
+    }, [selectedId, userIntent, selectedAgent, i18n.language, eventSource, applyExecutionEvent]);
 
     useEffect(() => {
         return () => {
@@ -1160,7 +1347,7 @@ const ExecutionCenter = ({ isDark }) => {
 
             <div className="flex-1 min-h-0 overflow-hidden">
                 {activeSubMenu === 'execution' ? (
-                    <div className="h-full px-8 pb-6 flex flex-col gap-4 w-full overflow-hidden">
+                    <div className="h-full px-8 pb-6 flex flex-col gap-4 w-full overflow-y-auto custom-scrollbar">
                         {/* Search & Control Bar */}
                         <div className={`shrink-0 rounded-2xl border ${isSearchCollapsed ? 'px-5 py-3' : 'p-5'} ${theme.panel}`}>
 
@@ -1289,6 +1476,31 @@ const ExecutionCenter = ({ isDark }) => {
                 </div>
                 )}
 
+                {/* Role execution scope + arrangement preview (REQ74); every
+                    search mode must reach the confirm chain for role flows. */}
+                {isRoleWorkflow && !isSearchCollapsed && (
+                    <RolePreviewPanel
+                        theme={theme}
+                        t={t}
+                        preview={rolePreview}
+                        stale={rolePreviewStale}
+                        loading={isPreviewing}
+                        error={previewError}
+                        scope={roleScope}
+                        onScopeChange={handleRoleScopeChange}
+                        onPreview={handlePreviewRoleExecution}
+                        overrides={roleOverrides}
+                        onOverrideUnit={handleOverrideUnit}
+                        onResetUnit={handleResetUnit}
+                        onConfirm={handleConfirmRoleExecution}
+                        canConfirm={canConfirmRoleExecution}
+                        confirming={isConfirming}
+                        running={isRunning}
+                        collapsed={isPreviewCollapsed}
+                        onToggleCollapse={handleTogglePreviewCollapse}
+                    />
+                )}
+
                 {searchMode === 'exact' && showFilters && !isSearchCollapsed && (
                     <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700 grid grid-cols-4 gap-4 animate-in slide-in-from-top duration-300">
                         <div>
@@ -1356,7 +1568,7 @@ const ExecutionCenter = ({ isDark }) => {
             </div>
 
             {/* Main Content Area - Three Column Layout */}
-            <div className="flex-1 flex gap-4 min-h-0 relative">
+            <div className="flex-1 flex gap-4 min-h-[320px] relative">
                 {/* Left Panel - Workflow List */}
                 {isLeftPanelCollapsed ? (
                     <button
@@ -1448,7 +1660,7 @@ const ExecutionCenter = ({ isDark }) => {
                                 matchedWorkflows.map(wf => (
                                     <div 
                                         key={wf.workflow_id}
-                                        onClick={() => { setSelectedId(wf.workflow_id); setWorkflowSource('retrieved'); setPsopStatus(null); setExecutionTemplate(null); setWorkflowError(null); }}
+                                        onClick={() => { setSelectedId(wf.workflow_id); setWorkflowSource('retrieved'); setPsopStatus(null); setExecutionTemplate(null); setWorkflowError(null); clearRolePreview(); }}
                                         className={`group relative p-4 rounded-xl border transition-all cursor-pointer
                                             ${selectedId === wf.workflow_id 
                                                 ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-800 shadow-sm' 
@@ -1486,6 +1698,8 @@ const ExecutionCenter = ({ isDark }) => {
                                                     stopExecution();
                                                 } else if (wf.workflow_id === 'dispatch') {
                                                     handleDispatch();
+                                                } else if (wf.binding === 'role') {
+                                                    startRoleWorkflowFromList(wf.workflow_id);
                                                 } else {
                                                     setSelectedId(wf.workflow_id);
                                                     startExecution(wf.workflow_id);

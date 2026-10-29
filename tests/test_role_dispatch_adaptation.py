@@ -29,7 +29,7 @@ from workflow_engine import (
 from host_agent.config import HostAgentConfig, RoleExecutionContext
 from host_agent.dispatch_auth import PROOF_KEY, DispatchValidationError, sign_dispatch
 from host_agent.role_dispatch import (
-    ROLE_DISPATCH_FAILED, RoleDispatchEngineClient, SUPPORTED_EXTENSIONS, TASK_T_URI,
+    NEGOTIATION_T_URI, ROLE_DISPATCH_FAILED, RoleDispatchEngineClient, SUPPORTED_EXTENSIONS, TASK_T_URI,
     ValidatingAuthProvider, _dispatch_identity, project_dispatch_interfaces,
 )
 from host_agent.role_execution import RoleExecutionBridge
@@ -354,7 +354,22 @@ async def test_dispatch_accepts_a_complete_task_t_activation():
     result = await case.wrapper.dispatch(case.request, message)
     assert case.inner.dispatched == [(case.request, message)]
     assert result.sentinel == "dispatch-result"
-    assert SUPPORTED_EXTENSIONS == {TASK_T_URI}
+    assert SUPPORTED_EXTENSIONS == {TASK_T_URI, NEGOTIATION_T_URI}
+
+
+@pytest.mark.asyncio
+async def test_dispatch_accepts_negotiation_t_activation_on_a_reply():
+    # Negotiation-T is the SDK's native information-exchange round trip:
+    # negotiation agents answer a Task-T request with an INPUT_REQUIRED
+    # PROPOSE and expect a REPLY, so the four-check must not reject it.
+    # Real negotiation cards declare both URIs (Task-T for prompts,
+    # Negotiation-T for the exchange), like the SPN sample cards.
+    case = harness(lambda card: card.update(capabilities={"extensions": [
+        {"uri": TASK_T_URI}, {"uri": NEGOTIATION_T_URI}]}))
+    message = content(extensions={NEGOTIATION_T_URI}, metadata={NEGOTIATION_T_URI: {"proposal": "data"}})
+    result = await case.wrapper.dispatch(case.request, message)
+    assert case.inner.dispatched == [(case.request, message)]
+    assert result.sentinel == "dispatch-result"
 
 
 # ---------------------------------------------------------------------------

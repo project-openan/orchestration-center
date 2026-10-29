@@ -65,6 +65,10 @@ from orchestrate.core.model.psop import PSOP
 from orchestrate.core.persistence import WorkflowStorageError
 from orchestrate.runtime.instance_projection import ResolutionRequest, bind_resolution_identity
 from orchestrate.server.external_api import router as external_router
+from orchestrate.server.role_execution_api import (
+    resolution_request_from_query,
+    router as role_execution_router,
+)
 from orchestrate.server.account_api import router as account_router
 from orchestrate.server.account_auth import AccountLogin, authenticate_account, verify_access_password
 from orchestrate.server.sandbox_api import sandbox_router, sandbox_service
@@ -1212,6 +1216,9 @@ async def execute_workflow(
     scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
     authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
     caller_id: str = Query(None, deprecated=True, description="Compatibility input, ignored; authenticated identity is recorded"),
+    task_overrides: str = Query(None, description="JSON object task_id -> instance_id for manual role re-selection"),
+    group_overrides: str = Query(None, description="JSON object binding_group -> instance_id for manual group re-selection"),
+    tie_break: str = Query(None, description="Equal-priority policy: error (default) or instance_id"),
     _: Any = Depends(RateLimiter(config, "start_process_stream"))
 ):
     if not psop_id:
@@ -1227,13 +1234,8 @@ async def execute_workflow(
         agent_cards = await get_agent_cards()
 
         intent = user_intent or psop.name or psop_id
-        resolution_request = ResolutionRequest(
-            scope=scope,
-            authorized_instance_ids=(
-                [s.strip() for s in authorized_instances.split(",") if s.strip()]
-                if authorized_instances is not None else None
-            ),
-            caller_id=caller_id,
+        resolution_request = resolution_request_from_query(
+            scope, authorized_instances, caller_id, task_overrides, group_overrides, tie_break,
         )
         bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
@@ -1349,6 +1351,7 @@ async def get_execution_record(execution_id: str):
 # ──── Register routers ────
 app.include_router(router)
 app.include_router(external_router)
+app.include_router(role_execution_router)
 app.include_router(account_router)
 app.include_router(sandbox_router, prefix="/rest/v1/orchestrate")
 

@@ -148,6 +148,7 @@ def parse_rate_limit(interface_name: str, config):
         "list_agents":(FLOW_CTL_AGENT_CARDS, 50),
         "get_execution":(FLOW_CTL_ONE_PSOP, 50),
         "list_executions":(FLOW_CTL_ALL_PSOPS, 50),
+        "role_execution_preview":(FLOW_CTL_ONE_PSOP, 50),
         "start_process_stream":(FLOW_CTL_START_PROCESS_STREAM, 50),
     }
 

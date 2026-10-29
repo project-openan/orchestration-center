@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -87,6 +87,9 @@ class ExecuteRequest(BaseModel):
     scope: Optional[str] = Field(None, max_length=512, description="Execution scope tenant/site/business_object for role resolution")
     authorized_instances: Optional[list[str]] = Field(None, description="Requested subset of server-authorized instance IDs; empty means none")
     caller_id: Optional[str] = Field(None, max_length=256, deprecated=True, description="Compatibility input, ignored; authenticated identity is recorded")
+    task_overrides: Optional[dict[str, str]] = Field(None, description="Manual role re-selection: task_id -> instance_id; must satisfy the same eligibility rules as automatic selection")
+    group_overrides: Optional[dict[str, str]] = Field(None, description="Manual re-selection for whole binding groups: binding_group -> instance_id")
+    tie_break: Optional[str] = Field(None, description="Equal-priority policy: error (default) or instance_id")
 
 class SearchRequest(BaseModel):
     intent: str = Field(..., min_length=1, max_length=10000, description="Natural language intent to search for matching workflows")
@@ -355,6 +358,9 @@ async def execute_workflow(
             scope=body.scope,
             authorized_instance_ids=body.authorized_instances,
             caller_id=body.caller_id,
+            task_overrides=dict(body.task_overrides or {}),
+            group_overrides=dict(body.group_overrides or {}),
+            tie_break=body.tie_break,
         )
         bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
@@ -384,6 +390,9 @@ async def execute_psop_by_id(
     scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
     authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
     caller_id: str = Query(None, deprecated=True, description="Compatibility input, ignored; authenticated identity is recorded"),
+    task_overrides: str = Query(None, description="JSON object task_id -> instance_id for manual role re-selection"),
+    group_overrides: str = Query(None, description="JSON object binding_group -> instance_id for manual group re-selection"),
+    tie_break: str = Query(None, description="Equal-priority policy: error (default) or instance_id"),
     _: Any = Depends(RateLimiter(config, "ext_execute_by_id"))
 ):
     """
@@ -401,13 +410,10 @@ async def execute_psop_by_id(
         if not psop:
             raise HTTPException(status_code=404, detail=f"PSOP {psop_id} not found")
         intent = user_intent or psop.name or psop_id
-        resolution_request = ResolutionRequest(
-            scope=scope,
-            authorized_instance_ids=(
-                [s.strip() for s in authorized_instances.split(",") if s.strip()]
-                if authorized_instances is not None else None
-            ),
-            caller_id=caller_id,
+        from orchestrate.server.role_execution_api import resolution_request_from_query
+
+        resolution_request = resolution_request_from_query(
+            scope, authorized_instances, caller_id, task_overrides, group_overrides, tie_break,
         )
         bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(

@@ -16,11 +16,12 @@
 //    under the License.
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from "react-i18next";
+import { X } from 'lucide-react';
 import DeleteConfirm from "@/components/common/pop_confirm/index.jsx";
 import { getAgentCards } from "@/service/api.js";
-import { hasRoleTasks } from '../rolePolicy.js';
+import { hasRoleTasks, groupRoleTasks, isApprovedEntry, isApprovedRoleSkill } from '../rolePolicy.js';
 
-const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes, setEdges, isDark, onDelete, onClose, readOnly = false }) => {
+const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes, setEdges, isDark, onDelete, onClose, readOnly = false, catalog = null, onRoleTaskContentChange }) => {
     const { t } = useTranslation();
     const [allAgents, setAllAgents] = React.useState([]);
     const protectedWorkflow = readOnly || hasRoleTasks(nodes);
@@ -311,23 +312,133 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         return val;
     };
     if (protectedWorkflow) {
+        const approvedRoles = (catalog?.roles || []).filter(isApprovedEntry);
+        const approvedSkillsOf = (roleId, roleVersion) => {
+            const role = approvedRoles.find(item => item.role_id === roleId && item.role_version === roleVersion);
+            return (role?.skills || []).filter(isApprovedEntry);
+        };
         return (
             <div className={`p-4 space-y-4 overflow-auto ${theme.container}`}>
-                <button type="button" onClick={onClose}>{t('common.close')}</button>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 -ml-1 rounded-lg text-[12px] font-bold uppercase tracking-wide transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                    title={t('common.close')}
+                >
+                    <X size={14} />
+                    {t('common.close')}
+                </button>
                 <p role="note">{t('workflow.roleProtection')}</p>
                 <h3 className="font-bold">{data.label || activeElement.id}</h3>
                 {!isNode && <p>{data.condition || activeElement.label || '-'}</p>}
-                {(data.subtasks || []).map((task, index) => (
-                    <div key={task.task_id || index} className="border rounded-xl p-3 space-y-1">
-                        <p className="font-bold">{task.agent}</p>
-                        {task.roleName && <p>{task.roleName}</p>}
-                        <p>{task.skill}</p>
-                        {task.skillName && <p>{task.skillName}</p>}
-                        {task.binding === 'role' && <p>{t('workflow.roleIdentity')}: {task.role_version}</p>}
-                        {task.binding_group && <p>{task.binding_group}</p>}
-                        <p className="text-sm">{task.description}</p>
-                    </div>
-                ))}
+                {isNode && data.subtasks?.some(task => task.binding === 'role') && (
+                    <p role="note" className="text-[11px] opacity-70">
+                        {catalog
+                            ? t('workflow.roleEditHint', { version: data.catalogVersion || catalog.catalog_version || '-' })
+                            : t('workflow.roleEditUnavailable')}
+                    </p>
+                )}
+                {(data.subtasks || []).map((task, index) => {
+                    const editable = task.binding === 'role' && Boolean(catalog) && Boolean(onRoleTaskContentChange);
+                    const taskSkills = editable ? approvedSkillsOf(task.agent, task.role_version) : [];
+                    const groupMembers = editable ? groupRoleTasks(nodes, task.binding_group) : [];
+                    return (
+                        <div key={task.task_id || index} className="border rounded-xl p-3 space-y-2" data-testid="role-task-card">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold">{task.agent}</p>
+                                {task.roleName && <p>{task.roleName}</p>}
+                                {task.binding === 'role' && <p className="text-[11px] opacity-60">{t('workflow.roleIdentity')}: {task.role_version}</p>}
+                                {task.binding_group && <p className="text-[11px] opacity-60">{task.binding_group}</p>}
+                                <p className="text-[10px] opacity-40 font-mono">{task.task_id}</p>
+                            </div>
+                            {editable ? (
+                                <>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest opacity-50">
+                                        {t('workflow.panel.taskDesc')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={task.description || ''}
+                                        data-testid="role-task-description"
+                                        onChange={(e) => onRoleTaskContentChange(activeElement.id, index, { description: e.target.value })}
+                                        className={`w-full px-2 py-1 text-[12px] rounded-lg border outline-none transition-all ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-blue-500' : 'bg-zinc-50 border-zinc-200 text-zinc-800 focus:border-blue-400'}`}
+                                    />
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest opacity-50">
+                                        {t('workflow.roleEditRole')}
+                                    </label>
+                                    <select
+                                        value={`${task.agent}@${task.role_version || ''}`}
+                                        data-testid="role-task-role"
+                                        onChange={(e) => {
+                                            const [roleId, roleVersion] = e.target.value.split('@');
+                                            // Switching the role identity invalidates the previous
+                                            // skill; the user must re-select from the new role.
+                                            onRoleTaskContentChange(activeElement.id, index, {
+                                                agent: roleId, role_version: roleVersion, skill: null,
+                                            });
+                                        }}
+                                        className={`w-full px-2 py-1.5 text-[12px] font-bold rounded-lg border appearance-none outline-none transition-all ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-blue-500' : 'bg-zinc-50 border-zinc-200 text-zinc-800 focus:border-blue-400'}`}
+                                    >
+                                        {!approvedRoles.some(role => role.role_id === task.agent && role.role_version === task.role_version) && (
+                                            <option value={`${task.agent}@${task.role_version || ''}`}>{task.agent}</option>
+                                        )}
+                                        {approvedRoles.map(role => (
+                                            <option key={`${role.role_id}@${role.role_version}`} value={`${role.role_id}@${role.role_version}`}>
+                                                {role.name ? `${role.name} (${role.role_id}@${role.role_version})` : `${role.role_id}@${role.role_version}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest opacity-50">
+                                        {t('workflow.roleEditSkill')}
+                                    </label>
+                                    <select
+                                        value={task.skill || ''}
+                                        data-testid="role-task-skill"
+                                        onChange={(e) => onRoleTaskContentChange(activeElement.id, index, { skill: e.target.value || null })}
+                                        className={`w-full px-2 py-1.5 text-[12px] font-bold rounded-lg border appearance-none outline-none transition-all ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-blue-500' : 'bg-zinc-50 border-zinc-200 text-zinc-800 focus:border-blue-400'}`}
+                                    >
+                                        {!task.skill && <option value="">{t('workflow.roleEditSelectSkill')}</option>}
+                                        {!taskSkills.some(skill => skill.skill_id === task.skill) && task.skill && (
+                                            <option value={task.skill}>{task.skill}</option>
+                                        )}
+                                        {taskSkills.map(skill => (
+                                            <option key={skill.skill_id} value={skill.skill_id}>
+                                                {skill.name ? `${skill.name} (${skill.skill_id})` : skill.skill_id}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {!isApprovedRoleSkill(catalog, task.agent, task.role_version, task.skill) && (
+                                        <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">
+                                            {t('workflow.roleEditInvalidReference', { task: task.task_id })}
+                                        </p>
+                                    )}
+                                    {task.binding_group && groupMembers.length > 1 && (
+                                        <div className="pt-1 space-y-1" data-testid="role-task-group-members">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+                                                {t('workflow.roleEditGroupMembers')}
+                                            </p>
+                                            {groupMembers.map(member => (
+                                                <div key={member.task.task_id} className="flex items-center gap-2 text-[11px]">
+                                                    <span className="opacity-70">{member.node_label}</span>
+                                                    <span className="font-mono">{`${member.task.agent}@${member.task.role_version || '-'} · ${member.task.skill || '-'}`}</span>
+                                                    {isApprovedRoleSkill(catalog, member.task.agent, member.task.role_version, member.task.skill)
+                                                        ? <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                                                        : <span role="alert" className="text-amber-600 dark:text-amber-400">✗</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <p>{task.skill}</p>
+                                    {task.skillName && <p>{task.skillName}</p>}
+                                    <p className="text-sm">{task.description}</p>
+                                </>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         );
     }

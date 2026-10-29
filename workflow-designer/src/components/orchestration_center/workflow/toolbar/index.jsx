@@ -21,10 +21,10 @@ import { createWorkflow } from "@/service/api.js";
 import { createPortal } from "react-dom";
 import { transformReactFlowToPSOP } from "@/components/orchestration_center/workflow/utils/index.jsx";
 import SandboxDialog from "@/components/sandbox/SandboxDialog.jsx";
-import { hasRoleTasks } from '../rolePolicy.js';
+import { hasRoleTasks, findInvalidRoleReferences } from '../rolePolicy.js';
 import { generationErrorMessage } from '../../generationErrors.js';
 
-const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, workflowMetadata = {}, protectedWorkflow = false, onCancel, onClear, onFitView, isDark, onSaveSuccess }) => {
+const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, workflowMetadata = {}, protectedWorkflow = false, catalog = null, designSteps = null, onCancel, onClear, onFitView, isDark, onSaveSuccess }) => {
     const roleWorkflow = protectedWorkflow || hasRoleTasks(workflowMetadata) || hasRoleTasks(nodes);
     const [showConfirm, setShowConfirm] = useState(false);
     const { t } = useTranslation();
@@ -97,6 +97,9 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
 
     const serializeDesign = () => transformReactFlowToPSOP(nodes, edges, {
         ...workflowMetadata,
+        // Content edits live in the design-steps snapshot, not in the original
+        // metadata; without this the role branch would save stale content.
+        ...(roleWorkflow && Array.isArray(designSteps) && designSteps.length ? { steps: designSteps } : {}),
         description: exportDesc === '' && workflowMetadata.description === null ? null : exportDesc,
         id: workflowId || workflowMetadata.id,
         name: exportName || workflowName,
@@ -130,11 +133,30 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
             });
             return;
         }
+        // Advisory only: the backend CatalogGate stays authoritative, but the
+        // obvious invalid (role, version, skill) references are caught here so
+        // the user can fix them before the server rejects the whole save.
+        const invalidReferences = findInvalidRoleReferences(nodes, catalog);
+        if (invalidReferences.length > 0) {
+            setToast({
+                show: true,
+                msg: t('workflow.validate.invalidRoleReference', {
+                    tasks: invalidReferences.map(issue => `${issue.node_label}/${issue.task_id}`).join(', '),
+                }),
+                type: 'error'
+            });
+            return;
+        }
         try {
             const psopData = serializeDesign();
             createWorkflow(psopData).then(r => {
                 setToast({ show: true, msg: t('workflow.export.success'), type: 'success' });
                 setShowExportModal(false);
+                // Execution-center previews of this template are now outdated;
+                // the confirm digest would reject them anyway (RESOLUTION_MISMATCH).
+                window.dispatchEvent(new CustomEvent('orchestrate:workflow-saved', {
+                    detail: { workflow_id: r?.data?.workflow_id || workflowId || null },
+                }));
                 if (onSaveSuccess) onSaveSuccess(r?.data?.workflow_id || workflowId || null);
             }).catch(err => {
                 setToast({ show: true, msg: `${t('workflow.export.failed')}: ${generationErrorMessage(err)}`, type: 'error' });

@@ -48,7 +48,7 @@ INTENT = "run synthetic role workflow"
 
 
 def envelope(snapshot=None):
-    snapshot = snapshot or freeze_role_execution(*prepared(), "execution-1")
+    snapshot = snapshot or freeze_role_execution(*prepared(), "execution-1", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
     metadata = {
         "__orch_psop_id__": snapshot.template.id,
         "__orch_psop__": snapshot.execution_psop.model_dump_json(),

@@ -59,7 +59,7 @@ export const getBaseUrl = () => {
 
 const ORCHESTRATE_BASE = () => `${getPortalAwareBaseUrl()}/rest/v1/orchestrate`;
 
-function getPortalAwareBaseUrl() {
+export function getPortalAwareBaseUrl() {
     // Portal plugin mode: ALWAYS use the gateway (relative path) regardless
     // of the serving port. The getBaseUrl() port heuristics (and any saved
     // direct-IP server config) describe the STANDALONE deployment; inside
@@ -210,6 +210,12 @@ export async function getRoleCatalog(catalogVersion) {
     return unwrapEnvelope(await api.get(`${ORCHESTRATE_BASE()}/role-catalog`, {
         params: catalogVersion ? { catalog_version: catalogVersion } : {},
     }));
+}
+
+// 鈹€鈹€鈹€ Role Execution Preview (REQ74) 鈹€鈹€鈹€
+
+export async function previewRoleExecution(payload) {
+    return unwrapEnvelope(await api.post(`${ORCHESTRATE_BASE()}/role-execution/preview`, payload));
 }
 
 const generationOptions = ({ binding, catalog_version }) => ({

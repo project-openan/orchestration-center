@@ -95,3 +95,15 @@ retrieval.vector.index_file=data/vector_index/psop_vectors.json
 # Applies to catalog selection, vector final selection and failure fallback.
 # true keeps the model defaults; false overrides only retrieval calls.
 retrieval.llm.thinking=true
+
+# ---------------------------------------------------------------------------
+# Role execution admission (REQ74 technical pilot)
+# Role execution is DISABLED by default; the dispatch signature key
+# (ORCH_ROLE_DISPATCH_KEY) authenticates messages but never enables the
+# capability. role_execution_mode=pilot opens the controlled technical pilot
+# and is admitted only on an explicitly declared non-production environment:
+# technical_pilot, development or testing. production and unrecognized values
+# stay closed, and this release has no self-declared business-certified bypass.
+# ---------------------------------------------------------------------------
+role_execution_mode=disabled
+deployment_environment=production

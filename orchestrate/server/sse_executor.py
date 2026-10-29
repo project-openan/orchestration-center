@@ -277,6 +277,19 @@ def _build_sse_response(
                             if value is not None
                         }
                     )
+                # Traceability for the confirm flow: what the caller confirmed
+                # and which manual overrides were applied -- including on
+                # resolution refusals, so failed attempts keep their evidence.
+                if resolution_request is not None and (resolution_request.task_overrides
+                        or resolution_request.group_overrides
+                        or resolution_request.tie_break):
+                    record_kwargs["overrides_applied"] = {
+                        "task_overrides": dict(resolution_request.task_overrides),
+                        "group_overrides": dict(resolution_request.group_overrides),
+                        "tie_break": resolution_request.tie_break,
+                    }
+                if resolution_request is not None and resolution_request.confirm_fingerprint:
+                    record_kwargs["confirm_fingerprint"] = resolution_request.confirm_fingerprint
                 record = ExecutionRecord(**record_kwargs)
                 handler = get_storage_handler(InterfaceType.SAVE_EXECUTION_RECORD)
                 handler.handle(record)

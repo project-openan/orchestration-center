@@ -33,6 +33,27 @@ def content_digest(value: dict[str, Any]) -> str:
     return hashlib.sha256(wire.encode("utf-8")).hexdigest()
 
 
+# Deployment admission (REQ74 P4). The dispatch signature key authenticates a
+# message; this gate authorizes the capability itself and is disabled by
+# default. The technical-pilot mode is admitted only on explicitly declared
+# non-production environments -- production and unrecognized values stay
+# closed. There is no self-declared "business certified" bypass in this release.
+PILOT_ENVIRONMENTS = ("technical_pilot", "development", "testing")
+
+
+def role_execution_admitted(mode: str | None, deployment_environment: str | None) -> tuple[bool, list[str]]:
+    """Deployment-policy decision shared verbatim by the center and the Host."""
+    resolved_mode = (mode or "").strip().lower() or "disabled"
+    environment = (deployment_environment or "").strip().lower() or "production"
+    if resolved_mode == "disabled":
+        return False, ["MODE_DISABLED"]
+    if resolved_mode != "pilot":
+        return False, ["MODE_INVALID"]
+    if environment not in PILOT_ENVIRONMENTS:
+        return False, ["ENVIRONMENT_NOT_PERMITTED"]
+    return True, []
+
+
 def _requirement_scheme_names(requirement) -> set[str] | None:
     """Scheme names a security requirement references; ``None`` when malformed."""
     if not isinstance(requirement, dict):
@@ -164,6 +185,10 @@ class RoleSnapshot(WireModel):
     schema_version: Literal["role-pilot-v2"] = "role-pilot-v2"
     execution_id: Identifier
     catalog_version: Identifier
+    # Content digest of the exact approved catalog release the center used.
+    # Carries catalog content changes (same version, edited description) into
+    # the snapshot digest and thus into the dispatch signature.
+    catalog_fingerprint: Digest
     config_version: Identifier
     policy_version: Identifier
     context: ExecutionContext

@@ -72,7 +72,7 @@ def test_freezing_preserves_psop_string_boundaries(field, length):
         result.execution_psop.steps.append(deepcopy(legacy))
     template = PSOP.model_validate(template.model_dump(mode="json"))
     result.execution_psop = PSOP.model_validate(result.execution_psop.model_dump(mode="json"))
-    snapshot = freeze_role_execution(template, result, cards, "execution-boundary")
+    snapshot = freeze_role_execution(template, result, cards, "execution-boundary", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
     _, metadata = envelope(snapshot)
     validate_role_snapshot(metadata, snapshot.execution_psop.model_dump(mode="json"),
                            [ParseDict(cards[0].card, AgentCard())])
@@ -180,7 +180,7 @@ async def test_mixed_role_workflow_keeps_real_legacy_login_and_bearer_transport(
             task_id="legacy", agent="Technical RAN B", skill="Explore B", description="Legacy authenticated call")]))
         template.steps.append(legacy)
         result.execution_psop.steps.append(deepcopy(legacy))
-        snapshot = freeze_role_execution(template, result, frozen, "execution-with-auth")
+        snapshot = freeze_role_execution(template, result, frozen, "execution-with-auth", catalog_fingerprint="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
         _, metadata = envelope(snapshot)
         credentials = {"Technical RAN B": {"bearer": {"login_url": f"http://127.0.0.1:{port_b}/login",
             "request_fields": {"fixture": "synthetic-login"}, "token_field": "accessSession"}}}
