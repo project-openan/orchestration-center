@@ -222,6 +222,7 @@
     "browse_workflow_hint": "浏览和管理所有已保存的工作流",
     "no_workflows": "暂无工作流",
     "select_workflow_hint": "请选择一个工作流查看",
+    "back_to_packages": "返回解决方案包管理",
     "packages_title": "解决方案包管理",
     "packages_upload_title": "导入新的解决方案包",
     "packages_upload_hint": "拖拽 PDF 文件到此处，或点击选择文件",

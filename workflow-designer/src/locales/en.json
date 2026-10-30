@@ -222,6 +222,7 @@
     "browse_workflow_hint": "Browse and manage all saved workflows",
     "no_workflows": "No workflows yet",
     "select_workflow_hint": "Select a workflow to view",
+    "back_to_packages": "Back to solution packages",
     "packages_title": "Solution Packages",
     "packages_upload_title": "Import New SolutionPackage",
     "packages_upload_hint": "Drag & drop a PDF file here, or click to select",
