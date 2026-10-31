@@ -111,7 +111,7 @@ def live_server(city):
 def send(endpoint, request):
     response = httpx.post(endpoint + "/message:send", json={"message": {
         "messageId": str(uuid4()), "role": "ROLE_USER", "parts": [{"text": json.dumps(request)}]},
-        "configuration": {"blocking": True}}, headers={"A2A-Version": "1.0"}, timeout=10, trust_env=False)
+        "configuration": {"returnImmediately": False}}, headers={"A2A-Version": "1.0"}, timeout=10, trust_env=False)
     assert response.status_code == 200, response.text
     return response.json()
 
