@@ -5,10 +5,15 @@
 
 import hashlib
 import os
+import socket
+import ssl
+import threading
+import time
 from types import SimpleNamespace
 
 import httpx
 import pytest
+import uvicorn
 
 from orchestrate.server import account_api, auth, external_api, middleware
 from orchestrate.server import frontend_support_server as server
@@ -24,7 +29,7 @@ def center_env(monkeypatch):
 
 
 @pytest.fixture
-def center(monkeypatch):
+def center(monkeypatch, request):
     password = "LocalPackageTest9!"
     conf = {
         "enable_https": "false",
@@ -65,9 +70,10 @@ def center(monkeypatch):
             requests.append((request.method, request.url.path, response.status_code))
             return response
 
-    transport = RecordedASGI(app=server.app)
-    original_client = httpx.AsyncClient
-    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original_client(transport=transport, **kwargs))
+    if getattr(request, "param", None) != "tcp":
+        transport = RecordedASGI(app=server.app)
+        original_client = httpx.AsyncClient
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original_client(transport=transport, **kwargs))
     return password, store, requests
 
 
@@ -189,3 +195,81 @@ def test_dotenv_settings_are_available_without_overriding_process_secrets(monkey
     assert captured == dict(url="https://center.test", username="file-user", password="process-password")
     assert repository._request_options["auth_provider"] is provider
     assert repository._request_options["ca_certs_path"] == "file-ca.pem"
+
+
+@pytest.fixture
+def mtls_center(center, tmp_path, monkeypatch):
+    import generate_selfsign_cert as certificates
+    from cryptography.hazmat.primitives import serialization
+
+    from common.cert.certificate_generator import CertificateGenerator
+
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
+    monkeypatch.setenv("no_proxy", "127.0.0.1,localhost")
+    server_password = "Synthetic-Server-Key9!"
+    assert CertificateGenerator().generate_self_signed_cert(str(tmp_path), "serverAuth", server_password)
+    certificates._write_deploy_files(str(tmp_path), server_password, plain_key=False)
+    cert, plain_key = certificates.issue_client_cert(str(tmp_path), "synthetic-host")
+    client_password = "Synthetic-Client-Key9!"
+    with open(plain_key, "rb") as stream:
+        key = serialization.load_pem_private_key(stream.read(), password=None)
+    encrypted_key = tmp_path / "host-encrypted.pem"
+    encrypted_key.write_bytes(
+        key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.BestAvailableEncryption(client_password.encode()),
+        )
+    )
+    ca = tmp_path / "trust.cer"
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(32)
+    port = listener.getsockname()[1]
+    runner = uvicorn.Server(
+        uvicorn.Config(
+            server.app,
+            lifespan="off",
+            log_level="error",
+            ssl_certfile=str(tmp_path / "server.cer"),
+            ssl_keyfile=str(tmp_path / "server_key.pem"),
+            ssl_keyfile_password=server_password,
+            ssl_ca_certs=str(ca),
+            ssl_cert_reqs=ssl.CERT_REQUIRED,
+        )
+    )
+    thread = threading.Thread(target=runner.run, kwargs={"sockets": [listener]}, daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 10
+        while not runner.started and thread.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert runner.started, "TLS test listener did not start"
+        yield f"https://127.0.0.1:{port}", ca, cert, encrypted_key, client_password
+    finally:
+        runner.should_exit = True
+        thread.join(timeout=10)
+        listener.close()
+        assert not thread.is_alive(), "TLS test listener did not stop"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("center", ["tcp"], indirect=True)
+async def test_host_logs_in_and_renews_over_real_mutual_tls(center, mtls_center, monkeypatch):
+    password, store, _ = center
+    url, ca, cert, key, key_password = mtls_center
+    monkeypatch.setenv("HOST_ORCHESTRATION_USERNAME", "admin")
+    monkeypatch.setenv("HOST_ORCHESTRATION_PASSWORD", password)
+    monkeypatch.setenv("HOST_ORCHESTRATION_CA_FILE", str(ca))
+    monkeypatch.setenv("HOST_ORCHESTRATION_CLIENT_CERT", cert)
+    monkeypatch.setenv("HOST_ORCHESTRATION_CLIENT_KEY", str(key))
+    monkeypatch.setenv("HOST_ORCHESTRATION_CLIENT_KEY_PASSWORD", key_password)
+    repository = bootstrap.create_workflow_repository(url, ssl_verify=True)
+    assert (await repository.find("synthetic intent")).id == "package-test"
+    store.revoke_user("admin")
+    assert (await repository.get("package-test")).id == "package-test"
+    # The listener really enforces client identity, not just account credentials.
+    context = ssl.create_default_context(cafile=str(ca))
+    async with httpx.AsyncClient(verify=context, trust_env=False) as client:
+        with pytest.raises(httpx.HTTPError):
+            await client.get(url + "/api/v1/orchestrate/psop/package-test")
