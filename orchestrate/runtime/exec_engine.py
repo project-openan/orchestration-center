@@ -109,6 +109,7 @@ class OrchestrationEngine:
         self._select_template = select_template
         conf = get_conf()
         self._target_agent = target_agent or conf.get("workflow_host_agent_name", "Host Agent")
+        self._target_organization = conf.get("workflow_host_agent_organization") or None
 
         self._ssl_verify = str(conf.get("client_verify_server", "true")).lower() == "true"
 
@@ -125,16 +126,24 @@ class OrchestrationEngine:
     def _find_target_card(self):
         if not self._target_agent:
             return None
-        for card in self._agent_cards:
-            name = getattr(card, "name", "") or ""
-            if name == self._target_agent:
-                return card
-        return None
+        matches = [
+            card for card in self._agent_cards
+            if card.name == self._target_agent and (
+                self._target_organization is None
+                or card.provider.organization == self._target_organization
+            )
+        ]
+        if len(matches) > 1:
+            raise ResolutionError(
+                "HOST_AGENT_AMBIGUOUS",
+                f"Multiple cards match Host Agent '{self._target_agent}'. Configure a unique organization and name.",
+            )
+        return matches[0] if matches else None
 
     def _get_engine_client(self) -> WorkflowEngineClient:
         target_card = self._find_target_card()
         if target_card is None:
-            raise RuntimeError(f"Agent '{self._target_agent}' not found in registry")
+            raise ResolutionError("HOST_AGENT_NOT_FOUND", f"Agent '{self._target_agent}' not found in registry")
         transport = A2ATransport(
             agent_cards=[target_card],
             credentials_config=self._cred_path,
@@ -264,7 +273,11 @@ class OrchestrationEngine:
                 yield _resolution_error_event(error)
                 return
 
-        engine_client = self._get_engine_client()
+        try:
+            engine_client = self._get_engine_client()
+        except ResolutionError as error:
+            yield _resolution_error_event(error)
+            return
 
         try:
             yield {
