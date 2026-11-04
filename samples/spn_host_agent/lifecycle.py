@@ -58,7 +58,6 @@ class SpnExtensionLifecycle:
         self._authorization_sender = ExtensionSender(self._authorization_transport)
         self._notification_sender = ExtensionSender(self._notification_transport)
         self._authorized: set[str] = set()
-        self._completed_notifications: set[str] = set()
         self._subscriptions: dict[str, Any] = {}
         self._stop = asyncio.Event()
         self._runner: asyncio.Task | None = None
@@ -128,7 +127,7 @@ class SpnExtensionLifecycle:
 
     async def _ensure_subscriptions(self) -> None:
         for agent_name in self._notification_targets:
-            if self._stop.is_set() or agent_name in self._completed_notifications:
+            if self._stop.is_set():
                 continue
             current = self._subscriptions.get(agent_name)
             if current is not None and current.is_active:
@@ -204,8 +203,6 @@ class SpnExtensionLifecycle:
             f"result={recovery['业务抢通方案执行结果']}, "
             f"taskId={recovery['投诉诊断任务流水号']}"
         )
-        self._completed_notifications.add(agent_name)
-        asyncio.get_running_loop().call_soon(subscription.close)
 
     @staticmethod
     def _recovery_result(received: ReceivedMessage) -> dict[str, Any] | None:
