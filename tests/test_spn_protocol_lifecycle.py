@@ -294,39 +294,51 @@ def test_spn_agent_rejects_another_city_task_object():
 
 
 @pytest.mark.asyncio
-async def test_notification_subscription_emits_ack_then_completed_result():
+async def test_notification_subscription_delivers_multiple_results_until_shutdown():
     executor = NegotiationBaseAgentExecutor.__new__(NegotiationBaseAgentExecutor)
     executor.a2at_server = SimpleNamespace(
         validate_notification_prompt_and_data_filling=lambda *args: None
     )
     executor._notification_subscribers = {}
-    executor._notification_backlog = [_recovery_result()]
+    executor._notification_backlog = [_recovery_result(), _recovery_result()]
     executor._notification_lock = threading.Lock()
     executor._shutdown = False
     context = SimpleNamespace(task_id="notification-1", context_id="context-1")
     event_queue = _EventQueue()
+    delivered = asyncio.Event()
 
-    await executor._handle_notification_subscription(
+    async def enqueue(event):
+        event_queue.events.append(event)
+        if len(event_queue.events) == 3:
+            delivered.set()
+
+    event_queue.enqueue_event = enqueue
+
+    stream = asyncio.create_task(executor._handle_notification_subscription(
         context,
         event_queue,
         {
             NOTIFICATION_T_EXTENSION_URI: "subscription",
             TEMPLATE_URI_METADATA_KEY: SERVICE_RECOVERY_URI,
         },
-    )
+    ))
+    try:
+        await asyncio.wait_for(delivered.wait(), timeout=2)
+        assert not stream.done()
+        assert "notification-1" in executor._notification_subscribers
+    finally:
+        executor.shutdown()
+        await asyncio.wait_for(stream, timeout=2)
 
-    assert [event.status.state for event in event_queue.events] == [
-        TaskState.TASK_STATE_WORKING,
-        TaskState.TASK_STATE_COMPLETED,
-    ]
+    assert event_queue.events[0].status.state == TaskState.TASK_STATE_WORKING
     assert event_queue.events[0].artifacts[0].name == "notification-subscription"
-    assert event_queue.events[1].artifacts[0].name == "recovery-result"
+    assert [event.artifact.name for event in event_queue.events[1:]] == ["recovery-result"] * 2
+    assert not executor._notification_subscribers
 
 
 @pytest.mark.asyncio
 async def test_notification_listener_distinguishes_ack_and_completed_result():
     lifecycle = SpnExtensionLifecycle.__new__(SpnExtensionLifecycle)
-    lifecycle._completed_notifications = set()
     subscription = SimpleNamespace(closed=False)
     subscription.close = lambda: setattr(subscription, "closed", True)
     acknowledgement = ReceivedMessage(
@@ -347,8 +359,7 @@ async def test_notification_listener_distinguishes_ack_and_completed_result():
     )
     lifecycle._on_notification(subscription, result, "agent-1")
     await asyncio.sleep(0)
-    assert "agent-1" in lifecycle._completed_notifications
-    assert subscription.closed
+    assert not subscription.closed
 
 
 @pytest.mark.asyncio
@@ -398,7 +409,6 @@ async def test_failed_notification_ack_closes_and_removes_subscription(monkeypat
     subscription.close = lambda: setattr(subscription, "closed", True)
     lifecycle = SpnExtensionLifecycle.__new__(SpnExtensionLifecycle)
     lifecycle._notification_targets = ("agent-1",)
-    lifecycle._completed_notifications = set()
     lifecycle._subscriptions = {}
     lifecycle._stop = asyncio.Event()
     lifecycle._notification_sender = SimpleNamespace(

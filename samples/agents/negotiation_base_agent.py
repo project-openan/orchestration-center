@@ -18,7 +18,7 @@ from typing import Any
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
-from a2a.types import Artifact, Part, Task, TaskState, TaskStatus
+from a2a.types import Artifact, Part, Task, TaskArtifactUpdateEvent, TaskState, TaskStatus
 from a2a_t.core import (
     TEMPLATE_URI_METADATA_KEY,
     ContentValidationError,
@@ -397,22 +397,22 @@ class NegotiationBaseAgentExecutor(AgentExecutor):
                     TEMPLATE_URI_METADATA_KEY: SERVICE_RECOVERY_URI,
                 }
                 data_value = ParseDict(result, Value())
-                await event_queue.enqueue_event(Task(
-                    id=context.task_id,
+                await event_queue.enqueue_event(TaskArtifactUpdateEvent(
+                    task_id=context.task_id,
                     context_id=context.context_id,
-                    status=TaskStatus(state=TaskState.TASK_STATE_COMPLETED),
-                    artifacts=[Artifact(
+                    artifact=Artifact(
                         artifact_id=str(uuid.uuid4()),
                         name="recovery-result",
                         parts=[Part(data=data_value)],
                         metadata=result_metadata,
-                    )],
+                    ),
+                    last_chunk=True,
                     metadata=result_metadata,
                 ))
-                break
         finally:
             with self._notification_lock:
-                self._notification_subscribers.pop(task_id, None)
+                if self._notification_subscribers.get(task_id) is notification_queue:
+                    self._notification_subscribers.pop(task_id)
 
     def _execute_task(
         self, user_input: str, task_id: str | None = None, context_id: str | None = None
