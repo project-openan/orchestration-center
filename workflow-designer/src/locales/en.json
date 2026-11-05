@@ -11,6 +11,9 @@
   "login": {
     "title": "Access Password",
     "username_placeholder": "Username",
+    "remember_username": "Remember username in this browser",
+    "recent_usernames": "Select a recent username",
+    "clear_recent_usernames": "Clear history",
     "placeholder": "Enter access password...",
     "button": "Enter",
     "loading": "Verifying...",

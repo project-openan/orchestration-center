@@ -20,11 +20,36 @@ import {Lock, ArrowRight, AlertCircle, Loader2, Settings} from "lucide-react";
 import {User} from "lucide-react";
 import SettingsModal from "../setting/index.jsx";
 import openanLogo from "../../../assets/openan-logo.png";
-import {login, register} from "@/service/api.js";
+import {getBaseUrl, login, register} from "@/service/api.js";
 
-const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled}) => {
-const {t, i18n} = useTranslation();
-    const [username, setUsername] = useState("admin");
+const MAX_RECENT_USERNAMES = 5;
+
+function readRecentUsernames(key) {
+    try {
+        const usernames = JSON.parse(localStorage.getItem(key));
+        if (!Array.isArray(usernames)) return [];
+        return [...new Set(usernames.filter(name => typeof name === 'string' && name.trim() && name.length <= 64))]
+            .slice(0, MAX_RECENT_USERNAMES);
+    } catch {
+        return [];
+    }
+}
+
+function writeRecentUsernames(key, usernames) {
+    try {
+        if (usernames.length) localStorage.setItem(key, JSON.stringify(usernames));
+        else localStorage.removeItem(key);
+    } catch {
+        // Browser storage availability must not determine whether login succeeds.
+    }
+}
+
+const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, singleAccount}) => {
+    const {t, i18n} = useTranslation();
+    const historyKey = `openan.orchestration.recent-usernames:${getBaseUrl()}`;
+    const [recentUsernames, setRecentUsernames] = useState(() => singleAccount ? [] : readRecentUsernames(historyKey));
+    const [rememberUsername, setRememberUsername] = useState(recentUsernames.length > 0);
+    const [username, setUsername] = useState(singleAccount ? 'admin' : '');
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -33,27 +58,42 @@ const {t, i18n} = useTranslation();
     const [confirmPassword, setConfirmPassword] = useState("");
 
     useEffect(() => {
-        const lang = localStorage.getItem('lang') || 'en';
+        let lang = 'en';
+        try {
+            lang = localStorage.getItem('lang') || 'en';
+        } catch {
+            // Login remains available when browser storage is blocked.
+        }
         if (lang !== i18n.language) {
             i18n.changeLanguage(lang);
         }
-    }, []);
+    }, [i18n]);
+
+    const finishLogin = (data) => {
+        if (data?.auth_required) {
+            if (!singleAccount && rememberUsername && data.username) {
+                const names = readRecentUsernames(historyKey).filter(name => name !== data.username);
+                writeRecentUsernames(historyKey, [data.username, ...names].slice(0, MAX_RECENT_USERNAMES));
+            }
+            onLoginWithUser ? onLoginWithUser(data.username, data.must_change_password) : onLoginSuccess();
+        } else if (data?.auth_required === false) {
+            onLoginSuccess();
+        }
+    };
+
+    const clearRecentUsernames = () => {
+        setRememberUsername(false);
+        setRecentUsernames([]);
+        writeRecentUsernames(historyKey, []);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!password.trim() || loading) return;
+        if (!username.trim() || !password.trim() || loading) return;
         setLoading(true);
         setError("");
         try {
-           const data = await login(username, password);
-           if (data && data.auth_required) {
-                // The session token is an httpOnly cookie now -- it's never
-                // in this body, so a successful authenticated login is
-                // distinguished by auth_required being true, not a token.
-                onLoginWithUser ? onLoginWithUser(data.username, data.must_change_password) : onLoginSuccess();
-           } else if (data && data.auth_required === false) {
-               onLoginSuccess();
-           }
+            finishLogin(await login(username, password));
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message || "";
             setError(msg || t('login.error'));
@@ -81,12 +121,7 @@ const {t, i18n} = useTranslation();
         setError("");
         try {
             await register(username, password);
-            const data = await login(username, password);
-           if (data && data.auth_required) {
-                onLoginWithUser ? onLoginWithUser(data.username, data.must_change_password) : onLoginSuccess();
-            } else if (data && data.auth_required === false) {
-                onLoginSuccess();
-            }
+            finishLogin(await login(username, password));
        } catch (err) {
             const msg = err?.response?.data?.message || err?.message || "";
             setError(msg || t('login.error'));
@@ -97,7 +132,11 @@ const {t, i18n} = useTranslation();
 
     const handleLangChange = (l) => {
         i18n.changeLanguage(l);
-        localStorage.setItem('lang', l);
+        try {
+            localStorage.setItem('lang', l);
+        } catch {
+            // The selected language still applies for the current page.
+        }
     };
 
     return (
@@ -125,6 +164,9 @@ const {t, i18n} = useTranslation();
                     <div className="relative">
                         <input
                             type="text"
+                            name="username"
+                            autoComplete="username"
+                            aria-label={t('login.username_placeholder')}
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder={t('login.username_placeholder')}
@@ -134,9 +176,32 @@ const {t, i18n} = useTranslation();
                         <User size={16} className="absolute left-3.5 top-3.5 text-zinc-400"/>
                     </div>
 
+                    {!singleAccount && !isRegisterMode && recentUsernames.length > 0 && (
+                        <div className="flex items-center gap-3">
+                            <select
+                                aria-label={t('login.recent_usernames')}
+                                value=""
+                                disabled={loading}
+                                onChange={(e) => {
+                                    setUsername(e.target.value);
+                                    setPassword('');
+                                    setError('');
+                                }}
+                                className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-sm bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700">
+                                <option value="" disabled>{t('login.recent_usernames')}</option>
+                                {recentUsernames.map(name => <option key={name} value={name}>{name}</option>)}
+                            </select>
+                            <button type="button" disabled={loading} onClick={clearRecentUsernames} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                {t('login.clear_recent_usernames')}
+                            </button>
+                        </div>
+                    )}
+
                     <div>
                         <input
                             type="password"
+                            name="password"
+                            autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder={t('login.placeholder')}
@@ -149,6 +214,8 @@ const {t, i18n} = useTranslation();
                     <div className="relative">
                         <input
                             type="password"
+                            name="confirmPassword"
+                            autoComplete="new-password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder={t('login.confirm_password')}
@@ -157,6 +224,18 @@ const {t, i18n} = useTranslation();
                         />
                         <Lock size={16} className="absolute left-3.5 top-3.5 text-zinc-400"/>
                     </div>
+                    )}
+
+                    {!singleAccount && (
+                        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+                            <input
+                                type="checkbox"
+                                checked={rememberUsername}
+                                disabled={loading}
+                                onChange={(e) => e.target.checked ? setRememberUsername(true) : clearRecentUsernames()}
+                            />
+                            {t('login.remember_username')}
+                        </label>
                     )}
 
                     {error && (
@@ -168,7 +247,7 @@ const {t, i18n} = useTranslation();
 
                     <button
                         type="submit"
-                        disabled={loading || !password.trim()}
+                        disabled={loading || !username.trim() || !password.trim()}
                         className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium text-sm transition-all">
                         {loading ? (
                             <>
