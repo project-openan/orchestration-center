@@ -356,19 +356,22 @@ async def logout(request: Request, response: Response):
 @router.get("/auth/check")
 async def auth_check(request: Request):
     conf = get_conf()
-    registration_enabled = _registration_enabled(conf)
+    account_options = {
+        "registration_enabled": _registration_enabled(conf),
+        "single_account": not current_context().has_users,
+    }
     if not is_auth_enabled():
-        return ok(data={"auth_required": False, "registration_enabled": registration_enabled})
+        return ok(data={"auth_required": False, **account_options})
     token = extract_token(request)
     if token and get_session_store().validate(token):
         username = get_session_store().get_username(token)
         return ok(data={
             "auth_required": True, "authenticated": True, "username": username,
             "role": get_session_store().get_role(token),
-            "registration_enabled": registration_enabled,
+            **account_options,
             "must_change_password": username_must_change_password(username),
         })
-    return ok(data={"auth_required": True, "authenticated": False, "registration_enabled": registration_enabled})
+    return ok(data={"auth_required": True, "authenticated": False, **account_options})
 
 @router.get("/auth/users")
 async def list_users_endpoint(_: Any = Depends(require_admin)):

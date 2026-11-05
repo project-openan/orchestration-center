@@ -14,46 +14,119 @@
 //    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 //    License for the specific language governing permissions and limitations
 //    under the License.
-import {useState, useEffect} from "react";
+import {useState, useEffect, useId} from "react";
 import {useTranslation} from "react-i18next";
 import {Lock, ArrowRight, AlertCircle, Loader2, Settings} from "lucide-react";
 import {User} from "lucide-react";
 import SettingsModal from "../setting/index.jsx";
 import openanLogo from "../../../assets/openan-logo.png";
-import {login, register} from "@/service/api.js";
+import {getBaseUrl, login, register} from "@/service/api.js";
 
-const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled}) => {
-const {t, i18n} = useTranslation();
-    const [username, setUsername] = useState("admin");
+const MAX_RECENT_USERNAMES = 5;
+
+function readRecentUsernames(key) {
+    try {
+        const usernames = JSON.parse(localStorage.getItem(key));
+        if (!Array.isArray(usernames)) return [];
+        return [...new Set(usernames.filter(name => typeof name === 'string' && name.trim() && name.length <= 64))]
+            .slice(0, MAX_RECENT_USERNAMES);
+    } catch {
+        return [];
+    }
+}
+
+function writeRecentUsernames(key, usernames) {
+    try {
+        if (usernames.length) localStorage.setItem(key, JSON.stringify(usernames));
+        else localStorage.removeItem(key);
+    } catch {
+        // Browser storage availability must not determine whether login succeeds.
+    }
+}
+
+const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, singleAccount}) => {
+    const {t, i18n} = useTranslation();
+    const historyKey = `openan.orchestration.recent-usernames:${getBaseUrl()}`;
+    const [recentUsernames, setRecentUsernames] = useState(() => singleAccount ? [] : readRecentUsernames(historyKey));
+    const [rememberUsername, setRememberUsername] = useState(recentUsernames.length > 0);
+    const [username, setUsername] = useState(singleAccount ? 'admin' : '');
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [activeUsername, setActiveUsername] = useState(-1);
+    const historyId = useId();
+    const matchingUsernames = recentUsernames.filter(name => name.toLowerCase().startsWith(username.toLowerCase()));
+    const historyVisible = historyOpen && !singleAccount && !isRegisterMode && !loading && matchingUsernames.length > 0;
+
+    const selectUsername = (name) => {
+        setUsername(name);
+        setPassword('');
+        setError('');
+        setHistoryOpen(false);
+        setActiveUsername(-1);
+    };
+
+    const handleUsernameKeyDown = (event) => {
+        if (singleAccount || isRegisterMode || !matchingUsernames.length) return;
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            setHistoryOpen(true);
+            const direction = event.key === 'ArrowDown' ? 1 : -1;
+            setActiveUsername(historyVisible && activeUsername >= 0
+                ? (activeUsername + direction + matchingUsernames.length) % matchingUsernames.length
+                : direction === 1 ? 0 : matchingUsernames.length - 1);
+        } else if (event.key === 'Enter' && historyVisible && activeUsername >= 0) {
+            event.preventDefault();
+            selectUsername(matchingUsernames[activeUsername]);
+        } else if (event.key === 'Escape') {
+            setHistoryOpen(false);
+            setActiveUsername(-1);
+        }
+    };
 
     useEffect(() => {
-        const lang = localStorage.getItem('lang') || 'en';
+        let lang = 'en';
+        try {
+            lang = localStorage.getItem('lang') || 'en';
+        } catch {
+            // Login remains available when browser storage is blocked.
+        }
         if (lang !== i18n.language) {
             i18n.changeLanguage(lang);
         }
-    }, []);
+    }, [i18n]);
+
+    const finishLogin = (data) => {
+        if (data?.auth_required) {
+            if (!singleAccount && rememberUsername && data.username) {
+                const names = readRecentUsernames(historyKey).filter(name => name !== data.username);
+                writeRecentUsernames(historyKey, [data.username, ...names].slice(0, MAX_RECENT_USERNAMES));
+            }
+            onLoginWithUser ? onLoginWithUser(data.username, data.must_change_password) : onLoginSuccess();
+        } else if (data?.auth_required === false) {
+            onLoginSuccess();
+        }
+    };
+
+    const clearRecentUsernames = () => {
+        setRememberUsername(false);
+        setRecentUsernames([]);
+        setHistoryOpen(false);
+        setActiveUsername(-1);
+        writeRecentUsernames(historyKey, []);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!password.trim() || loading) return;
+        if (!username.trim() || !password.trim() || loading) return;
         setLoading(true);
         setError("");
         try {
-           const data = await login(username, password);
-           if (data && data.auth_required) {
-                // The session token is an httpOnly cookie now -- it's never
-                // in this body, so a successful authenticated login is
-                // distinguished by auth_required being true, not a token.
-                onLoginWithUser ? onLoginWithUser(data.username, data.must_change_password) : onLoginSuccess();
-           } else if (data && data.auth_required === false) {
-               onLoginSuccess();
-           }
+            finishLogin(await login(username, password));
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message || "";
             setError(msg || t('login.error'));
@@ -81,12 +154,7 @@ const {t, i18n} = useTranslation();
         setError("");
         try {
             await register(username, password);
-            const data = await login(username, password);
-           if (data && data.auth_required) {
-                onLoginWithUser ? onLoginWithUser(data.username, data.must_change_password) : onLoginSuccess();
-            } else if (data && data.auth_required === false) {
-                onLoginSuccess();
-            }
+            finishLogin(await login(username, password));
        } catch (err) {
             const msg = err?.response?.data?.message || err?.message || "";
             setError(msg || t('login.error'));
@@ -97,7 +165,11 @@ const {t, i18n} = useTranslation();
 
     const handleLangChange = (l) => {
         i18n.changeLanguage(l);
-        localStorage.setItem('lang', l);
+        try {
+            localStorage.setItem('lang', l);
+        } catch {
+            // The selected language still applies for the current page.
+        }
     };
 
     return (
@@ -122,21 +194,70 @@ const {t, i18n} = useTranslation();
                         <span className="text-sm font-medium">{isRegisterMode ? t('login.register_title') : t('login.title')}</span>
                    </div>
 
-                    <div className="relative">
+                    <div className="relative"
+                         onMouseEnter={() => setHistoryOpen(true)}
+                         onMouseLeave={(event) => {
+                             if (!event.currentTarget.contains(document.activeElement)) setHistoryOpen(false);
+                         }}
+                         onBlur={(event) => {
+                             if (!event.currentTarget.contains(event.relatedTarget)) {
+                                 setHistoryOpen(false);
+                                 setActiveUsername(-1);
+                             }
+                         }}>
                         <input
                             type="text"
+                            name="username"
+                            autoComplete="username"
+                            aria-label={t('login.username_placeholder')}
+                            role={!singleAccount && !isRegisterMode ? 'combobox' : undefined}
+                            aria-autocomplete={!singleAccount && !isRegisterMode ? 'list' : undefined}
+                            aria-expanded={!singleAccount && !isRegisterMode ? historyVisible : undefined}
+                            aria-controls={historyVisible ? historyId : undefined}
+                            aria-activedescendant={historyVisible && activeUsername >= 0 ? `${historyId}-${activeUsername}` : undefined}
                             value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            onChange={(e) => {
+                                setUsername(e.target.value);
+                                setActiveUsername(-1);
+                                setHistoryOpen(true);
+                            }}
+                            onFocus={() => {setHistoryOpen(true); setActiveUsername(-1);}}
+                            onClick={() => setHistoryOpen(true)}
+                            onKeyDown={handleUsernameKeyDown}
                             placeholder={t('login.username_placeholder')}
                             disabled={loading}
                             className="w-full pl-10 pr-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
                         />
                         <User size={16} className="absolute left-3.5 top-3.5 text-zinc-400"/>
+                        {historyVisible && (
+                            <div className="absolute top-full left-0 right-0 z-20 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg"
+                                 onMouseDown={(event) => event.preventDefault()}>
+                                <ul id={historyId} role="listbox" aria-label={t('login.recent_usernames')}>
+                                    {matchingUsernames.map((name, index) => (
+                                        <li key={name} role="presentation">
+                                            <button type="button" role="option" id={`${historyId}-${index}`}
+                                                    tabIndex={-1} aria-selected={index === activeUsername}
+                                                    onMouseEnter={() => setActiveUsername(index)}
+                                                    onClick={() => selectUsername(name)}
+                                                    className={`w-full truncate px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 ${index === activeUsername ? 'bg-blue-50 dark:bg-zinc-700' : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'}`}>
+                                                {name}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button type="button" onClick={clearRecentUsernames}
+                                        className="w-full border-t border-zinc-200 dark:border-zinc-700 px-4 py-2 text-left text-xs text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400">
+                                    {t('login.clear_recent_usernames')}
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div>
                         <input
                             type="password"
+                            name="password"
+                            autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder={t('login.placeholder')}
@@ -149,6 +270,8 @@ const {t, i18n} = useTranslation();
                     <div className="relative">
                         <input
                             type="password"
+                            name="confirmPassword"
+                            autoComplete="new-password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder={t('login.confirm_password')}
@@ -157,6 +280,18 @@ const {t, i18n} = useTranslation();
                         />
                         <Lock size={16} className="absolute left-3.5 top-3.5 text-zinc-400"/>
                     </div>
+                    )}
+
+                    {!singleAccount && (
+                        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+                            <input
+                                type="checkbox"
+                                checked={rememberUsername}
+                                disabled={loading}
+                                onChange={(e) => e.target.checked ? setRememberUsername(true) : clearRecentUsernames()}
+                            />
+                            {t('login.remember_username')}
+                        </label>
                     )}
 
                     {error && (
@@ -168,7 +303,7 @@ const {t, i18n} = useTranslation();
 
                     <button
                         type="submit"
-                        disabled={loading || !password.trim()}
+                        disabled={loading || !username.trim() || !password.trim()}
                         className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium text-sm transition-all">
                         {loading ? (
                             <>

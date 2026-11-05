@@ -33,6 +33,7 @@ const MainContainer = () => {
    const [authState, setAuthState] = useState('checking');
    const [authRequired, setAuthRequired] = useState(false);
    const [registrationEnabled, setRegistrationEnabled] = useState(false);
+   const [singleAccount, setSingleAccount] = useState(false);
    const [currentUser, setCurrentUser] = useState(null);
    const [mustChangePassword, setMustChangePassword] = useState(false);
    // Gates admin-only UI (AgentCard edit/delete). When auth is disabled the
@@ -42,6 +43,7 @@ const MainContainer = () => {
    const applyAuthData = (data) => {
        setAuthRequired(data.auth_required !== false);
        setRegistrationEnabled(data.registration_enabled || false);
+       setSingleAccount(data.single_account === true);
        setCurrentUser(data.username || null);
        setMustChangePassword(!!data.must_change_password);
        setIsAdmin(data.auth_required === false || data.role === 'admin');
@@ -61,6 +63,7 @@ const MainContainer = () => {
                } else {
                    setAuthRequired(true);
                    setRegistrationEnabled(data.registration_enabled || false);
+                   setSingleAccount(data.single_account === true);
                    setIsAdmin(false);
                    setAuthState('unauthenticated');
                }
@@ -170,6 +173,7 @@ const MainContainer = () => {
                    handleLoginSuccess();
                }}
                registrationEnabled={registrationEnabled}
+               singleAccount={singleAccount}
            />
         ) : (
         <div className="h-screen flex flex-col bg-zinc-50 dark:bg-[#09090B] overflow-hidden font-sans text-lg transition-colors duration-500">
