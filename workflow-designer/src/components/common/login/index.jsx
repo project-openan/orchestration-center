@@ -14,7 +14,7 @@
 //    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 //    License for the specific language governing permissions and limitations
 //    under the License.
-import {useState, useEffect} from "react";
+import {useState, useEffect, useId} from "react";
 import {useTranslation} from "react-i18next";
 import {Lock, ArrowRight, AlertCircle, Loader2, Settings} from "lucide-react";
 import {User} from "lucide-react";
@@ -56,6 +56,37 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [activeUsername, setActiveUsername] = useState(-1);
+    const historyId = useId();
+    const matchingUsernames = recentUsernames.filter(name => name.toLowerCase().startsWith(username.toLowerCase()));
+    const historyVisible = historyOpen && !singleAccount && !isRegisterMode && !loading && matchingUsernames.length > 0;
+
+    const selectUsername = (name) => {
+        setUsername(name);
+        setPassword('');
+        setError('');
+        setHistoryOpen(false);
+        setActiveUsername(-1);
+    };
+
+    const handleUsernameKeyDown = (event) => {
+        if (singleAccount || isRegisterMode || !matchingUsernames.length) return;
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            setHistoryOpen(true);
+            const direction = event.key === 'ArrowDown' ? 1 : -1;
+            setActiveUsername(historyVisible && activeUsername >= 0
+                ? (activeUsername + direction + matchingUsernames.length) % matchingUsernames.length
+                : direction === 1 ? 0 : matchingUsernames.length - 1);
+        } else if (event.key === 'Enter' && historyVisible && activeUsername >= 0) {
+            event.preventDefault();
+            selectUsername(matchingUsernames[activeUsername]);
+        } else if (event.key === 'Escape') {
+            setHistoryOpen(false);
+            setActiveUsername(-1);
+        }
+    };
 
     useEffect(() => {
         let lang = 'en';
@@ -84,6 +115,8 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
     const clearRecentUsernames = () => {
         setRememberUsername(false);
         setRecentUsernames([]);
+        setHistoryOpen(false);
+        setActiveUsername(-1);
         writeRecentUsernames(historyKey, []);
     };
 
@@ -161,41 +194,64 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                         <span className="text-sm font-medium">{isRegisterMode ? t('login.register_title') : t('login.title')}</span>
                    </div>
 
-                    <div className="relative">
+                    <div className="relative"
+                         onMouseEnter={() => setHistoryOpen(true)}
+                         onMouseLeave={(event) => {
+                             if (!event.currentTarget.contains(document.activeElement)) setHistoryOpen(false);
+                         }}
+                         onBlur={(event) => {
+                             if (!event.currentTarget.contains(event.relatedTarget)) {
+                                 setHistoryOpen(false);
+                                 setActiveUsername(-1);
+                             }
+                         }}>
                         <input
                             type="text"
                             name="username"
                             autoComplete="username"
                             aria-label={t('login.username_placeholder')}
+                            role={!singleAccount && !isRegisterMode ? 'combobox' : undefined}
+                            aria-autocomplete={!singleAccount && !isRegisterMode ? 'list' : undefined}
+                            aria-expanded={!singleAccount && !isRegisterMode ? historyVisible : undefined}
+                            aria-controls={historyVisible ? historyId : undefined}
+                            aria-activedescendant={historyVisible && activeUsername >= 0 ? `${historyId}-${activeUsername}` : undefined}
                             value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            onChange={(e) => {
+                                setUsername(e.target.value);
+                                setActiveUsername(-1);
+                                setHistoryOpen(true);
+                            }}
+                            onFocus={() => {setHistoryOpen(true); setActiveUsername(-1);}}
+                            onClick={() => setHistoryOpen(true)}
+                            onKeyDown={handleUsernameKeyDown}
                             placeholder={t('login.username_placeholder')}
                             disabled={loading}
                             className="w-full pl-10 pr-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
                         />
                         <User size={16} className="absolute left-3.5 top-3.5 text-zinc-400"/>
+                        {historyVisible && (
+                            <div className="absolute top-full left-0 right-0 z-20 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg"
+                                 onMouseDown={(event) => event.preventDefault()}>
+                                <ul id={historyId} role="listbox" aria-label={t('login.recent_usernames')}>
+                                    {matchingUsernames.map((name, index) => (
+                                        <li key={name} role="presentation">
+                                            <button type="button" role="option" id={`${historyId}-${index}`}
+                                                    tabIndex={-1} aria-selected={index === activeUsername}
+                                                    onMouseEnter={() => setActiveUsername(index)}
+                                                    onClick={() => selectUsername(name)}
+                                                    className={`w-full truncate px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 ${index === activeUsername ? 'bg-blue-50 dark:bg-zinc-700' : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'}`}>
+                                                {name}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button type="button" onClick={clearRecentUsernames}
+                                        className="w-full border-t border-zinc-200 dark:border-zinc-700 px-4 py-2 text-left text-xs text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400">
+                                    {t('login.clear_recent_usernames')}
+                                </button>
+                            </div>
+                        )}
                     </div>
-
-                    {!singleAccount && !isRegisterMode && recentUsernames.length > 0 && (
-                        <div className="flex items-center gap-3">
-                            <select
-                                aria-label={t('login.recent_usernames')}
-                                value=""
-                                disabled={loading}
-                                onChange={(e) => {
-                                    setUsername(e.target.value);
-                                    setPassword('');
-                                    setError('');
-                                }}
-                                className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-sm bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700">
-                                <option value="" disabled>{t('login.recent_usernames')}</option>
-                                {recentUsernames.map(name => <option key={name} value={name}>{name}</option>)}
-                            </select>
-                            <button type="button" disabled={loading} onClick={clearRecentUsernames} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                                {t('login.clear_recent_usernames')}
-                            </button>
-                        </div>
-                    )}
 
                     <div>
                         <input

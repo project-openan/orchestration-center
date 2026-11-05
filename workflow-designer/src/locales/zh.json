@@ -11,8 +11,8 @@
   "login": {
     "title": "访问密码",
     "username_placeholder": "用户名",
-    "remember_username": "在此浏览器记住用户名",
-    "recent_usernames": "选择最近登录的用户名",
+    "remember_username": "记住用户名",
+    "recent_usernames": "历史登录账号",
     "clear_recent_usernames": "清除记录",
     "placeholder": "请输入访问密码...",
     "button": "进入",

@@ -55,6 +55,19 @@ describe('login username preferences', () => {
         act(() => [...container.querySelectorAll('button')].find(button => button.textContent === text).click());
     }
 
+    function openHistory() {
+        act(() => {
+            const input = container.querySelector('[name="username"]');
+            input.focus();
+            input.click();
+        });
+    }
+
+    function pressKey(key) {
+        act(() => container.querySelector('[name="username"]').dispatchEvent(
+            new KeyboardEvent('keydown', {key, bubbles: true, cancelable: true})));
+    }
+
     async function submit() {
         await act(async () => {
             container.querySelector('form').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
@@ -153,18 +166,69 @@ describe('login username preferences', () => {
     it('offers remembered usernames on the next login and clears the password when choosing one', () => {
         localStorage.setItem(historyKey, JSON.stringify(['alice', 'bob']));
         render();
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
         change('password', 'old-password');
-        act(() => {
-            const select = container.querySelector('select');
-            select.value = 'bob';
-            select.dispatchEvent(new Event('change', {bubbles: true}));
-        });
+        openHistory();
+        expect(container.querySelector('[role="listbox"]').textContent).toBe('alicebob');
+        clickText('bob');
         expect(container.querySelector('[name="username"]').value).toBe('bob');
         expect(container.querySelector('[name="password"]').value).toBe('');
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
+        openHistory();
         clickText('login.clear_recent_usernames');
         expect(localStorage.getItem(historyKey)).toBeNull();
-        expect(container.querySelector('select')).toBeNull();
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
         expect(container.querySelector('[type="checkbox"]').checked).toBe(false);
+    });
+
+    it('shows suggestions on hover and hides them when the pointer leaves without input focus', () => {
+        localStorage.setItem(historyKey, JSON.stringify(['alice']));
+        render();
+        const input = container.querySelector('[name="username"]');
+        act(() => input.dispatchEvent(new MouseEvent('mouseover', {bubbles: true, relatedTarget: document.body})));
+        expect(container.querySelector('[role="option"]').textContent).toBe('alice');
+        act(() => input.dispatchEvent(new MouseEvent('mouseout', {bubbles: true, relatedTarget: document.body})));
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
+    });
+
+    it('filters suggestions while typing and supports keyboard selection without submitting login', () => {
+        localStorage.setItem(historyKey, JSON.stringify(['alice', 'alex', 'bob']));
+        render();
+        openHistory();
+        change('username', 'AL');
+        expect([...container.querySelectorAll('[role="option"]')].map(option => option.textContent)).toEqual(['alice', 'alex']);
+        pressKey('ArrowDown');
+        pressKey('ArrowDown');
+        const input = container.querySelector('[name="username"]');
+        expect(document.getElementById(input.getAttribute('aria-activedescendant')).textContent).toBe('alex');
+        pressKey('Enter');
+        expect(input.value).toBe('alex');
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
+        expect(login).not.toHaveBeenCalled();
+    });
+
+    it('closes suggestions with Escape or when focus moves to the password', () => {
+        localStorage.setItem(historyKey, JSON.stringify(['alice', 'bob']));
+        render();
+        openHistory();
+        pressKey('ArrowUp');
+        expect(container.querySelector('[aria-selected="true"]').textContent).toBe('bob');
+        pressKey('Escape');
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
+        expect(container.querySelector('[name="username"]').getAttribute('aria-activedescendant')).toBeNull();
+        openHistory();
+        act(() => container.querySelector('[name="password"]').focus());
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
+    });
+
+    it('does not suggest an existing username during registration', () => {
+        localStorage.setItem(historyKey, JSON.stringify(['alice']));
+        render({registrationEnabled: true});
+        clickText('login.register_button');
+        openHistory();
+        pressKey('ArrowDown');
+        expect(container.querySelector('[role="listbox"]')).toBeNull();
+        expect(container.querySelector('[role="combobox"]')).toBeNull();
     });
 
     it('removes saved history when remembering is unchecked', () => {
