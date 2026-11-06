@@ -148,28 +148,12 @@ def sample_chapters():
 class TestSolutionPackageManagerInit:
     """Test initialization method"""
 
-    @patch('orchestrate.solution_package.manager.Path')
-    def test_init_with_default_path(self, mock_path_class):
-        """Test using default storage path"""
-        mock_current_file = MagicMock(spec=Path)
-        mock_framework_dir = MagicMock(spec=Path)
-        mock_project_root = MagicMock(spec=Path)
-
-        # Set up path relationship: current_file.parents[2] = repository root
-        mock_current_file.parents.__getitem__.return_value = mock_project_root
-        mock_path_class.return_value.resolve.return_value = mock_current_file
-
-        # Set up the constructed storage_dir
-        expected_storage = mock_project_root / "data" / "solution_packages"
-
-        # Instantiate manager
+    def test_init_with_default_path(self, tmp_path, monkeypatch):
+        from orchestrate.solution_package import manager as module
+        monkeypatch.setattr(module, "__file__", str(tmp_path / "orchestrate/solution_package/manager.py"))
+        monkeypatch.setenv("TESTING", "true")
         manager = SolutionPackageManager()
-
-        # Assertions
-        assert manager.storage_dir == expected_storage
-        # Verify directory was created
-        expected_storage.mkdir.assert_called_once_with(parents=True, exist_ok=True)
-
+        assert manager.storage_dir == tmp_path / "data/solution_packages"
 
     def test_init_with_custom_path(self, temp_storage_dir):
         """Test using custom storage path"""
@@ -193,8 +177,9 @@ class TestGetStoragePath:
 
     def test_get_storage_path_nested_path(self, manager):
         """Test filename with nested path"""
-        result = manager._get_storage_path("/path/to/file.pdf")
-        assert result == manager.storage_dir / "file.json"
+        from orchestrate.persistence.errors import StorageValidationError
+        with pytest.raises(StorageValidationError):
+            manager._get_storage_path("/path/to/file.pdf")
 
 
 class TestStoreSolutionPackage:
@@ -219,9 +204,10 @@ class TestStoreSolutionPackage:
 
     def test_store_write_error(self, manager, sample_chapters):
         """Test error when writing file"""
-        with patch('builtins.open', side_effect=IOError("Write error")):
-            result = manager.store_solution_package("test.pdf", sample_chapters)
-            assert result is False
+        from orchestrate.persistence.errors import StorageUnavailableError
+        with patch.object(manager.documents._state, "apply", side_effect=OSError("Disk unavailable")):
+            with pytest.raises(StorageUnavailableError):
+                manager.store_solution_package("test.pdf", sample_chapters)
 
     def test_store_overwrite_existing(self, manager, sample_chapters):
         """Test overwriting existing file"""
@@ -268,13 +254,14 @@ class TestRetrieveByFilename:
         result = manager.retrieve_by_filename("nonexistent.pdf")
         assert result is None
 
-    def test_retrieve_read_error(self, manager):
+    def test_retrieve_read_error(self, manager, sample_chapters):
         """Test error when reading file"""
         manager.store_solution_package("test.pdf", sample_chapters)
 
-        with patch('builtins.open', side_effect=IOError("Read error")):
-            result = manager.retrieve_by_filename("test.pdf")
-            assert result is None
+        from orchestrate.persistence.errors import StorageCorruptionError
+        (manager.storage_dir / "test.json").write_text("{ broken", encoding="utf-8")
+        with pytest.raises(StorageCorruptionError):
+            manager.retrieve_by_filename("test.pdf")
 
 
 class TestRetrieveAll:
@@ -303,10 +290,9 @@ class TestRetrieveAll:
         corrupted = manager.storage_dir / "corrupted.json"
         corrupted.write_text("{ invalid json }")
 
-        result = manager.retrieve_all()
-        # Should only return valid files
-        assert len(result) == 1
-        assert result[0]["pdf_filename"] == "test.pdf"
+        from orchestrate.persistence.errors import StorageCorruptionError
+        with pytest.raises(StorageCorruptionError):
+            manager.retrieve_all()
 
 
 class TestGetAllFilenames:
