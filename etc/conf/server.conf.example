@@ -107,3 +107,12 @@ retrieval.llm.thinking=true
 # ---------------------------------------------------------------------------
 role_execution_mode=disabled
 deployment_environment=production
+
+# Multi-instance execution (single remains the backward-compatible default).
+# cluster requires a shared SQL database and an explicit schema migration.
+deployment_mode=single
+execution_lease_seconds=30
+execution_max_active=16
+execution_deadline_seconds=3600
+# ORCH_DATA_DIR selects the absolute data root for file mode.
+# See docs/en/Storage and Multi-instance.md before enabling cluster.

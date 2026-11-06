@@ -43,10 +43,16 @@ def test_handler_crud_uses_one_owned_connection_source(mode, transport, tmp_path
         def connection(self):
             conn, cursor = MagicMock(), MagicMock()
             conn.cursor.return_value = cursor
+            cursor.__enter__.return_value = cursor
+            cursor.__exit__.side_effect = lambda *args: cursor.close() and False
             connections.append(conn)
 
             def execute(sql, params=None):
                 sql = " ".join(sql.split())
+                if "orchestration_documents" in sql or "orchestration_uow_gate" in sql:
+                    cursor.fetchone.return_value = (1,) if sql.startswith("SELECT id") else None
+                    cursor.fetchall.return_value = []
+                    return
                 table = "execution_records" if "execution_records" in sql else "psop"
                 data = rows[table]
                 if sql.startswith("INSERT"):
@@ -60,7 +66,9 @@ def test_handler_crud_uses_one_owned_connection_source(mode, transport, tmp_path
                     values = [data[params[0]]] if params and params[0] in data else []
                     if not params:
                         values = list(data.values())
-                    result = [(row[-1],) for row in values] if "SELECT psop_content" in sql or "SELECT record_content" in sql else values
+                    result = [(row[-1],)
+                               for row in values] \
+                    if "SELECT psop_content" in sql or "SELECT record_content" in sql else values
                 else:
                     raise AssertionError("Unexpected SQL: " + sql)
                 cursor.fetchall.return_value = result
@@ -145,7 +153,7 @@ def test_handler_crud_uses_one_owned_connection_source(mode, transport, tmp_path
         assert not thread.is_alive()
     assert rows == {"psop": {}, "execution_records": {}}
     assert all(conn.close.call_count == 1 for conn in connections)
-    assert all(conn.cursor.return_value.close.call_count == 1 for conn in connections)
+    assert all(conn.cursor.return_value.close.call_count == conn.cursor.call_count for conn in connections)
     assert len(pools) == 1
     if mode == "mysql":
         assert pools[0].closed

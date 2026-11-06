@@ -17,6 +17,7 @@
 
 import os
 import tempfile
+import asyncio
 import threading
 import json
 import re
@@ -94,7 +95,7 @@ from orchestrate.server.auth import (
     clear_session_cookie,
 )
 
-solution_package_manager = SolutionPackageManager()
+solution_package_manager = SolutionPackageManager(seed_on_init=False)
 
 app = FastAPI(title="Workflow Orchestration API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -140,6 +141,24 @@ async def _setup_exception_handler():
             return
         loop.default_exception_handler(context)
     loop.set_exception_handler(_handler)
+    conf = get_conf()
+    deployment = str(conf.get("deployment_mode", "single")).lower()
+    if deployment not in {"single", "cluster"}:
+        raise RuntimeError("deployment_mode must be single or cluster")
+    if deployment == "cluster":
+        from orchestrate.persistence import current_context
+        context = current_context()
+        if context.mode not in {"mysql", "postgresql"}:
+            raise RuntimeError("Cluster deployment requires shared SQL storage")
+        await asyncio.to_thread(context.documents.check_ready)
+        from orchestrate.server.sql_sessions import check_auth_schema
+        await asyncio.to_thread(check_auth_schema, context.backend._provider)
+        from orchestrate.server.durable_api import get_run_coordinator
+        get_run_coordinator()
+        from orchestrate.server.sandbox_api import sandbox_service
+        sandbox_service.start_scheduler()
+    if os.environ.get("TESTING", "").lower() not in {"1", "true", "yes"}:
+        await asyncio.to_thread(solution_package_manager._seed_demo_packages)
 
 @app.on_event("shutdown")
 async def _cleanup_resources():
@@ -310,7 +329,8 @@ async def login(request: LoginRequest, response: Response, http_request: Request
         raise storage_http_exception(exc) from exc
     role = user.get("role", "user")
     must_change = user.get("must_change_password", False)
-    token, ttl = store.create(user["username"], role, login_revision=revision)
+    from orchestrate.server.auth import create_account_session
+    token, ttl = create_account_session(store, user, revision)
     if must_change:
         mark_must_change_password(user["username"])
     else:
@@ -332,7 +352,10 @@ async def register(request: RegisterRequest):
     if not _registration_enabled(conf):
         raise HTTPException(status_code=403, detail="Self-registration is disabled")
     if not re.fullmatch(r"^[a-zA-Z][a-zA-Z0-9_-]{2,63}$", request.username):
-        raise HTTPException(status_code=400, detail="Username must start with a letter and contain only letters, digits, underscores or hyphens (3-64 chars)")
+        raise HTTPException(
+            status_code=400,
+            detail="Username must start with a letter and contain only letters, digits, "
+                   "underscores or hyphens (3-64 chars)")
     from common.util.password_util import validate_password_complexity
     is_valid, reason = validate_password_complexity(request.password)
     if not is_valid:
@@ -391,7 +414,8 @@ async def delete_user_endpoint(username: str, _: Any = Depends(require_admin)):
 
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str = Field(..., min_length=1, max_length=256, description="Current password (plaintext, sent over TLS)")
+    old_password: str = Field(..., min_length=1, max_length=256,
+                              description="Current password (plaintext, sent over TLS)")
     new_password: str = Field(..., min_length=8, max_length=256, description="New password (plaintext, sent over TLS)")
 
 # Serializes file-mode password changes and makes the server.conf rewrite
@@ -454,6 +478,12 @@ async def change_password(request: ChangePasswordRequest, http_request: Request)
         is_valid, reason = validate_password_complexity(request.new_password)
         if not is_valid:
             raise HTTPException(status_code=400, detail=f"Password does not meet complexity requirements: {reason}")
+        from orchestrate.server.sql_sessions import SqlSessionStore
+        shared = get_session_store()
+        if isinstance(shared, SqlSessionStore):
+            if shared.change_password(username, request.old_password, request.new_password):
+                return ok(message="Password changed successfully")
+            raise HTTPException(status_code=409, detail="Account changed during password update")
         # Verify old password
         user = storage.users.authenticate(username, request.old_password)
         if user is None:
@@ -471,7 +501,8 @@ async def change_password(request: ChangePasswordRequest, http_request: Request)
     if not _verify_access_password(stored, request.old_password):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
     new_hash = _hash_access_password(request.new_password)
-    conf_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "etc", "conf", "server.conf")
+    conf_path = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__)))), "etc", "conf", "server.conf")
     if not os.path.exists(conf_path):
         logger.error(f"Cannot change password: {conf_path} does not exist")
         raise HTTPException(status_code=500, detail="server.conf not found")
@@ -753,6 +784,7 @@ async def generate_from_preflow(
         context = await anyio.to_thread.run_sync(partial(prepare_generation, request, "internal_preflow"))
         logger.info("Generating PSOP from PreFlow binding={} steps_chars={}", request.binding, len(preflow_steps_md))
 
+        source_revision = await anyio.to_thread.run_sync(solution_package_manager.source_revision, preflow_name)
         generator = PsopGenerator()
         # 串行多次同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         workflow = await anyio.to_thread.run_sync(
@@ -764,14 +796,51 @@ async def generate_from_preflow(
         )
         workflow.source = "solution_package"
         await anyio.to_thread.run_sync(validate_before_save, workflow, context)
-        SharedHandlers.save_psop().handle(workflow)
+        from orchestrate.persistence import current_context
+        # Optimistic concurrency only applies to the document port, whose
+        # revisions are integers; a pluggable save override owns persistence and
+        # keeps the historical best-effort link.
+        link_revision = source_revision if isinstance(source_revision, int) else None
+
+        def persist_generated_workflow():
+            from common.custom import HandlerRegistry
+
+            def link_package():
+                # An arbitrary PreFlow need not have a source package, and a stale
+                # revision or an unusable name must not fail a saved workflow: the
+                # link is best-effort in every backend, exactly as before this
+                # change, so no orphaned PSOP is left behind by a raising link.
+                arguments = {} if link_revision is None else {"expected_revision": link_revision}
+                if solution_package_manager.link_workflow(
+                        preflow_name, workflow.id, request.binding, **arguments):
+                    return
+                logger.warning(f"Solution package '{preflow_name}' was not linked to {workflow.id}")
+
+            override = HandlerRegistry.get_extension_override(InterfaceType.SAVE_PSOP) is not None
+            if override or current_context().mode == "file":
+                # A pluggable save override owns persistence, and file mode already
+                # journals every write on its own; both keep the historical
+                # single-thread path.
+                SharedHandlers.save_psop().handle(workflow)
+                try:
+                    link_package()
+                except Exception as link_error:
+                    logger.warning(
+                        f"Failed to link workflow to solution package '{preflow_name}': {link_error}")
+                return
+            # SQL backends commit the PSOP row and the package link together.
+            with current_context().transaction():
+                SharedHandlers.save_psop().handle(workflow)
+                try:
+                    link_package()
+                except Exception as link_error:
+                    logger.warning(
+                        f"Failed to link workflow to solution package '{preflow_name}': {link_error}")
+        # Persistence runs on the caller's thread: the document port keeps a
+        # per-thread transaction scope, so a worker thread would open a
+        # transaction the request scope cannot see.
+        persist_generated_workflow()
         logger.info(f"PSOP generated: id={workflow.id}, steps={len(workflow.steps)}")
-        # 回链:方案包 → 本次生成的工作流,按 role/instance 绑定分槽保存,
-        # 方案包列表页据此展示两条互不覆盖的 Workflow 入口
-        try:
-            solution_package_manager.link_workflow(preflow_name, workflow.id, request.binding)
-        except Exception as link_error:
-            logger.warning(f"Failed to link workflow to solution package '{preflow_name}': {link_error}")
         audit_logger.audit({
             'object_name': OperationObject.PSOP,
             'operation_name': OperationName.SAVE_PSOP,
@@ -1218,9 +1287,11 @@ async def execute_workflow(
     lang: str = Query(None, description="Language for agent responses (zh/en)"),
     scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
     authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
-    caller_id: str = Query(None, deprecated=True, description="Compatibility input, ignored; authenticated identity is recorded"),
+    caller_id: str = Query(None, deprecated=True,
+                           description="Compatibility input, ignored; authenticated identity is recorded"),
     task_overrides: str = Query(None, description="JSON object task_id -> instance_id for manual role re-selection"),
-    group_overrides: str = Query(None, description="JSON object binding_group -> instance_id for manual group re-selection"),
+    group_overrides: str = Query(
+        None, description="JSON object binding_group -> instance_id for manual group re-selection"),
     tie_break: str = Query(None, description="Equal-priority policy: error (default) or instance_id"),
     _: Any = Depends(RateLimiter(config, "start_process_stream"))
 ):
@@ -1228,6 +1299,10 @@ async def execute_workflow(
         raise HTTPException(status_code=400, detail="Missing psop_id parameter")
 
     try:
+        from orchestrate.server.sse_executor import resume_execution_sse
+        resumed = await resume_execution_sse(request)
+        if resumed is not None:
+            return resumed
         logger.info(f"Starting workflow execution: psop_id={psop_id}")
         psop = SharedHandlers.retrieval().get_psop_by_id(psop_id)
         if not psop:
@@ -1244,7 +1319,7 @@ async def execute_workflow(
         return await dispatch_intent_sse(
             agent_cards, intent, target_agent=target_agent, lang=lang,
             semaphore=execute_semaphore, psop=psop,
-            resolution_request=resolution_request,
+            resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -1260,6 +1335,7 @@ dispatch_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_START_PROC
 
 @router.get("/dispatch")
 async def dispatch_to_agent(
+    request: Request,
     intent: str = Query(..., description="Natural language intent to dispatch"),
     agent_name: str = Query(..., description="Target host agent name (must be registered)"),
     lang: Optional[str] = Query(None, description="Language hint (zh/en)"),
@@ -1276,6 +1352,10 @@ async def dispatch_to_agent(
     execution events to the frontend for real-time visualization.
     """
     try:
+        from orchestrate.server.sse_executor import resume_execution_sse
+        resumed = await resume_execution_sse(request)
+        if resumed is not None:
+            return resumed
         logger.info(f"Dispatching intent to agent '{agent_name}'")
 
         # Resolve the target agent's AgentCard from the registry
@@ -1287,7 +1367,7 @@ async def dispatch_to_agent(
         return await dispatch_intent_sse(
             agent_cards, intent, target_agent=agent_name, lang=lang,
             semaphore=dispatch_semaphore,
-            select_template=False,
+            select_template=False, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -1300,8 +1380,10 @@ async def dispatch_to_agent(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/execution-records/{execution_id}")
-async def delete_execution_record(execution_id: str):
+async def delete_execution_record(execution_id: str, request: Request):
     try:
+        from orchestrate.server.durable_api import remove_history_job
+        await asyncio.to_thread(remove_history_job, execution_id, request)
         handler = get_storage_handler(InterfaceType.DELETE_EXECUTION_RECORD)
         deleted = handler.handle(execution_id)
         if not deleted:
@@ -1319,10 +1401,13 @@ async def delete_execution_record(execution_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/execution-records")
-async def list_execution_records():
+async def list_execution_records(request: Request):
     try:
         handler = get_storage_handler(InterfaceType.LIST_EXECUTION_RECORDS)
         records = handler.handle()
+        from orchestrate.server.durable_api import history_visible
+        records = [record for record in records
+                   if await asyncio.to_thread(history_visible, record.get("execution_id"), request)]
         return ok(data=records)
     except HTTPException:
         raise
@@ -1333,8 +1418,11 @@ async def list_execution_records():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/execution-records/{execution_id}")
-async def get_execution_record(execution_id: str):
+async def get_execution_record(execution_id: str, request: Request):
     try:
+        from orchestrate.server.durable_api import history_visible
+        if not await asyncio.to_thread(history_visible, execution_id, request):
+            raise HTTPException(404, "Execution not found")
         handler = get_storage_handler(InterfaceType.GET_EXECUTION_RECORD)
         record = handler.handle(execution_id)
         if not record:
@@ -1356,6 +1444,16 @@ app.include_router(router)
 app.include_router(external_router)
 app.include_router(role_execution_router)
 app.include_router(account_router)
+from orchestrate.server.durable_api import run_router, close_durable_runs
+app.include_router(run_router, prefix="/rest/v1/orchestrate")
+app.include_router(run_router, prefix="/api/v1")
+
+@app.on_event("shutdown")
+async def close_execution_services():
+    from orchestrate.server.sandbox_api import sandbox_service
+    await sandbox_service.aclose()
+    await close_durable_runs()
+
 app.include_router(sandbox_router, prefix="/rest/v1/orchestrate")
 
 

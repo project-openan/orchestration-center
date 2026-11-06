@@ -190,6 +190,13 @@ class PersistenceBackend(ABC):
         this on the port is what lets a call site stay free of mode branches.
         """
 
+    def preflows_for(self, storage):
+        return self.preflows()
+
+    def documents(self):
+        """Revisioned operational documents; adapters must explicitly implement it."""
+        raise StorageValidationError(f"'{self.mode}' has no document repository")
+
     def users(self) -> UserRepository:
         """Return the user repository; only backends with ``Capability.USERS`` do."""
         raise StorageValidationError(f"'{self.mode}' has no user store")

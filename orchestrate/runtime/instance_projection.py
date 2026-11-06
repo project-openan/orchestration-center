@@ -219,7 +219,7 @@ def _card_payload(card) -> dict:
 
 
 def resolve_execution_plan(
-    psop: PSOP, request: ResolutionRequest | None, agent_cards,
+    psop: PSOP, request: ResolutionRequest | None, agent_cards, *, execution_id: str | None = None,
 ) -> RoleExecutionSnapshot:
     """Resolve role tasks and freeze the execution envelope for dispatch.
 
@@ -370,5 +370,5 @@ def freeze_resolution_snapshot(template: PSOP, result, cards_by_identity: dict,
             binding["instance_id"], binding["agent"], binding["endpoint"],
             _card_payload(card),
         ))
-    return freeze_role_execution(template, result, frozen_cards, execution_id,
+    return freeze_role_execution(template, result, frozen_cards, execution_id or uuid4().hex,
                                  catalog_fingerprint=catalog_fingerprint)

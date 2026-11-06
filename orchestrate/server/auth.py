@@ -20,7 +20,7 @@
 Internal API (``/rest/v1/orchestrate/*``):
     Database-backed user authentication. Users are stored in the PostgreSQL
     or MySQL ``users`` table with versioned bcrypt password hashes. Session tokens
-    are in-memory with configurable TTL.
+    use shared SQL storage with configurable TTL (file mode remains in-memory).
 
 External API (``/api/v1/*``):
     Account Bearer tokens share identity, TTL and revocation with user sessions.
@@ -59,6 +59,8 @@ _DEFAULT_TTL = 12 * 60 * 60
 class SessionIdentity:
     username: str
     role: str
+    must_change_password: bool = False
+    subject_id: str | None = None
 
 # Browser sessions use an httpOnly cookie; public APIs require an explicit
 # Bearer header even if a cookie is present. Cookie name intentionally
@@ -259,8 +261,34 @@ class _SessionStore:
 _session_store = _SessionStore()
 
 
-def get_session_store() -> _SessionStore:
+def get_session_store():
+    context = current_context()
+    if getattr(context, "mode", None) in {"postgresql", "mysql"}:
+        from orchestrate.server.sql_sessions import shared_store
+        try:
+            return shared_store(context.backend._provider)
+        except StorageError as exc:
+            raise storage_http_exception(exc) from exc
     return _session_store
+
+
+def create_account_session(store, user, revision):
+    """Bind SQL issuance to the credential snapshot actually verified."""
+    from orchestrate.server.sql_sessions import SqlSessionStore
+    if isinstance(store, SqlSessionStore):
+        return store.create(user["username"], user.get("role", "user"),
+                            credential_snapshot=user.get("_auth_snapshot"))
+    return store.create(user["username"], user.get("role", "user"), login_revision=revision)
+
+
+def validate_job_identity(subject_id: str, role: str) -> bool:
+    """Shared authority check for durable dispatch; never stores the user's token."""
+    from orchestrate.server.sql_sessions import SqlSessionStore
+    store = get_session_store()
+    if isinstance(store, SqlSessionStore):
+        return store.subject_authorized(subject_id, role)
+    # File jobs are single-process and use the configured admin identity.
+    return subject_id == "admin" and role == "admin" and is_auth_enabled()
 
 
 def extract_bearer_token(request: Request) -> str | None:
@@ -304,12 +332,16 @@ def require_user_authentication() -> None:
 def require_session_identity(request: Request, *, allow_cookie: bool = True,
                              allow_password_change: bool = False) -> SessionIdentity:
     token = extract_token(request) if allow_cookie else extract_bearer_token(request)
-    identity = get_session_store().identity(token)
+    try:
+        identity = get_session_store().identity(token)
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     if identity is None:
         raise HTTPException(401, "Valid login token required", headers={"WWW-Authenticate": "Bearer"})
     if identity.role not in {"admin", "user"}:
         raise HTTPException(403, "Account role is not permitted")
-    if username_must_change_password(identity.username) and not allow_password_change:
+    if (identity.must_change_password
+            or username_must_change_password(identity.username)) and not allow_password_change:
         raise HTTPException(403, "Password change required")
     return identity
 
@@ -331,7 +363,10 @@ def require_admin(request: Request) -> None:
     if not auth_enabled:
         raise HTTPException(status_code=503, detail="Account authentication is not configured")
     token = extract_token(request)
-    role = _session_store.get_role(token) if token else None
+    identity = get_session_store().identity(token) if token else None
+    if identity is not None:
+        require_session_identity(request)
+    role = identity.role if identity is not None else None
     if role != "admin":
         raise HTTPException(status_code=403, detail="Admin role required")
 
@@ -366,6 +401,13 @@ def clear_must_change_password(username: str) -> None:
 def username_must_change_password(username: str | None) -> bool:
     if not username:
         return False
+    store = get_session_store()
+    from orchestrate.server.sql_sessions import SqlSessionStore
+    if isinstance(store, SqlSessionStore):
+        try:
+            return store.requires_password_change(username)
+        except StorageError as exc:
+            raise storage_http_exception(exc) from exc
     with _pending_password_change_lock:
         return username in _pending_password_change
 

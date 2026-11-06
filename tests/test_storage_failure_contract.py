@@ -33,7 +33,8 @@ def test_inherited_extension_and_same_class_reregistration(monkeypatch, sql_mode
             return ["extension"]
 
     monkeypatch.setattr(HandlerRegistry, "_overrides", dict(HandlerRegistry._overrides))
-    monkeypatch.setattr(HandlerRegistry, "_bundled_overrides", dict(getattr(HandlerRegistry, "_bundled_overrides", {})), raising=False)
+    monkeypatch.setattr(HandlerRegistry, "_bundled_overrides", dict(
+        getattr(HandlerRegistry, "_bundled_overrides", {})), raising=False)
     HandlerRegistry.register(InterfaceType.GET_ALL_PSOP, Derived)
     assert create_backend("mysql").psops().list_summaries() == ["extension"]
     HandlerRegistry.register(InterfaceType.GET_ALL_PSOP, Derived, bundled=True)
@@ -80,6 +81,9 @@ def test_every_sql_operation_uses_bound_provider_despite_global_mode(operation, 
         (db_connection, ("create_connection",)), (table_creation, ("create_tables",))):
         for name in names:
             monkeypatch.setattr(module, name, probe)
+    from orchestrate.server import sql_sessions
+    monkeypatch.setattr(backend.documents(), "initialize", probe)
+    monkeypatch.setattr(sql_sessions, "ensure_auth_schema", probe)
     operation(backend)
     assert current_provider() is None
     assert seen or backend._provider._closed
@@ -173,6 +177,9 @@ def test_cached_user_presence_does_not_turn_login_outage_into_bad_password(monke
     from limits.storage import MemoryStorage
     from limits.strategies import MovingWindowRateLimiter
     monkeypatch.setattr(middleware, "limiter", MovingWindowRateLimiter(MemoryStorage()))
+    def unavailable():
+        raise ConnectionError("Synthetic authentication storage outage")
+    monkeypatch.setattr(context._persistence_context.backend._provider, "connection", unavailable)
     with patch.object(user_store, "create_connection", return_value=None):
         response = TestClient(server.app).post("/rest/v1/orchestrate/auth/login", json={
             "username": "admin", "password": "not-a-real-password",
@@ -233,7 +240,8 @@ def test_extension_queries_work_through_actual_retrieval(monkeypatch, sql_mode, 
             return psop if psop_id == psop.id else None
 
     monkeypatch.setattr(HandlerRegistry, "_overrides", dict(HandlerRegistry._overrides))
-    monkeypatch.setattr(HandlerRegistry, "_bundled_overrides", dict(getattr(HandlerRegistry, "_bundled_overrides", {})), raising=False)
+    monkeypatch.setattr(HandlerRegistry, "_bundled_overrides", dict(
+        getattr(HandlerRegistry, "_bundled_overrides", {})), raising=False)
     HandlerRegistry.register(InterfaceType.GET_ALL_PSOP, DerivedList)
     HandlerRegistry.register(InterfaceType.GET_PSOP_BY_ID, DerivedGet)
     retrieval = WorkflowRetrieval(WorkflowStorage(str(tmp_path)), StorageContext(create_backend("mysql")))

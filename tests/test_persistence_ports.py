@@ -157,12 +157,12 @@ def test_file_context_round_trips_execution_records(tmp_path):
     assert context.executions.get(record.execution_id) is None
 
 
-def test_sql_backend_reuses_the_file_preflow_port(tmp_path):
-    # PreFlows stay file-backed in both database modes; this asserts the SQL
-    # backend really composes the file implementation rather than duplicating it.
+def test_sql_backend_composes_a_database_preflow_port(tmp_path):
+    from orchestrate.persistence.document_models import DocumentPreflowRepository
     context = _sql_context(tmp_path)
     assert isinstance(context.preflows, PreflowRepository)
-    assert context.preflows.list_ids() == []
+    assert isinstance(context.preflows, DocumentPreflowRepository)
+    assert context.preflows.documents is context.documents
 
 
 def test_sql_backend_delegates_to_the_current_processors_and_user_store(monkeypatch, tmp_path, sample_psop_dict):

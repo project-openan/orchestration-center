@@ -35,7 +35,7 @@ async def issue_token(payload: AccountLogin, _: bool = Depends(_login_limit)):
     if user.get("must_change_password", False):
         auth.mark_must_change_password(username)
         raise HTTPException(403, "Password change required; use the web login to change it")
-    token, ttl = store.create(username, user.get("role", "user"), login_revision=revision)
+    token, ttl = auth.create_account_session(store, user, revision)
     auth.clear_must_change_password(username)
     return JSONResponse({"access_token": token, "token_type": "Bearer", "expires_in": ttl},
                         headers=_NO_STORE)

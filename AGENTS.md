@@ -83,7 +83,7 @@ Key config keys: `ip`, `port`, `enable_https`, `persistence_mode`, `agent_regist
 
 `persistence_mode=file` (default) → file-based JSON storage under `data/workflow_storage/`.
 `persistence_mode=postgresql` → auto-creates DB tables on startup via `database/utils/table_creation.py`, reads connection from `etc/conf/db/postgresql.json`.
-`persistence_mode=mysql` → the same PSOP, execution-record and user handlers, with MySQL 8.0.19+ via PyMySQL/DBUtils. Connection settings come from `etc/conf/db/mysql.json` or `MYSQL_*` environment variables; see `docs/en/MySQL Persistence.md`. PreFlow, templates, solution packages and sandbox sessions remain file-backed in both database modes.
+`persistence_mode=mysql` → the same PSOP, execution-record and user handlers, with MySQL 8.0.19+ via PyMySQL/DBUtils. Connection settings come from `etc/conf/db/mysql.json` or `MYSQL_*` environment variables; see `docs/en/MySQL Persistence.md`. PreFlow, solution packages, sandbox reports/templates and durable run state use the selected backend. Built-in templates remain read-only package resources. SQL modes use shared opaque sessions; file mode remains single-process. See docs/en/Storage and Multi-instance.md.
 
 The `WorkflowStorage` singleton is accessed via `get_workflow_storage()` (uses `@lru_cache(maxsize=1)`).
 

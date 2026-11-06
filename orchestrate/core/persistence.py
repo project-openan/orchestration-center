@@ -43,9 +43,12 @@ class WorkflowStorage:
         if storage_dir is None:
             current_file = Path(__file__).resolve()
             project_root = current_file.parent.parent.parent
-            self.psop_dir = project_root / "data" / "workflow_storage" / "psop"
-            self.preflow_dir = project_root / "data" / "workflow_storage" / "preflow"
-            self.execution_dir = project_root / "data" / "workflow_storage" / "execution_records"
+            from common.util.config_util import get_conf
+            root = Path(os.environ.get("ORCH_DATA_DIR") or get_conf().get(
+                "data_dir") or project_root / "data").resolve()
+            self.psop_dir = root / "workflow_storage" / "psop"
+            self.preflow_dir = root / "workflow_storage" / "preflow"
+            self.execution_dir = root / "workflow_storage" / "execution_records"
         else:
             base = Path(storage_dir) / "workflow_storage"
             self.psop_dir = base / "psop"
@@ -110,11 +113,10 @@ class WorkflowStorage:
         """
         try:
             file_path = self._get_file_path(workflow_id, "psop")
-            if not file_path.exists():
+            if not _path_exists(file_path):
                 logger.warning(f"PSOP not found : {workflow_id}")
                 return None
-            with open(file_path, "r", encoding='utf-8') as f:
-                return PSOP.model_validate_json(f.read())
+            return PSOP.model_validate_json(_read_text(file_path))
         except Exception as e:
             logger.error(f"Failed to load PSOP {workflow_id} : {e}")
             return None
@@ -131,11 +133,10 @@ class WorkflowStorage:
         """
         try:
             file_path = self._get_file_path(workflow_id, "preflow")
-            if not file_path.exists():
+            if not _path_exists(file_path):
                 logger.warning(f"PreFlow not found : {workflow_id}")
                 return None
-            with open(file_path, "r", encoding='utf-8') as f:
-                return PreFlow.model_validate_json(f.read())
+            return PreFlow.model_validate_json(_read_text(file_path))
         except Exception as e:
             logger.error(f"Failed to load PreFlow {workflow_id} : {e}")
             return None
@@ -152,8 +153,8 @@ class WorkflowStorage:
         """
         try:
             file_path = self._get_file_path(workflow_id, "psop")
-            if file_path.exists():
-                file_path.unlink()
+            if _path_exists(file_path):
+                _stage_delete(file_path)
                 logger.info(f"PSOP deleted : {workflow_id}")
                 return True
             return False
@@ -173,8 +174,8 @@ class WorkflowStorage:
         """
         try:
             file_path = self._get_file_path(workflow_id, "preflow")
-            if file_path.exists():
-                file_path.unlink()
+            if _path_exists(file_path):
+                _stage_delete(file_path)
                 logger.info(f"PreFlow deleted : {workflow_id}")
                 return True
             return False
@@ -235,7 +236,7 @@ class WorkflowStorage:
             bool: True if updated, False if PSOP not found
         """
         file_path = self._get_file_path(psop.id, "psop")
-        if not file_path.exists():
+        if not _path_exists(file_path):
             logger.warning(f"PSOP not found for update : {psop.id}")
             return False
         self.save_psop(psop)
@@ -252,7 +253,7 @@ class WorkflowStorage:
             bool: True if updated, False if PreFlow not found
         """
         file_path = self._get_file_path(preflow.id, "preflow")
-        if not file_path.exists():
+        if not _path_exists(file_path):
             logger.warning(f"Preflow not found for update : {preflow.id}")
             return False
         self.save_preflow(preflow)
@@ -290,10 +291,9 @@ class WorkflowStorage:
         try:
             self._validate_execution_id(execution_id)
             file_path = self.execution_dir / f"{execution_id}.json"
-            if not file_path.exists():
+            if not _path_exists(file_path):
                 return None
-            with open(file_path, "r", encoding='utf-8') as f:
-                return ExecutionRecord.model_validate_json(f.read())
+            return ExecutionRecord.model_validate_json(_read_text(file_path))
         except WorkflowStorageError:
             raise
         except Exception as e:
@@ -347,8 +347,8 @@ class WorkflowStorage:
         try:
             self._validate_execution_id(execution_id)
             file_path = self.execution_dir / f"{execution_id}.json"
-            if file_path.exists():
-                file_path.unlink()
+            if _path_exists(file_path):
+                _stage_delete(file_path)
                 logger.info(f"Execution record deleted: {execution_id}")
                 return True
             return False
@@ -362,7 +362,8 @@ class WorkflowStorage:
         self.psop_dir.mkdir(parents=True, exist_ok=True)
         self.preflow_dir.mkdir(parents=True, exist_ok=True)
         self.execution_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Storage initialized at: psop={self.psop_dir}, preflow={self.preflow_dir}, execution={self.execution_dir}")
+        logger.info(
+            f"Storage initialized at: psop={self.psop_dir}, preflow={self.preflow_dir}, execution={self.execution_dir}")
 
     @staticmethod
     def _validate_execution_id(execution_id: str) -> None:
@@ -402,10 +403,61 @@ class WorkflowStorage:
 
     @staticmethod
     def _atomic_write(file_path: Path, content: str) -> None:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_fd, tmp_path = tempfile.mkstemp(dir=file_path.parent, suffix='.tmp')
-        try:
-            os.write(tmp_fd, content.encode('utf-8'))
-        finally:
-            os.close(tmp_fd)
-        os.replace(tmp_path, file_path)
+        from orchestrate.persistence.documents import _ACTIVE_FILE, _atomic
+        active = _ACTIVE_FILE.get()
+        path = Path(file_path).resolve()
+        if active is not None and path.is_relative_to(active[0].root):
+            active[1][path.relative_to(active[0].root).as_posix()] = content
+        else:
+            _atomic(path, content)
+
+
+def _stage_delete(path):
+    from orchestrate.persistence.documents import _ACTIVE_FILE
+    active = _ACTIVE_FILE.get()
+    path = path.resolve()
+    if active is not None and path.is_relative_to(active[0].root):
+        active[1][path.relative_to(active[0].root).as_posix()] = None
+    else:
+        path.unlink()
+
+
+def _guard_file_operation(method):
+    from functools import wraps
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        from orchestrate.persistence.documents import FileDocuments
+        with FileDocuments(self.psop_dir.parents[1]).transaction():
+            return method(self, *args, **kwargs)
+    return guarded
+
+
+for _name in ("save_psop", "save_preflow", "load_psop", "load_preflow", "delete_psop",
+              "delete_preflow", "list_psops", "list_preflows", "update_psop", "update_preflow",
+              "save_execution_record", "load_execution_record", "list_execution_records", "delete_execution_record"):
+    if hasattr(WorkflowStorage, _name):
+        setattr(WorkflowStorage, _name, _guard_file_operation(getattr(WorkflowStorage, _name)))
+
+
+def _path_exists(path):
+    from orchestrate.persistence.documents import _ACTIVE_FILE
+    active = _ACTIVE_FILE.get()
+    path = path.resolve()
+    if active is not None and path.is_relative_to(active[0].root):
+        key = path.relative_to(active[0].root).as_posix()
+        if key in active[1]:
+            return active[1][key] is not None
+    return path.exists()
+
+
+def _read_text(path):
+    from orchestrate.persistence.documents import _ACTIVE_FILE
+    active = _ACTIVE_FILE.get()
+    path = path.resolve()
+    if active is not None and path.is_relative_to(active[0].root):
+        key = path.relative_to(active[0].root).as_posix()
+        if key in active[1]:
+            if active[1][key] is None:
+                raise FileNotFoundError(path)
+            return active[1][key]
+    return path.read_text(encoding="utf-8")

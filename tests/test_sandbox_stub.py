@@ -196,8 +196,8 @@ async def test_role_sandbox_rejected_before_scheduling_or_static_validation(monk
     with pytest.raises(ValueError, match="ROLE_SANDBOX_NOT_SUPPORTED"):
         await service.start(psop, [])
     assert service._tasks == {}
-    assert service._status == {}
-    assert service._events == {}
+    # Status/events now live in the durable job repository, so the in-memory
+    # maps of the former single-process implementation no longer exist.
     factory.assert_not_called()
 
     with pytest.raises(ValueError, match="ROLE_SANDBOX_NOT_SUPPORTED"):
