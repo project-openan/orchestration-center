@@ -71,6 +71,7 @@ async def dispatch_intent_sse(
     psop: PSOP | None = None,
     resolution_request: ResolutionRequest | None = None,
     select_template: bool = True,
+    request=None,
 ) -> StreamingResponse:
     """Dispatch an intent to a host agent via A2A-T and stream events.
 
@@ -88,6 +89,26 @@ async def dispatch_intent_sse(
     This function drains the A2A-T response stream, extracts the SDK
     events from metadata, and forwards them to the frontend SSE.
     """
+    from common.util.config_util import get_conf
+    if str(get_conf().get("deployment_mode", "single")).lower() == "cluster":
+        from fastapi import HTTPException
+        from orchestrate.server.durable_api import submit_execution, durable_event_response
+        if request is None:
+            raise HTTPException(503, "Cluster execution requires a verified request")
+        cursor_header = request.headers.get("Last-Event-ID")
+        key = request.headers.get("Idempotency-Key") or request.query_params.get("request_key")
+        if cursor_header:
+            job_id, separator, raw = cursor_header.rpartition(":")
+            if separator != ":" or not raw.isdecimal():
+                raise HTTPException(400, "Invalid execution event cursor")
+            return await durable_event_response(request, job_id, int(raw))
+        if not key:
+            raise HTTPException(428, "Cluster execution requires Idempotency-Key or request_key; use POST /runs")
+        job = await submit_execution(request, agent_cards=agent_cards, intent=intent,
+            target_agent=target_agent, lang=lang, psop=psop, resolution_request=resolution_request,
+            idempotency_key=key, select_template=select_template)
+        return await durable_event_response(request, job["job_id"])
+
     if semaphore is not None:
         semaphore.acquire_nowait()
 
@@ -306,3 +327,19 @@ def _build_sse_response(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+async def resume_execution_sse(request):
+    """Resume existing runs before registry lookup or workflow selection."""
+    from common.util.config_util import get_conf
+    if str(get_conf().get("deployment_mode", "single")).lower() != "cluster":
+        return None
+    value = request.headers.get("Last-Event-ID")
+    if not value:
+        return None
+    from fastapi import HTTPException
+    from orchestrate.server.durable_api import durable_event_response
+    job_id, separator, seq = value.rpartition(":")
+    if separator != ":" or not seq.isdecimal():
+        raise HTTPException(400, "Invalid execution event cursor")
+    return await durable_event_response(request, job_id, int(seq))

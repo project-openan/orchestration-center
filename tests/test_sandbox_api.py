@@ -92,8 +92,14 @@ class _FakeService:
         }
         return "verification-1"
 
-    async def cancel_and_delete(self, verification_id):
+    async def cancel_and_delete(self, verification_id, principal=None):
         return self.store.delete_report(verification_id)
+
+    def report(self, verification_id, principal=None):
+        return self.store.load_report(verification_id)
+
+    def list_reports(self, principal=None):
+        return self.store.list_reports()
 
     def validate_templates(self, payload):
         if not isinstance(payload, list):
@@ -117,6 +123,11 @@ def client(monkeypatch):
 
     monkeypatch.setattr(sandbox_api, "get_agent_cards", fake_agent_cards)
     app = FastAPI()
+    @app.middleware("http")
+    async def verified_fixture(request, call_next):
+        from orchestrate.server.auth import SessionIdentity
+        request.state.user_identity = SessionIdentity("fixture-admin", "admin")
+        return await call_next(request)
     app.include_router(sandbox_api.sandbox_router, prefix="/rest/v1/orchestrate")
     yield TestClient(app), fake_service
 
