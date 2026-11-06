@@ -72,6 +72,9 @@ def create(mode: Optional[str] = None, conf: Optional[dict] = None) -> Persisten
     Raises :class:`StorageConfigError` for an unknown or unregistered mode
     instead of silently falling back to file storage.
     """
+    deployment = str((conf or {}).get("deployment_mode", "single")).lower()
+    if deployment not in {"single", "cluster"}:
+        raise StorageConfigError("deployment_mode must be single or cluster")
     selected = mode
     if selected is None:
         selected = conf["persistence_mode"] if conf is not None and "persistence_mode" in conf else persistence_mode()
@@ -80,6 +83,8 @@ def create(mode: Optional[str] = None, conf: Optional[dict] = None) -> Persisten
         raise StorageConfigError(
             f"Unsupported persistence_mode '{resolved}'; expected one of {sorted(KNOWN_STORAGE_MODES)}"
         )
+    if deployment == "cluster" and resolved == "file":
+        raise StorageConfigError("Cluster deployment requires PostgreSQL or MySQL")
     builder = _BUILDERS.get(resolved)
     if builder is None:
         raise StorageConfigError(f"No storage backend registered for persistence_mode '{resolved}'")
