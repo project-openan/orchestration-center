@@ -130,7 +130,7 @@ async def test_intent_only_keeps_search_behavior_and_does_not_mutate_store(relay
         )
     else:
         response = await frontend_support_server.dispatch_to_agent(
-            intent="shared purpose", agent_name="Host Agent", lang="en",
+            request=MagicMock(), intent="shared purpose", agent_name="Host Agent", lang="en",
         )
     await collect(response)
     if endpoint == "auto":
@@ -305,7 +305,8 @@ def test_requested_workflow_runs_in_host_over_real_http_transport(
     monkeypatch.setattr(account_api, "current_context", lambda: storage)
     monkeypatch.setattr(auth, "_session_store", auth._SessionStore())
     monkeypatch.setattr(auth, "_pending_password_change", set())
-    monkeypatch.setattr(middleware, "limiter", middleware.strategies.MovingWindowRateLimiter(middleware.storage.MemoryStorage()))
+    monkeypatch.setattr(middleware, "limiter", middleware.strategies.MovingWindowRateLimiter(
+        middleware.storage.MemoryStorage()))
     monkeypatch.setattr(frontend_support_server, "is_auth_enabled", lambda: True)
 
     executed = []
@@ -379,7 +380,8 @@ def test_requested_workflow_runs_in_host_over_real_http_transport(
             assert client.get(path, params=params).status_code == 401
             issued = client.post("/api/v1/auth/token", json={"username": "admin", "password": "SyntheticBinding9!"})
             assert issued.status_code == 200, issued.text
-            response = client.get(path, params=params, headers={"Authorization": "Bearer " + issued.json()["access_token"]})
+            response = client.get(path, params=params, headers={
+                                  "Authorization": "Bearer " + issued.json()["access_token"]})
             assert response.status_code == 200, response.text
             events = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
             assert any(event["type"] == "complete" for event in events), events

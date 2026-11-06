@@ -154,6 +154,9 @@ class OrchestrationEngine:
     async def events(
         self, intent: str, *, psop: PSOP | None = None,
         resolution_request: ResolutionRequest | None = None,
+        execution_id: str | None = None,
+        dispatch_guard=None,
+        transport_observer=None,
     ) -> AsyncIterator[dict]:
         """Relay an explicit snapshot, or select by intent if none was supplied.
 
@@ -208,6 +211,7 @@ class OrchestrationEngine:
             try:
                 resolution_snapshot = resolve_execution_plan(
                     psop_model, resolution_request, self._agent_cards,
+                    **({"execution_id": execution_id} if execution_id is not None else {}),
                 )
             except ValidationError:
                 error = DispatchValidationError("Invalid frozen execution snapshot", reason="ENVELOPE_SCHEMA")
@@ -280,6 +284,17 @@ class OrchestrationEngine:
             return
 
         try:
+            if dispatch_guard is not None:
+                # Freeze the actual outbound envelope before the first network send.
+                await dispatch_guard({
+                    "psop": psop_model.model_dump(mode="json") if psop_model else None,
+                    "metadata": {key: value for key, value in dispatch_metadata.items() if key != PROOF_KEY},
+                    "resolution_snapshot": (
+                        resolution_snapshot.model_dump(mode="json")
+                        if resolution_snapshot is not None else None
+                    ),
+                    "target_agent": self._target_agent,
+                })
             yield {
                 "type": "start",
                 "data": {
@@ -299,6 +314,12 @@ class OrchestrationEngine:
             async for response in engine_client.stream_message(
                 self._target_agent, content,
             ):
+                if transport_observer is not None:
+                    task_id = getattr(response, "task_id", "")
+                    if isinstance(task_id, str) and task_id:
+                        await transport_observer({"task_id": task_id,
+                            "context_id": getattr(response, "context_id", ""),
+                            "task_state": str(response.task_state or "")})
                 sdk_event_json = response.metadata.get("__sdk_event__")
                 if sdk_event_json:
                     try:
@@ -326,7 +347,7 @@ class OrchestrationEngine:
             logger.error(f"[Orchestration] Workflow execution failed: {e}", exc_info=True)
             yield {
                 "type": "error",
-                "data": {"error": str(e)},
+                "data": {"error": str(e), "dispatch_outcome": "unknown"},
                 "timestamp": time.time(),
             }
         finally:
