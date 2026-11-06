@@ -43,6 +43,7 @@ def get_conf():
 def apply_env_overrides(config: dict) -> None:
     """Explicit deployment aliases; never materialize credentials into files."""
     aliases = {
+        "ORCH_DEPLOYMENT_MODE": "deployment_mode", "ORCH_DATA_DIR": "data_dir",
         "ORCH_IP": "ip", "ORCH_PORT": "port", "ORCH_ENABLE_HTTPS": "enable_https",
         "ORCH_VERIFY_CLIENT": "verify_client", "ORCH_CLIENT_VERIFY_SERVER": "client_verify_server",
         "ORCH_FORWARDED_ALLOW_IPS": "forwarded_allow_ips", "ORCH_PUBLIC_SCHEME": "public_scheme",
