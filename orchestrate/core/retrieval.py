@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -75,7 +75,9 @@ class WorkflowRetrieval:
         # Resolved once. In file mode this binds the storage the caller owns
         # (tests inject a temporary one); in the database modes it is the
         # configured backend's repository. See PersistenceBackend.psops_for.
-        self._psops = (context or current_context()).psops_for(storage)
+        selected_context = context or current_context()
+        self._psops = selected_context.psops_for(storage)
+        self._preflows = selected_context.preflows_for(storage)
         self._vector_index_cache = None
         # Reconcile/rebuild/search must observe one index generation per request.
         self._vector_lock = Lock()
@@ -95,7 +97,7 @@ class WorkflowRetrieval:
         return result
 
     def get_preflow_by_id(self, workflow_id: str) -> Optional[PreFlow]:
-        return self.storage.load_preflow(workflow_id)
+        return self._preflows.get(workflow_id)
 
     def search_by_name(self, name_pattern: str, workflow_type: str = "all") -> List[WorkflowSearchResult]:
         logger.debug(f"[Retrieval] search_by_name: pattern='{name_pattern}', type={workflow_type}")
@@ -106,8 +108,8 @@ class WorkflowRetrieval:
                 if name_lower in summary.name.lower():
                     results.append(summary)
         if workflow_type in ("all", "preflow"):
-            for wf_id in self.storage.list_preflows():
-                preflow = self.storage.load_preflow(wf_id)
+            for wf_id in self._preflows.list_ids():
+                preflow = self._preflows.get(wf_id)
                 if preflow and name_lower in preflow.name.lower():
                     results.append(WorkflowSearchResult(
                         workflow_id=preflow.id,
@@ -138,8 +140,8 @@ class WorkflowRetrieval:
                 if matches_tags(summary.tags):
                     results.append(summary)
         if workflow_type in ("all", "preflow"):
-            for wf_id in self.storage.list_preflows():
-                preflow = self.storage.load_preflow(wf_id)
+            for wf_id in self._preflows.list_ids():
+                preflow = self._preflows.get(wf_id)
                 if preflow and matches_tags(preflow.tags):
                     results.append(WorkflowSearchResult(
                         workflow_id=preflow.id,
@@ -159,8 +161,8 @@ class WorkflowRetrieval:
                 if summary.description and keyword_lower in summary.description.lower():
                     results.append(summary)
         if workflow_type in ("all", "preflow"):
-            for wf_id in self.storage.list_preflows():
-                preflow = self.storage.load_preflow(wf_id)
+            for wf_id in self._preflows.list_ids():
+                preflow = self._preflows.get(wf_id)
                 if preflow and preflow.description and keyword_lower in preflow.description.lower():
                     results.append(WorkflowSearchResult(
                         workflow_id=preflow.id,
@@ -187,8 +189,8 @@ class WorkflowRetrieval:
         if workflow_type in ("all", "psop"):
             results.extend(self._list_psop_summaries())
         if workflow_type in ("all", "preflow"):
-            for wf_id in self.storage.list_preflows():
-                preflow = self.storage.load_preflow(wf_id)
+            for wf_id in self._preflows.list_ids():
+                preflow = self._preflows.get(wf_id)
                 if preflow:
                     results.append(WorkflowSearchResult(
                         workflow_id=preflow.id,
