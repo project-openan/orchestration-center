@@ -32,6 +32,7 @@ Endpoints:
   GET  /api/v1/executions/{id}           — Get execution result
 """
 
+import asyncio
 import os
 import re
 import tempfile
@@ -74,7 +75,8 @@ intent_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_GENERATE_PSOP, 10)))
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class SOPOrchestrateRequest(GenerationOptions):
-    sop_content: str = Field(..., min_length=1, max_length=50000, description="Natural language SOP steps (markdown text)")
+    sop_content: str = Field(..., min_length=1, max_length=50000,
+                             description="Natural language SOP steps (markdown text)")
     name: Optional[str] = Field(None, max_length=256, description="Optional workflow name")
 
 class IntentOrchestrateRequest(GenerationOptions):
@@ -82,17 +84,28 @@ class IntentOrchestrateRequest(GenerationOptions):
     name: Optional[str] = Field(None, max_length=256, description="Optional workflow name")
 
 class ExecuteRequest(BaseModel):
-    task: str = Field(..., min_length=1, max_length=10000, description="Task description used to select an existing PSOP; this endpoint does not generate workflows. No match is reported through SSE error.")
-    name: Optional[str] = Field(None, max_length=256, deprecated=True, description="Deprecated compatibility input; ignored. To name a new workflow, use /orchestrate/intent instead.")
-    scope: Optional[str] = Field(None, max_length=512, description="Execution scope tenant/site/business_object for role resolution")
-    authorized_instances: Optional[list[str]] = Field(None, description="Requested subset of server-authorized instance IDs; empty means none")
-    caller_id: Optional[str] = Field(None, max_length=256, deprecated=True, description="Compatibility input, ignored; authenticated identity is recorded")
-    task_overrides: Optional[dict[str, str]] = Field(None, description="Manual role re-selection: task_id -> instance_id; must satisfy the same eligibility rules as automatic selection")
-    group_overrides: Optional[dict[str, str]] = Field(None, description="Manual re-selection for whole binding groups: binding_group -> instance_id")
+    task: str = Field(..., min_length=1, max_length=10000,
+                      description="Task description used to select an existing PSOP; this endpoint does not "
+                                  "generate workflows. No match is reported through SSE error.")
+    name: Optional[str] = Field(None, max_length=256, deprecated=True,
+                                description="Deprecated compatibility input; ignored. "
+                                          "To name a new workflow, use /orchestrate/intent instead.")
+    scope: Optional[str] = Field(
+        None, max_length=512, description="Execution scope tenant/site/business_object for role resolution")
+    authorized_instances: Optional[list[str]] = Field(
+        None, description="Requested subset of server-authorized instance IDs; empty means none")
+    caller_id: Optional[str] = Field(None, max_length=256, deprecated=True,
+                                     description="Compatibility input, ignored; authenticated identity is recorded")
+    task_overrides: Optional[dict[str, str]] = Field(
+        None, description="Manual role re-selection: task_id -> instance_id; must satisfy the same "
+                          "eligibility rules as automatic selection")
+    group_overrides: Optional[dict[str, str]] = Field(
+        None, description="Manual re-selection for whole binding groups: binding_group -> instance_id")
     tie_break: Optional[str] = Field(None, description="Equal-priority policy: error (default) or instance_id")
 
 class SearchRequest(BaseModel):
-    intent: str = Field(..., min_length=1, max_length=10000, description="Natural language intent to search for matching workflows")
+    intent: str = Field(..., min_length=1, max_length=10000,
+                        description="Natural language intent to search for matching workflows")
     top_n: Optional[int] = Field(5, description="Maximum number of results to return", ge=1, le=20)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -141,7 +154,8 @@ async def orchestrate_sop(
             body = SOPOrchestrateRequest.model_validate(raw_body)
         else:
             try:
-                options = GenerationOptions(binding=binding if binding is not None else "instance", catalog_version=catalog_version)
+                options = GenerationOptions(
+                    binding=binding if binding is not None else "instance", catalog_version=catalog_version)
             except ValidationError as error:
                 raise HTTPException(status_code=422, detail="Invalid generation options") from error
 
@@ -249,7 +263,8 @@ async def orchestrate_intent(
         generator = IntentPsopGenerator()
         # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         psop = await anyio.to_thread.run_sync(
-            partial(generator.generate_psop_from_intent, body.intent, agent_cards, body.name, **role_arguments(context)),
+            partial(generator.generate_psop_from_intent, body.intent,
+                    agent_cards, body.name, **role_arguments(context)),
             abandon_on_cancel=False,
         )
 
@@ -353,6 +368,10 @@ async def execute_workflow(
     Returns an SSE stream with execution progress and results.
     """
     try:
+        from orchestrate.server.sse_executor import resume_execution_sse
+        resumed = await resume_execution_sse(request)
+        if resumed is not None:
+            return resumed
         agent_cards = await get_agent_cards()
         resolution_request = ResolutionRequest(
             scope=body.scope,
@@ -365,7 +384,7 @@ async def execute_workflow(
         bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             agent_cards, body.task, lang=lang, semaphore=execute_semaphore,
-            resolution_request=resolution_request,
+            resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -389,9 +408,11 @@ async def execute_psop_by_id(
     lang: str = Query(None, description="Language for agent responses (zh/en)"),
     scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
     authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
-    caller_id: str = Query(None, deprecated=True, description="Compatibility input, ignored; authenticated identity is recorded"),
+    caller_id: str = Query(None, deprecated=True,
+                           description="Compatibility input, ignored; authenticated identity is recorded"),
     task_overrides: str = Query(None, description="JSON object task_id -> instance_id for manual role re-selection"),
-    group_overrides: str = Query(None, description="JSON object binding_group -> instance_id for manual group re-selection"),
+    group_overrides: str = Query(
+        None, description="JSON object binding_group -> instance_id for manual group re-selection"),
     tie_break: str = Query(None, description="Equal-priority policy: error (default) or instance_id"),
     _: Any = Depends(RateLimiter(config, "ext_execute_by_id"))
 ):
@@ -405,6 +426,10 @@ async def execute_psop_by_id(
     Returns an SSE stream with execution progress and results.
     """
     try:
+        from orchestrate.server.sse_executor import resume_execution_sse
+        resumed = await resume_execution_sse(request)
+        if resumed is not None:
+            return resumed
         retrieval = SharedHandlers.retrieval()
         psop = retrieval.get_psop_by_id(psop_id)
         if not psop:
@@ -418,7 +443,7 @@ async def execute_psop_by_id(
         bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             await get_agent_cards(), intent, lang=lang, semaphore=execute_semaphore,
-            psop=psop, resolution_request=resolution_request,
+            psop=psop, resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -436,6 +461,7 @@ async def execute_psop_by_id(
 
 @router.get("/executions")
 async def list_executions(
+    request: Request,
     _: Any = Depends(RateLimiter(config, "list_executions"))
 ):
     """
@@ -447,6 +473,9 @@ async def list_executions(
     try:
         handler = get_storage_handler(InterfaceType.LIST_EXECUTION_RECORDS)
         records = handler.handle()
+        from orchestrate.server.durable_api import history_visible
+        records = [record for record in records
+                   if await asyncio.to_thread(history_visible, record.get("execution_id"), request)]
         return ok(data=records, message=f"Found {len(records)} execution record(s)")
     except HTTPException:
         raise
@@ -459,12 +488,16 @@ async def list_executions(
 @router.get("/executions/{execution_id}")
 async def get_execution(
     execution_id: str,
+    request: Request,
     _: Any = Depends(RateLimiter(config, "get_execution"))
 ):
     """
     Get execution result by execution ID.
     """
     try:
+        from orchestrate.server.durable_api import history_visible
+        if not await asyncio.to_thread(history_visible, execution_id, request):
+            raise HTTPException(404, "Execution not found")
         handler = get_storage_handler(InterfaceType.GET_EXECUTION_RECORD)
         record = handler.handle(execution_id)
         if not record:
