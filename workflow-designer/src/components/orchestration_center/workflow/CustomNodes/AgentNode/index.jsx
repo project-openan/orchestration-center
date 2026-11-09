@@ -131,7 +131,7 @@ const AgentNode = ({ data, selected }) => {
             className={`
                 touch-none relative min-w-[200px] max-w-[400px] rounded-xl border transition-all duration-500
                 ${theme.bg} ${theme.border} ${theme.shadow} ${theme.textMain}
-                ${data.executionError ? 'ring-2 ring-red-500' : ''}
+                ${data.executionError || data.roleReferenceInvalid ? 'ring-2 ring-red-500' : ''}
                 backdrop-blur-sm overflow-hidden
                 ${selected ? 'ring-2 ring-blue-500/50 ring-offset-2 ' + (isDark ? 'ring-offset-zinc-950' : 'ring-offset-white') : ''}
             `}
@@ -171,8 +171,10 @@ const AgentNode = ({ data, selected }) => {
                                 key={`${task.agent}-${task.skill}-${idx}`}
                                 type="button"
                                 onClick={(event) => {
-                                    event.stopPropagation();
-                                    data.onSubtaskClick?.(idx, task);
+                                    if (data.onSubtaskClick) {
+                                        event.stopPropagation();
+                                        data.onSubtaskClick(idx, task);
+                                    }
                                 }}
                                 className={`
                                     group/task relative p-2 px-3 rounded-lg border flex flex-col gap-0.5 transition-all text-left
