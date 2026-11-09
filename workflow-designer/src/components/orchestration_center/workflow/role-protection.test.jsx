@@ -10,7 +10,9 @@ const capture = vi.hoisted(() => ({ flow: null, toolbar: null, panel: null,
     flowApi: { screenToFlowPosition: vi.fn(point => point), fitView: vi.fn(), setCenter: vi.fn(), getNode: vi.fn() },
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: key => key }) }));
-vi.mock('@/service/api.js', () => ({ getRoleCatalog: vi.fn().mockResolvedValue({ catalog_version: 'v1', roles: [] }) }));
+vi.mock('@/service/api.js', () => ({ getRoleCatalog: vi.fn().mockResolvedValue({ catalog_version: 'v1', roles: [
+    { role_id: 'role-a', role_version: '1', skills: [{ skill_id: 'analyze' }] },
+] }) }));
 vi.mock('@xyflow/react', async importOriginal => ({
     ...await importOriginal(),
     ReactFlowProvider: ({ children }) => children,
@@ -93,6 +95,11 @@ describe('role and mixed canvas protection', () => {
         expect(capture.flow.nodes).toHaveLength(initial.length);
         expect(capture.flow.nodes.find(node => node.id === source.id).position).toEqual({ x: 99, y: 55 });
         expect(capture.flow.edges).toEqual(initialEdges);
+
+        // A partial display projection must not turn a mixed saved design into
+        // an editable pure-role graph and silently drop its instance tasks.
+        await render(false, graph.nodes.filter(node => node.id !== 'instance-step'));
+        expect(capture.toolbar.protectedWorkflow).toBe(true);
 
         // Even an instance-bound runtime graph cannot unlock the original role design.
         const runtimeGraph = graph.nodes.map(node => ({ ...node, data: { ...node.data,

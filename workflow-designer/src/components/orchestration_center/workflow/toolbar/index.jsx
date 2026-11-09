@@ -21,11 +21,12 @@ import { createWorkflow } from "@/service/api.js";
 import { createPortal } from "react-dom";
 import { transformReactFlowToPSOP } from "@/components/orchestration_center/workflow/utils/index.jsx";
 import SandboxDialog from "@/components/sandbox/SandboxDialog.jsx";
-import { hasRoleTasks, findInvalidRoleReferences } from '../rolePolicy.js';
+import { hasRoleTasks, findInvalidRoleReferences, findRoleContractIssues, workflowBinding } from '../rolePolicy.js';
 import { generationErrorMessage } from '../../generationErrors.js';
 
-const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, workflowMetadata = {}, protectedWorkflow = false, catalog = null, designSteps = null, onCancel, onClear, onFitView, isDark, onSaveSuccess }) => {
-    const roleWorkflow = protectedWorkflow || hasRoleTasks(workflowMetadata) || hasRoleTasks(nodes);
+const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, workflowMetadata = {}, protectedWorkflow = hasRoleTasks(workflowMetadata) || hasRoleTasks(nodes), roleMode = false, catalog = null, designSteps = null, onCancel, onClear, onFitView, isDark, onSaveSuccess }) => {
+    const roleWorkflow = roleMode || hasRoleTasks(workflowMetadata) || hasRoleTasks(nodes);
+    const fromCanvas = roleMode && !protectedWorkflow;
     const [showConfirm, setShowConfirm] = useState(false);
     const { t } = useTranslation();
     const [showExportModal, setShowExportModal] = useState(false);
@@ -43,13 +44,20 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
     }, [toast.show]);
 
     const handleClearClick = () => {
-        if (roleWorkflow) return;
+        if (protectedWorkflow) return;
         onClear();
         setShowConfirm(false);
     };
 
     // --- 0. Pre-validation ---
     const validateWorkflow = () => {
+        if (roleMode && !nodes.some(node => node.data?.subtasks?.some(task => task.binding === 'role'))) return t('workflow.roleCanvas.emptyWorkflow');
+        if (fromCanvas && (!catalog || !workflowMetadata.catalog_version)) return t('workflow.roleEditUnavailable');
+        if (fromCanvas && workflowBinding(nodes, 'role') !== 'role') return t('workflow.roleCanvas.mixed');
+        if (fromCanvas) {
+            const issues = findRoleContractIssues(nodes);
+            if (issues.length) return issues.map(issue => `${issue.code}: ${issue.node_id}/${issue.task_id || '-'}`).join(', ');
+        }
         if (nodes.length === 0) return t('workflow.validate.empty');
         if (!nodes.some(n => n.type === 'startNode')) {
             return t('workflow.validate.noStart');
@@ -65,10 +73,10 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
                 if (!node.data.subtasks || node.data.subtasks.length === 0) {
                     return t('workflow.validate.noSubtask', { id: node.id });
                 }
-                if (!node.data.agent) {
+                if (!roleWorkflow && !node.data.agent) {
                     return t('workflow.validate.invalidAgent', { id: node.id });
                 }
-                if (!node.data.skill) return t('workflow.validate.noSkill', { id: node.id });
+                if (!roleWorkflow && !node.data.skill) return t('workflow.validate.noSkill', { id: node.id });
             }
             const isEndNode = (node.type === 'endNode' || node.id === 'endNode');
             if (!isEndNode && !sourceEdgeIds.has(node.id)) {
@@ -99,12 +107,12 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
         ...workflowMetadata,
         // Content edits live in the design-steps snapshot, not in the original
         // metadata; without this the role branch would save stale content.
-        ...(roleWorkflow && Array.isArray(designSteps) && designSteps.length ? { steps: designSteps } : {}),
+        ...(protectedWorkflow && Array.isArray(designSteps) && designSteps.length ? { steps: designSteps } : {}),
         description: exportDesc === '' && workflowMetadata.description === null ? null : exportDesc,
         id: workflowId || workflowMetadata.id,
         name: exportName || workflowName,
         tags: !exportTags.length && workflowMetadata.tags === null ? null : exportTags,
-    });
+    }, { fromCanvas });
 
     const downloadDesign = () => {
         try {
@@ -150,6 +158,7 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
         try {
             const psopData = serializeDesign();
             createWorkflow(psopData).then(r => {
+                if (r?.status === 'error') throw new Error(generationErrorMessage({ response: { data: r } }));
                 setToast({ show: true, msg: t('workflow.export.success'), type: 'success' });
                 setShowExportModal(false);
                 // Execution-center previews of this template are now outdated;
@@ -157,7 +166,11 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
                 window.dispatchEvent(new CustomEvent('orchestrate:workflow-saved', {
                     detail: { workflow_id: r?.data?.workflow_id || workflowId || null },
                 }));
-                if (onSaveSuccess) onSaveSuccess(r?.data?.workflow_id || workflowId || null);
+                if (onSaveSuccess) {
+                    const savedId = r?.data?.workflow_id || workflowId || null;
+                    if (fromCanvas) onSaveSuccess(savedId, psopData);
+                    else onSaveSuccess(savedId);
+                }
             }).catch(err => {
                 setToast({ show: true, msg: `${t('workflow.export.failed')}: ${generationErrorMessage(err)}`, type: 'error' });
             });
@@ -332,8 +345,8 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
 
             <button
                 onClick={handleClearClick}
-                disabled={roleWorkflow}
-                title={roleWorkflow ? t('workflow.roleProtection') : undefined}
+                disabled={protectedWorkflow}
+                title={protectedWorkflow ? t('workflow.roleProtection') : undefined}
                 className={`flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-xl transition-colors ${theme.dangerBtn}`}
             >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

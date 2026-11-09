@@ -131,7 +131,7 @@ describe('role toolbar and properties', () => {
             selectedElement={selected} setNodes={setNodes} setEdges={setEdges} />));
         expect(getAgentCards).not.toHaveBeenCalled();
         expect(container.textContent).toContain('role-a');
-        expect(container.textContent).toContain('session');
+        expect(container.textContent).not.toContain('session');
         expect(container.textContent).toContain('legacy-worker');
         expect(container.querySelector('input,textarea,select')).toBeNull();
         expect(setNodes).not.toHaveBeenCalled();

@@ -273,6 +273,16 @@ const OrchestrationCenter = ({ isDark }) => {
         }
     };
 
+    const acceptCanvasSave = (savedId, design, graph) => {
+        if (design && graph) {
+            setCurrentWf({ id: savedId, name: design.name, rawText: { ...design, id: savedId } });
+            setNodes(graph.nodes);
+            setEdges(graph.edges);
+        } else if (savedId) {
+            refreshWorkflowMeta(savedId);
+        }
+    };
+
     const handleImportTemplate = async (tplId) => {
         try {
             setImportingTpl(tplId);
@@ -634,8 +644,8 @@ const OrchestrationCenter = ({ isDark }) => {
                                                 workflowDescription={currentWf?.rawText?.description}
                                                 workflowMetadata={currentWf?.rawText}
                                                 onCancel={() => setBrowseMode('view')}
-                                                onSaveSuccess={(savedId) => {
-                                                    if (savedId && savedId === selectedId) refreshWorkflowMeta(savedId);
+                                                onSaveSuccess={(savedId, design, graph) => {
+                                                    if (savedId && savedId === selectedId) acceptCanvasSave(savedId, design, graph);
                                                     fetchWorkflows();
                                                 }}
                                             />
@@ -791,6 +801,7 @@ const OrchestrationCenter = ({ isDark }) => {
                             </button>
                             <UnifiedWorkflow
                                 mode={activeView === 'detail' ? 'view' : 'edit'}
+                                newWorkflowBinding={generationBinding}
                                 isDark={isDark}
                                 // Props for View mode
                                 nodes={nodes}
@@ -811,9 +822,9 @@ const OrchestrationCenter = ({ isDark }) => {
                                         setActiveView('welcome');
                                     }
                                 }}
-                                onSaveSuccess={(savedId) => {
+                                onSaveSuccess={(savedId, design, graph) => {
                                     if (savedId && !selectedId) setSavedWorkflowId(savedId);
-                                    if (savedId) refreshWorkflowMeta(savedId);
+                                    acceptCanvasSave(savedId, design, graph);
                                     fetchWorkflows();
                                 }}
                                 onDirtyChange={setEditorDirty}

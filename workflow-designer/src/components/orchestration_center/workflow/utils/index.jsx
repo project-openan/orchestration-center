@@ -245,7 +245,7 @@ export const transformWorkflowToReactFlow = (rawInput) => {
 /**
  * 5. Export Conversion: React Flow Nodes/Edges -> PSOP JSON
  */
-export const transformReactFlowToPSOP = (nodes, edges, metadata = {}) => {
+export const transformReactFlowToPSOP = (nodes, edges, metadata = {}, { fromCanvas = false } = {}) => {
     const psopData = {
         ...pick(metadata, metadataFields),
         name: metadata.name || metadata.description || "",
@@ -258,10 +258,11 @@ export const transformReactFlowToPSOP = (nodes, edges, metadata = {}) => {
         psopData.id = metadata.id;
     }
 
-    // A role/mixed graph is read-only. Serialize its detached design snapshot,
-    // never the instance-bound graph/status received from an execution stream.
+    // Display/execution projections and protected mixed designs export their
+    // detached snapshot. The role authoring canvas explicitly selects the
+    // regular serializer so topology and content edits become authoritative.
     const templateSteps = metadata.steps || nodes.filter(node => node.type === 'agentNode').map(node => node.data?._templateStep);
-    if (hasRoleTasks(metadata) || hasRoleTasks(nodes) || hasRoleTasks(templateSteps.filter(Boolean))) {
+    if (!fromCanvas && (hasRoleTasks(metadata) || hasRoleTasks(nodes) || hasRoleTasks(templateSteps.filter(Boolean)))) {
         if (!templateSteps.length || !templateSteps.every(Boolean)) {
             throw new Error('Role workflow design snapshot is unavailable');
         }
@@ -319,7 +320,7 @@ export const transformReactFlowToPSOP = (nodes, edges, metadata = {}) => {
         const { source, target, label, data: edgeData } = edge;
         if (source === 'START_NODE' || !stepsMap[source]) return;
 
-        const targetId = (target === 'END_OF_WORKFLOW') ? 'end' : (idToName[target] || target);
+        const targetId = nodes.some(node => node.id === target && node.type === 'endNode') ? 'end' : (idToName[target] || target);
         stepsMap[source].next.push({
             step: targetId,
             condition: label || edgeData?.condition || ""

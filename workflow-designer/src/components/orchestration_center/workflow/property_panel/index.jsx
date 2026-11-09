@@ -19,15 +19,15 @@ import { useTranslation } from "react-i18next";
 import { X } from 'lucide-react';
 import DeleteConfirm from "@/components/common/pop_confirm/index.jsx";
 import { getAgentCards } from "@/service/api.js";
-import { hasRoleTasks, groupRoleTasks, isApprovedEntry, isApprovedRoleSkill } from '../rolePolicy.js';
+import { hasRoleTasks, workflowBinding, isApprovedEntry, isApprovedRoleSkill } from '../rolePolicy.js';
 
-const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes, setEdges, isDark, onDelete, onClose, readOnly = false, catalog = null, onRoleTaskContentChange }) => {
+const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes, setEdges, isDark, onDelete, onClose, readOnly = false, roleMode = false, catalog = null, onRoleTaskContentChange }) => {
     const { t } = useTranslation();
     const [allAgents, setAllAgents] = React.useState([]);
-    const protectedWorkflow = readOnly || hasRoleTasks(nodes);
-
+    const roleCanvas = roleMode || hasRoleTasks(nodes);
+    const protectedWorkflow = readOnly || workflowBinding(nodes) === 'mixed' || (roleCanvas && !catalog);
     useEffect(() => {
-        if (protectedWorkflow) return;
+        if (protectedWorkflow || roleCanvas) return;
         const fetchAgents = async () => {
             try {
                 const res = await getAgentCards();
@@ -37,7 +37,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
             }
         };
         fetchAgents();
-    }, [protectedWorkflow]);
+    }, [protectedWorkflow, roleCanvas]);
     const theme = {
         container: isDark ? 'bg-zinc-950 text-zinc-300' : 'bg-white text-zinc-800',
         emptyBg: isDark ? 'bg-zinc-950' : 'bg-zinc-50/50',
@@ -189,16 +189,6 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         }
     };
 
-    if (!activeElement) {
-        return (
-            <div className={`w-80 h-full flex flex-col items-center justify-center p-8 text-center transition-colors ${theme.emptyBg}`}>
-                <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center ${isDark ? 'bg-zinc-900 text-zinc-700' : 'bg-zinc-200 text-zinc-400'}`}>
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" /></svg>
-                </div>
-                <p className={`text-sm font-medium ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{t('workflow.panel.empty')}</p>
-            </div>
-        );
-    }
     const renderValue = (val) => {
         if (typeof val === 'object' && val !== null) {
             return (
@@ -209,8 +199,8 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         }
         return <span className="font-medium">{String(val)}</span>;
     };
-    const isNode = !('source' in activeElement);
-    const data = activeElement.data || {};
+    const isNode = Boolean(activeElement) && !('source' in activeElement);
+    const data = activeElement?.data || {};
     // Start/End are boundary markers synthesized by the editor, not PSOP steps —
     // their name and settings are system-managed and must not be edited
     const isBoundaryNode = isNode && (activeElement.type === 'startNode' || activeElement.type === 'endNode');
@@ -223,7 +213,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
 
     const downstreamIds = useMemo(() => {
         const descendants = new Set();
-        const queue = [activeElement.id];
+        const queue = [activeElement?.id];
         while (queue.length > 0) {
             const current = queue.shift();
             for (const edge of edges) {
@@ -234,21 +224,21 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
             }
         }
         return descendants;
-    }, [activeElement.id, edges]);
+    }, [activeElement?.id, edges]);
 
     const directPredecessorIds = useMemo(() => {
         const preds = new Set();
         for (const edge of edges) {
-            if (edge.target === activeElement.id) {
+            if (edge.target === activeElement?.id) {
                 preds.add(edge.source);
             }
         }
         return preds;
-    }, [activeElement.id, edges]);
+    }, [activeElement?.id, edges]);
 
     const allPredecessorIds = useMemo(() => {
         const ancestors = new Set();
-        const queue = [activeElement.id];
+        const queue = [activeElement?.id];
         while (queue.length > 0) {
             const current = queue.shift();
             for (const edge of edges) {
@@ -259,13 +249,13 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
             }
         }
         return ancestors;
-    }, [activeElement.id, edges]);
+    }, [activeElement?.id, edges]);
 
     const eligibleStepNames = useMemo(() => {
         return allStepNames.filter(s =>
-            s.id !== activeElement.id && !downstreamIds.has(s.id)
+            s.id !== activeElement?.id && !downstreamIds.has(s.id)
         );
-    }, [allStepNames, activeElement.id, downstreamIds]);
+    }, [allStepNames, activeElement?.id, downstreamIds]);
 
     const isStarMode = data.context_from && data.context_from[0] === '*';
 
@@ -284,6 +274,16 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         return eligibleStepNames;
     }, [eligibleStepNames, isStarMode, allPredecessorIds]);
 
+    if (!activeElement) {
+        return (
+            <div className={`w-80 h-full flex flex-col items-center justify-center p-8 text-center transition-colors ${theme.emptyBg}`}>
+                <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center ${isDark ? 'bg-zinc-900 text-zinc-700' : 'bg-zinc-200 text-zinc-400'}`}>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" /></svg>
+                </div>
+                <p className={`text-sm font-medium ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{t('workflow.panel.empty')}</p>
+            </div>
+        );
+    }
     const toggleContextFrom = (stepName) => {
         let current = Array.isArray(data.context_from) ? [...data.context_from] : [];
         if (current.includes('*')) {
@@ -311,7 +311,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         }
         return val;
     };
-    if (protectedWorkflow) {
+    if (protectedWorkflow || roleCanvas) {
         const approvedRoles = (catalog?.roles || []).filter(isApprovedEntry);
         const approvedSkillsOf = (roleId, roleVersion) => {
             const role = approvedRoles.find(item => item.role_id === roleId && item.role_version === roleVersion);
@@ -328,9 +328,37 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                     <X size={14} />
                     {t('common.close')}
                 </button>
-                <p role="note">{t('workflow.roleProtection')}</p>
+                {protectedWorkflow && <p role="note">{t('workflow.roleProtection')}</p>}
                 <h3 className="font-bold">{data.label || activeElement.id}</h3>
-                {!isNode && <p>{data.condition || activeElement.label || '-'}</p>}
+                {!protectedWorkflow && !isBoundaryNode && <button type="button" onClick={onDelete} className="text-red-600 text-sm">{t('common.delete')}</button>}
+                {!isNode && (protectedWorkflow ? <p>{data.condition || activeElement.label || '-'}</p>
+                    : <Field label={t('workflow.panel.condition')} value={data.condition || activeElement.label || ''}
+                        onChange={value => updateData('condition', value)} isDark={isDark} />)}
+                {isNode && !isBoundaryNode && !protectedWorkflow && <div className="space-y-3">
+                    <Field label={t('workflow.panel.stepName')} value={data.label || ''} onChange={value => updateData('label', value)} isDark={isDark} />
+                    <label className="block text-xs">{t('workflow.panel.stepType')}
+                        <select aria-label={t('workflow.panel.stepType')} value={data.type || 'AllSuccess'} onChange={event => updateData('type', event.target.value)} className={`w-full border rounded p-2 ${theme.inputArea}`}>
+                            <option value="AllSuccess">{t('workflow.panel.stepTypeAllSuccess')}</option>
+                            <option value="AnySuccess">{t('workflow.panel.stepTypeAnySuccess')}</option>
+                        </select>
+                        <span className="block opacity-60 mt-1">{t('workflow.roleCanvas.selfLoop')}</span>
+                    </label>
+                    <label className="block text-xs">{t('workflow.panel.layer')}
+                        <select aria-label={t('workflow.panel.layer')} value={data.layer > 0 ? 1 : 0} onChange={event => updateData('layer', Number(event.target.value))} className={`w-full border rounded p-2 ${theme.inputArea}`}>
+                            <option value="0">{t('workflow.panel.layerExecution')}</option>
+                            <option value="1">{t('workflow.panel.layerAggregation')}</option>
+                        </select>
+                    </label>
+                    <fieldset className="text-xs space-y-2">
+                        <legend>{t('workflow.panel.contextFrom')}</legend>
+                        <button type="button" onClick={setContextAuto} className="border rounded p-1 mr-2">{t('workflow.roleCanvas.contextAuto')}</button>
+                        <button type="button" onClick={setContextAll} className="border rounded p-1">{t('workflow.roleCanvas.contextAll')}</button>
+                        <p className="opacity-60">{contextHint}</p>
+                        {visibleStepNames.map(step => <label className="block" key={step.id}>
+                            <input type="checkbox" checked={isStarMode || Boolean(data.context_from?.includes(step.id))} onChange={() => toggleContextFrom(step.id)} /> {step.label}
+                        </label>)}
+                    </fieldset>
+                </div>}
                 {isNode && data.subtasks?.some(task => task.binding === 'role') && (
                     <p role="note" className="text-[11px] opacity-70">
                         {catalog
@@ -339,18 +367,19 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                     </p>
                 )}
                 {(data.subtasks || []).map((task, index) => {
-                    const editable = task.binding === 'role' && Boolean(catalog) && Boolean(onRoleTaskContentChange);
+                    const editable = task.binding === 'role' && approvedRoles.some(role => role.skills?.some(isApprovedEntry)) && Boolean(onRoleTaskContentChange);
                     const taskSkills = editable ? approvedSkillsOf(task.agent, task.role_version) : [];
-                    const groupMembers = editable ? groupRoleTasks(nodes, task.binding_group) : [];
                     return (
                         <div key={task.task_id || index} className="border rounded-xl p-3 space-y-2" data-testid="role-task-card">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <p className="font-bold">{task.agent}</p>
                                 {task.roleName && <p>{task.roleName}</p>}
                                 {task.binding === 'role' && <p className="text-[11px] opacity-60">{t('workflow.roleIdentity')}: {task.role_version}</p>}
-                                {task.binding_group && <p className="text-[11px] opacity-60">{task.binding_group}</p>}
                                 <p className="text-[10px] opacity-40 font-mono">{task.task_id}</p>
                             </div>
+                            {!protectedWorkflow && <div className="flex flex-wrap items-center gap-2 text-xs">
+                                <button type="button" onClick={() => handleRemoveSubtask(index)} className="text-red-600">{t('workflow.panel.removeSubtask')}</button>
+                            </div>}
                             {editable ? (
                                 <>
                                     <label className="block text-[10px] font-bold uppercase tracking-widest opacity-50">
@@ -411,22 +440,6 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                                         <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">
                                             {t('workflow.roleEditInvalidReference', { task: task.task_id })}
                                         </p>
-                                    )}
-                                    {task.binding_group && groupMembers.length > 1 && (
-                                        <div className="pt-1 space-y-1" data-testid="role-task-group-members">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">
-                                                {t('workflow.roleEditGroupMembers')}
-                                            </p>
-                                            {groupMembers.map(member => (
-                                                <div key={member.task.task_id} className="flex items-center gap-2 text-[11px]">
-                                                    <span className="opacity-70">{member.node_label}</span>
-                                                    <span className="font-mono">{`${member.task.agent}@${member.task.role_version || '-'} · ${member.task.skill || '-'}`}</span>
-                                                    {isApprovedRoleSkill(catalog, member.task.agent, member.task.role_version, member.task.skill)
-                                                        ? <span className="text-emerald-600 dark:text-emerald-400">✓</span>
-                                                        : <span role="alert" className="text-amber-600 dark:text-amber-400">✗</span>}
-                                                </div>
-                                            ))}
-                                        </div>
                                     )}
                                 </>
                             ) : (

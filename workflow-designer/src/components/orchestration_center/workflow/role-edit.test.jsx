@@ -148,13 +148,11 @@ describe('role task content editing in the property panel', () => {
         expect(alerts.filter(text => text.includes('workflow.roleEditInvalidReference'))).toHaveLength(1);
     });
 
-    it('lists the whole binding group so members can be fixed in one session', async () => {
+    it('does not expose grouping controls or member lists for existing designs', async () => {
         await renderPanel(CATALOG);
-        const members = container.querySelector('[data-testid="role-task-group-members"]');
-        expect(members).not.toBeNull();
-        expect(members.textContent).toContain('Analyze step');
-        expect(members.textContent).toContain('role-a@1');
-        expect(members.textContent).toContain('✗');
+        expect(container.querySelector('[data-testid="role-task-group-members"]')).toBeNull();
+        expect(container.querySelector('select[aria-label="workflow.roleCanvas.group"]')).toBeNull();
+        expect(container.textContent).not.toContain('session');
     });
 
     it('keeps the raw read-only view when the catalog release is unavailable', async () => {

@@ -8,6 +8,49 @@ export const hasRoleTasks = (workflowOrNodes) => {
     return steps.some(step => (step.subtasks || step.data?.subtasks || []).some(task => task.binding === 'role'));
 };
 
+/** Empty canvases keep their explicitly selected mode; missing binding means instance. */
+export const workflowBinding = (workflowOrNodes, emptyBinding = 'instance') => {
+    const steps = Array.isArray(workflowOrNodes) ? workflowOrNodes : workflowOrNodes?.steps || [];
+    const tasks = steps.flatMap(step => step.subtasks || step.data?.subtasks || []);
+    if (!tasks.length) return emptyBinding;
+    const roles = tasks.filter(task => task.binding === 'role').length;
+    return roles === tasks.length ? 'role' : roles ? 'mixed' : 'instance';
+};
+
+/** Keep role authoring data protocol-neutral, including in drag payloads. */
+export const createRoleTask = (template, catalog) => {
+    if (template.binding !== 'role' || !isApprovedRoleSkill(catalog, template.agent, template.role_version, template.skill)) {
+        throw new Error('INVALID_ROLE_SKILL');
+    }
+    return { task_id: crypto.randomUUID(), binding: 'role', agent: template.agent,
+        role_version: template.role_version, skill: template.skill,
+        description: template.description || template.skill, status: 'pending' };
+};
+
+export const findRoleContractIssues = nodes => {
+    const issues = [];
+    const groups = new Map();
+    const ids = new Set();
+    for (const node of nodes) {
+        for (const task of node.data?.subtasks || []) {
+            if (task.binding !== 'role') continue;
+            const issue = code => issues.push({ code, node_id: node.id, task_id: task.task_id });
+            if (node.data.type === 'SelfLoop') issue('ROLE_SELF_LOOP');
+            if (!task.task_id || ids.has(task.task_id) || !task.agent?.trim() || !task.role_version?.trim() || !task.skill?.trim()
+                || ['instance_id', 'endpoint', 'runtimeInstance', 'runtimeSkill', 'instance_skill_id'].some(key => task[key] != null)) {
+                issue('ROLE_REFERENCE');
+            }
+            ids.add(task.task_id);
+            if (task.binding_group) {
+                const identity = JSON.stringify([task.agent, task.role_version]);
+                if (groups.has(task.binding_group) && groups.get(task.binding_group) !== identity) issue('ROLE_REFERENCE');
+                groups.set(task.binding_group, identity);
+            }
+        }
+    }
+    return issues;
+};
+
 /**
  * One entry is acceptable when it is explicitly approved or carries no
  * review_status at all: the /role-catalog endpoint serves an approved-only
@@ -69,20 +112,6 @@ export const findInvalidRoleReferences = (nodes, catalog) => {
         }
     }
     return issues;
-};
-
-/** Role tasks sharing one binding group, in canvas order. */
-export const groupRoleTasks = (nodes, bindingGroup) => {
-    if (!bindingGroup) return [];
-    const members = [];
-    for (const node of nodes) {
-        for (const task of node.data?.subtasks || []) {
-            if (task.binding === 'role' && task.binding_group === bindingGroup) {
-                members.push({ node_id: node.id, node_label: node.data?.label || node.id, task });
-            }
-        }
-    }
-    return members;
 };
 
 export const filterNodeChanges = (changes, nodes, protectedWorkflow) => changes.filter(change => {
