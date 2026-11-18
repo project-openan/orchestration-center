@@ -89,9 +89,9 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
     };
 
     useEffect(() => {
-        let lang = 'en';
+        let lang = 'zh';
         try {
-            lang = localStorage.getItem('lang') || 'en';
+            lang = localStorage.getItem('lang') || 'zh';
         } catch {
             // Login remains available when browser storage is blocked.
         }

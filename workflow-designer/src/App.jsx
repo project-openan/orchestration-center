@@ -128,7 +128,7 @@ const MainContainer = () => {
     }, [activeTab]);
 
     useEffect(() => {
-        const lang = localStorage.getItem('lang') || 'en';
+        const lang = localStorage.getItem('lang') || 'zh';
         if (lang !== i18n.language) {
             i18n.changeLanguage(lang);
         }
