@@ -35,15 +35,15 @@ const SettingsModal = ({isOpen, onClose, t}) => {
 
     return (
         <div
-            className={"fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-md animate-in fade-in duration-300"}>
+            className={"fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#112742]/32 backdrop-blur-sm animate-in fade-in duration-300"}>
             <div
-                className={"bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden"}>
+                className={"bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl shadow-modal border border-zinc-100 dark:border-zinc-800 overflow-hidden"}>
                 <div className={"p-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center"}>
                     <div className={"flex items-center gap-3"}>
-                        <div className={"p-2 bg-blue-600 rounded-lg text-white"}>
+                        <div className={"p-2 bg-cm-primary rounded-[7px] text-white"}>
                             <Server size={20}/>
                         </div>
-                        <h2 className={"text-lg font-black dark:text-white"}>{t('settings.title')}</h2>
+                        <h2 className={"text-[16px] font-bold dark:text-white"}>{t('settings.title')}</h2>
                     </div>
                     <button className={"p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"}
                             onClick={onClose}>
@@ -54,7 +54,7 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                 <div className={"p-8 space-y-6"}>
                     {/* Mode Selector */}
                     <div className={"space-y-2"}>
-                        <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('settings.connection_mode')}</label>
+                        <label className={"text-[11px] font-semibold text-cm-muted ml-1"}>{t('settings.connection_mode')}</label>
                         <div className={"grid grid-cols-2 gap-2 p-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-700"}>
                             <button
                                 onClick={() => setConfig({...config, mode: 'ip', ip: config.ip || defaultIp, port: config.port || defaultPort})}
@@ -74,7 +74,7 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                     {config.mode === 'ip' ? (
                         <>
                             <div className={"space-y-2"}>
-                                <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('settings.backend_host')}</label>
+                                <label className={"text-[11px] font-semibold text-cm-muted ml-1"}>{t('settings.backend_host')}</label>
                                 <div className={"relative"}>
                                     <input type={"text"} value={config.ip}
                                            onChange={(e) => setConfig({...config, ip: e.target.value})}
@@ -85,7 +85,7 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                             </div>
 
                             <div className={"space-y-2"}>
-                                <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('settings.port')}</label>
+                                <label className={"text-[11px] font-semibold text-cm-muted ml-1"}>{t('settings.port')}</label>
                                 <div className={"relative"}>
                                     <input type={"text"} value={config.port}
                                            onChange={(e) => setConfig({...config, port: e.target.value})}
@@ -97,7 +97,7 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                         </>
                     ) : (
                         <div className={"space-y-2"}>
-                            <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('settings.gateway_base_url')}</label>
+                            <label className={"text-[11px] font-semibold text-cm-muted ml-1"}>{t('settings.gateway_base_url')}</label>
                             <div className={"relative"}>
                                 <input type={"text"} value={config.nginxUrl}
                                        onChange={(e) => setConfig({...config, nginxUrl: e.target.value})}
@@ -117,12 +117,12 @@ const SettingsModal = ({isOpen, onClose, t}) => {
                 <div
                     className={"p-6 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-zinc-50 dark:border-zinc-800 flex gap-3"}>
                     <button onClick={onClose}
-                            className={"flex-1 py-3 rounded-xl font-black text-xs text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"}
+                            className={"cm-btn flex-1 min-h-[39px] text-[13px] text-cm-muted"}
                     >
                         {t('common.cancel')}
                     </button>
                     <button onClick={handleSave}
-                            className={"flex-1 py-3 rounded-xl text-xs bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"}
+                            className={"cm-btn-primary flex-1 min-h-[39px] text-[13px]"}
                     >
                         <Save size={16}/> {t('settings.save_config')}
                     </button>

@@ -58,14 +58,14 @@ const PasswordChangeModal = ({isOpen, onClose, t, forced = false}) => {
     };
 
     return (
-        <div className={"fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-md animate-in fade-in duration-300"}>
-            <div className={"bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2rem] shadow-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden"}>
+        <div className={"fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#112742]/32 backdrop-blur-sm animate-in fade-in duration-300"}>
+            <div className={"bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl shadow-modal border border-zinc-100 dark:border-zinc-800 overflow-hidden"}>
                 <div className={"p-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center"}>
                     <div className={"flex items-center gap-3"}>
-                        <div className={"p-2 bg-blue-600 rounded-lg text-white"}>
+                        <div className={"p-2 bg-cm-primary rounded-[7px] text-white"}>
                             <KeyRound size={20}/>
                         </div>
-                        <h2 className={"text-lg font-black dark:text-white"}>{t('login.change_password')}</h2>
+                        <h2 className={"text-[16px] font-bold dark:text-white"}>{t('login.change_password')}</h2>
                     </div>
                     {!forced && (
                         <button className={"p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"} onClick={onClose}>
@@ -81,7 +81,7 @@ const PasswordChangeModal = ({isOpen, onClose, t, forced = false}) => {
                         </div>
                     )}
                     <div className={"space-y-2"}>
-                        <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('login.current_password')}</label>
+                        <label className={"text-[11px] font-semibold text-cm-muted ml-1"}>{t('login.current_password')}</label>
                         <div className={"relative"}>
                             <input type={"password"} value={oldPassword}
                                    onChange={(e) => setOldPassword(e.target.value)}
@@ -94,7 +94,7 @@ const PasswordChangeModal = ({isOpen, onClose, t, forced = false}) => {
                         </div>
                     </div>
                     <div className={"space-y-2"}>
-                        <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('login.new_password')}</label>
+                        <label className={"text-[11px] font-semibold text-cm-muted ml-1"}>{t('login.new_password')}</label>
                         <div className={"relative"}>
                             <input type={"password"} value={newPassword}
                                    onChange={(e) => setNewPassword(e.target.value)}
@@ -106,7 +106,7 @@ const PasswordChangeModal = ({isOpen, onClose, t, forced = false}) => {
                         </div>
                     </div>
                     <div className={"space-y-2"}>
-                        <label className={"text-[10px] font-black text-zinc-400 ml-1"}>{t('login.confirm_password')}</label>
+                        <label className={"text-[11px] font-semibold text-cm-muted ml-1"}>{t('login.confirm_password')}</label>
                         <div className={"relative"}>
                             <input type={"password"} value={confirmPassword}
                                    onChange={(e) => setConfirmPassword(e.target.value)}
@@ -126,12 +126,12 @@ const PasswordChangeModal = ({isOpen, onClose, t, forced = false}) => {
                     <div className={"flex gap-3 pt-2"}>
                         {!forced && (
                             <button type={"button"} onClick={onClose}
-                                    className={"flex-1 py-3 rounded-xl font-black text-xs text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"}>
+                                    className={"cm-btn flex-1 min-h-[39px] text-[13px] text-cm-muted"}>
                                 {t('common.cancel')}
                             </button>
                         )}
                         <button type={"submit"} disabled={loading}
-                                className={"flex-1 py-3 rounded-xl text-xs bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"}>
+                                className={"cm-btn-primary flex-1 min-h-[39px] text-[13px]"}>
                             {loading ? (<><Loader2 size={16} className="animate-spin"/> {t('login.loading')}</>) : (<><Save size={16}/> {t('login.change_password')}</>)}
                         </button>
                     </div>

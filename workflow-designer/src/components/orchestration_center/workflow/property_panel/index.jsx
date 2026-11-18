@@ -39,13 +39,13 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         fetchAgents();
     }, [protectedWorkflow, roleCanvas]);
     const theme = {
-        container: isDark ? 'bg-zinc-950 text-zinc-300' : 'bg-white text-zinc-800',
-        emptyBg: isDark ? 'bg-zinc-950' : 'bg-zinc-50/50',
-        header: isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50/30 border-zinc-200/50',
-        label: isDark ? 'text-zinc-500' : 'text-zinc-500',
-        inputArea: isDark ? 'bg-zinc-900 border-zinc-800 focus:border-zinc-500 text-zinc-200' : 'bg-zinc-50 border-zinc-200 focus:border-zinc-400',
-        footer: isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50/50 border-zinc-100',
-        confirmBtn: isDark ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-zinc-800 text-white hover:bg-zinc-900'
+        container: isDark ? 'bg-zinc-900 text-zinc-300' : 'bg-white text-cm-ink',
+        emptyBg: isDark ? 'bg-zinc-900' : 'bg-cm-canvas-soft',
+        header: isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-cm-line',
+        label: isDark ? 'text-zinc-500' : 'text-cm-muted',
+        inputArea: isDark ? 'bg-zinc-950 border-zinc-700 focus:border-cm-primary/50 text-zinc-200' : 'bg-cm-canvas border-cm-line focus:border-[#9ABDFB]',
+        footer: isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-cm-canvas-soft border-cm-line-soft',
+        confirmBtn: isDark ? 'bg-cm-primary text-white hover:bg-cm-primary-hover' : 'bg-cm-primary text-white hover:bg-cm-primary-hover'
     };
     const activeElement = useMemo(() => {
         if (!selectedElement) return null;
@@ -510,13 +510,13 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                                 </label>
                                 <div className="flex flex-col gap-2.5">
                                     {data.subtasks.map((task, idx) => (
-                                        <div key={`${task.agent}-${task.skill}-${idx}`} className={`group/task relative p-3 rounded-xl border transition-all ${isDark ? 'bg-zinc-900 border-zinc-800/50' : 'bg-zinc-50 border-zinc-200/50 shadow-sm'}`}>
+                                        <div key={`${task.agent}-${task.skill}-${idx}`} className={`group/task relative p-3 rounded-xl border transition-all ${isDark ? 'bg-zinc-900 border-zinc-700/60' : 'bg-cm-canvas-soft border-cm-line shadow-sm'}`}>
                                             <div className="flex justify-between items-center mb-1.5">
                                                 <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tight">{task.agent}</span>
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className={`w-1.5 h-1.5 rounded-full ${(task.status === 'success' || task.status === 'completed') ? 'bg-emerald-500' :
-                                                                (task.status === 'running' || task.status === 'current') ? 'bg-blue-500' :
+                                                                (task.status === 'running' || task.status === 'current') ? 'bg-cm-primary' :
                                                                     (task.status === 'failed' || task.status === 'error') ? 'bg-rose-500' :
                                                                         'bg-zinc-400'
                                                             }`} />

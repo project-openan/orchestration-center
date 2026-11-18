@@ -20,10 +20,10 @@ import { useTranslation } from 'react-i18next';
 
 const AGENT_COLORS = [
     { light: 'bg-blue-100 text-blue-700', dark: 'bg-blue-500/20 text-blue-300', bar: 'bg-blue-500' },
-    { light: 'bg-purple-100 text-purple-700', dark: 'bg-purple-500/20 text-purple-300', bar: 'bg-purple-500' },
+    { light: 'bg-sky-100 text-sky-700', dark: 'bg-sky-500/20 text-sky-300', bar: 'bg-sky-500' },
     { light: 'bg-teal-100 text-teal-700', dark: 'bg-teal-500/20 text-teal-300', bar: 'bg-teal-500' },
     { light: 'bg-orange-100 text-orange-700', dark: 'bg-orange-500/20 text-orange-300', bar: 'bg-orange-500' },
-    { light: 'bg-pink-100 text-pink-700', dark: 'bg-pink-500/20 text-pink-300', bar: 'bg-pink-500' },
+    { light: 'bg-cyan-100 text-cyan-700', dark: 'bg-cyan-500/20 text-cyan-300', bar: 'bg-cyan-500' },
     { light: 'bg-emerald-100 text-emerald-700', dark: 'bg-emerald-500/20 text-emerald-300', bar: 'bg-emerald-500' },
     { light: 'bg-amber-100 text-amber-700', dark: 'bg-amber-500/20 text-amber-300', bar: 'bg-amber-500' },
     { light: 'bg-indigo-100 text-indigo-700', dark: 'bg-indigo-500/20 text-indigo-300', bar: 'bg-indigo-500' },
@@ -85,12 +85,12 @@ const AgentNode = ({ data, selected }) => {
 
     const theme = {
         bg: isDark ? 'bg-zinc-900/95' : 'bg-white',
-        border: isDark ? 'border-zinc-700/50' : 'border-slate-200',
-        textMain: isDark ? 'text-zinc-100' : 'text-slate-800',
-        textSub: isDark ? 'text-zinc-400' : 'text-slate-500',
+        border: isDark ? 'border-zinc-700/60' : 'border-cm-line',
+        textMain: isDark ? 'text-zinc-100' : 'text-[#172D4D]',
+        textSub: isDark ? 'text-zinc-400' : 'text-cm-muted',
         shadow: selected
-            ? (isDark ? 'shadow-[0_0_20px_rgba(59,130,246,0.15)]' : 'shadow-xl shadow-blue-500/10')
-            : 'shadow-sm hover:shadow-md'
+            ? (isDark ? 'shadow-[0_0_20px_rgba(36,100,232,0.25)]' : 'shadow-card-hover')
+            : 'shadow-card'
     };
 
     const stepTypeColor = isSelfLoop
@@ -133,10 +133,10 @@ const AgentNode = ({ data, selected }) => {
                 ${theme.bg} ${theme.border} ${theme.shadow} ${theme.textMain}
                 ${data.executionError || data.roleReferenceInvalid ? 'ring-2 ring-red-500' : ''}
                 backdrop-blur-sm overflow-hidden
-                ${selected ? 'ring-2 ring-blue-500/50 ring-offset-2 ' + (isDark ? 'ring-offset-zinc-950' : 'ring-offset-white') : ''}
+                ${selected ? 'ring-2 ring-cm-primary/40 ring-offset-2 ' + (isDark ? 'ring-offset-zinc-950' : 'ring-offset-white') : ''}
             `}
         >
-            <div className={`h-[4px] w-full transition-colors duration-500 ${isSelfLoop ? 'bg-amber-500/80' : (isAnySuccess ? 'bg-amber-500/70' : 'bg-blue-500/50')}`} />
+            <div className={`h-[4px] w-full transition-colors duration-500 ${isSelfLoop ? 'bg-amber-500/80' : (isAnySuccess ? 'bg-amber-500/70' : 'bg-cm-primary/50')}`} />
 
             <div className="px-4 py-3 flex flex-col gap-2">
                 {data.executionError && <p role="alert" className="text-xs text-red-500 break-words">{data.executionError}</p>}
@@ -178,8 +178,8 @@ const AgentNode = ({ data, selected }) => {
                                 }}
                                 className={`
                                     group/task relative p-2 px-3 rounded-lg border flex flex-col gap-0.5 transition-all text-left
-                                    ${isSubtaskSelected ? 'ring-2 ring-blue-500/50 border-blue-400/60' : ''}
-                                    ${isDark ? 'bg-zinc-800/40 border-zinc-700/30 hover:bg-zinc-800' : 'bg-slate-50/50 border-slate-100 hover:bg-slate-100'}
+                                    ${isSubtaskSelected ? 'ring-1 ring-cm-primary/40 border-cm-primary/40' : ''}
+                                    ${isDark ? 'bg-zinc-800/40 border-zinc-700/30 hover:bg-zinc-800' : 'bg-cm-canvas-soft border-cm-line-soft hover:bg-cm-primary-soft'}
                                 `}
                             >
                                 <div className="flex justify-between items-center">
@@ -189,7 +189,7 @@ const AgentNode = ({ data, selected }) => {
                                     </span>
                                     <div className={`h-1.5 w-1.5 rounded-full ${getStatusColor(task.status)} opacity-60`} />
                                 </div>
-                                <div className={`text-[11px] font-medium leading-[1.15] break-words whitespace-normal ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
+                                <div className={`text-[11px] font-medium leading-[1.2] break-words whitespace-normal ${isDark ? 'text-zinc-300' : 'text-cm-secondary'}`}>
                                     {task.skillName || task.skill || t('node_label.no_skill')}
                                     {task.skillName && <span className="ml-1 font-mono">({task.skill})</span>}
                                     {task.binding === 'role' && <span className="ml-2 text-[10px]">{t('workflow.roleIdentity')}: {task.role_version}</span>}

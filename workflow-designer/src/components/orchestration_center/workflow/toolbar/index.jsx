@@ -181,27 +181,27 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
 
     const theme = {
         container: isDark
-            ? 'bg-zinc-950/90 border-zinc-800 shadow-[0_10px_40px_rgba(0,0,0,0.7)]'
-            : 'bg-white/95 border-slate-200 shadow-[0_10px_30px_rgba(0,0,0,0.1)]',
+            ? 'bg-zinc-900/95 border-zinc-700 shadow-[0_10px_40px_rgba(0,0,0,0.55)]'
+            : 'bg-white/95 border-cm-line shadow-[0_3px_14px_rgba(37,86,151,0.10)]',
         secondaryBtn: isDark
             ? 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
-            : 'text-slate-600 hover:bg-slate-100',
-        divider: isDark ? 'bg-zinc-800' : 'bg-slate-200',
+            : 'text-[#526B8B] hover:bg-cm-primary-soft hover:text-cm-primary',
+        divider: isDark ? 'bg-zinc-800' : 'bg-cm-line',
         dangerBtn: isDark
             ? 'text-rose-500/80 hover:bg-rose-950/20 hover:text-rose-400'
             : 'text-rose-600 hover:bg-rose-50',
         primaryBtn: isDark
-            ? 'bg-zinc-100 text-zinc-950 hover:bg-white shadow-none'
-            : 'bg-slate-800 text-white hover:bg-slate-900 shadow-slate-200',
+            ? 'bg-cm-primary text-white hover:bg-cm-primary-hover shadow-none'
+            : 'bg-cm-primary text-white hover:bg-cm-primary-hover shadow-brand-sm',
         overlay: isDark
             ? 'bg-zinc-950/60 backdrop-blur-md'
-            : 'bg-slate-900/40 backdrop-blur-sm',
+            : 'bg-[#112742]/32 backdrop-blur-sm',
         modal: isDark
             ? 'bg-zinc-900 border-zinc-700/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10'
-            : 'bg-white border-slate-200 shadow-xl',
+            : 'bg-white border-cm-line shadow-modal',
         input: isDark
-            ? 'bg-zinc-950 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-blue-500/50 focus:ring-blue-500/20'
-            : 'bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/10'
+            ? 'bg-zinc-950 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-cm-primary/50 focus:ring-cm-primary/20'
+            : 'bg-cm-canvas border-cm-line text-cm-ink placeholder:text-cm-faint focus:border-[#9ABDFB] focus:ring-[#DBEAFF]/50'
     };
 
     const ExportModal = (
@@ -209,7 +209,7 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
             <div className="absolute inset-0" onClick={() => setShowExportModal(false)} />
 
             <div
-                className={`relative w-full max-w-md p-7 rounded-[2rem] border transform transition-all animate-in fade-in zoom-in-95 duration-200 ${theme.modal}`}
+                className={`relative w-full max-w-md p-7 rounded-3xl border transform transition-all animate-in fade-in zoom-in-95 duration-200 ${theme.modal}`}
                 style={{ maxHeight: '90vh', overflowY: 'auto' }}
             >
                 {isDark && (

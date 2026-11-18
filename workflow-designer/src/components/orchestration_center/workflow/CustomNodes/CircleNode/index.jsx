@@ -38,10 +38,10 @@ export const StartNode = ({ selected }) => {
 
     return (
         <div className={`
-            w-16 h-16 rounded-full bg-emerald-500 shadow-lg border-4 border-white flex items-center justify-center text-white font-bold text-sm relative group transition-all
+            w-16 h-16 rounded-full bg-emerald-500 shadow-card border-[3px] border-white flex items-center justify-center text-white font-bold text-sm relative group transition-all
             ${selected ? 'ring-2 ring-emerald-500 ring-offset-2' : ''}
         `}>
-            <div className={"absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"}>
+            <div className={"absolute -top-8 left-1/2 -translate-x-1/2 bg-[#123253]/95 text-white text-[10px] px-2 py-0.5 rounded-[5px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"}>
                 {t('node_label.start')}
             </div>
             START
@@ -66,10 +66,10 @@ export const EndNode = ({ selected }) => {
 
     return (
         <div className={`
-            w-16 h-16 rounded-full bg-rose-500 shadow-lg border-4 border-white flex items-center justify-center text-white font-bold text-sm relative group transition-all
+            w-16 h-16 rounded-full bg-rose-500 shadow-card border-[3px] border-white flex items-center justify-center text-white font-bold text-sm relative group transition-all
             ${selected ? 'ring-2 ring-rose-500 ring-offset-2' : ''}
         `}>
-            <div className={"absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"}>
+            <div className={"absolute -top-8 left-1/2 -translate-x-1/2 bg-[#123253]/95 text-white text-[10px] px-2 py-0.5 rounded-[5px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"}>
                 {t('node_label.end')}
             </div>
             END

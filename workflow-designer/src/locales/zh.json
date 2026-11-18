@@ -6,10 +6,15 @@
       "orchestration": "编排中心",
       "execution": "工作流执行",
       "skills": "技能中心"
-    }
+    },
+    "toggle_theme": "切换深浅色主题"
   },
   "login": {
     "title": "访问密码",
+    "welcome_subtitle": "登录后可访问智能体库、流程编排与执行中心。",
+    "feature_orchestration": "可视化流程编排",
+    "feature_agents": "多智能体协同",
+    "feature_observability": "全链路执行观测",
     "username_placeholder": "用户名",
     "remember_username": "记住用户名",
     "recent_usernames": "历史登录账号",
@@ -584,5 +589,12 @@
     "risk_low": "低风险",
     "risk_medium": "中风险",
     "risk_high": "高风险"
+  },
+  "brand": {
+    "company": "中国移动",
+    "product": "智能体编排中心",
+    "tagline": "A2A-T Multi-Agent Orchestration",
+    "slogan": "面向智能体互联的编排中枢，把分散的智能体能力组装成可执行、可观测的业务流程。",
+    "copyright": "© 2026 中国移动通信集团有限公司"
   }
 }

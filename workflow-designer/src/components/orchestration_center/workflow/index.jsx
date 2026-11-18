@@ -218,13 +218,13 @@ const FlowInner = ({
     const [rfInstance, setRfInstance] = useState(null);
 
     const themeClasses = useMemo(() => ({
-        container: isDark ? 'bg-[#0f172a] text-slate-200' : 'bg-[#f8fafc] text-slate-900',
-        gridColor: isDark ? '#334155' : '#cbd5e1',
-        activeEdgeColor: '#3b82f6',
+        container: isDark ? 'bg-cm-night text-slate-200' : 'bg-cm-canvas text-slate-900',
+        gridColor: isDark ? '#1D3352' : '#CFDBEC',
+        activeEdgeColor: '#2464E8',
         activeStrokeWidth: 2,
-        inactiveEdgeColor: isDark ? '#475569' : '#94a3b8',
+        inactiveEdgeColor: isDark ? '#357BF1' : '#A9C8FB',
         inactiveStrokeWidth: 1,
-        panel: isDark ? 'bg-zinc-900/80 border-zinc-700 shadow-[0_0_20px_rgba(0,0,0,0.4)]' : 'bg-white/80 border-white/20 shadow-2xl',
+        panel: isDark ? 'bg-zinc-900/95 border-zinc-700 shadow-panel' : 'bg-white/95 border-cm-line shadow-panel',
     }), [isDark]);
 
     const [viewSelectedNodeId, setViewSelectedNodeId] = useState(null);
@@ -491,7 +491,7 @@ const FlowInner = ({
             setEditEdges(eds => eds.map(edge => ({
                 ...edge,
                 deletable: !protectedWorkflow,
-                style: { ...edge.style, stroke: isDark ? '#3b82f6' : '#2563eb' },
+                style: { ...edge.style, stroke: isDark ? '#2464E8' : '#2563eb' },
             })));
         }
     }, [isDark, mode, setEditEdges, protectedWorkflow, importedEdges]);
@@ -682,8 +682,8 @@ const FlowInner = ({
             type: 'custom',
             data: { condition: '' },
             animated: true,
-            markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#3b82f6' : '#2563eb' },
-            style: { strokeWidth: 3, stroke: isDark ? '#3b82f6' : '#2563eb' }
+            markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#2464E8' : '#2563eb' },
+            style: { strokeWidth: 3, stroke: isDark ? '#2464E8' : '#2563eb' }
         };
         setEditEdges((eds) => addEdge(newEdge, eds));
         setIsDirty(true);
@@ -879,7 +879,7 @@ const FlowInner = ({
                         </div>
                     </div>
                     <div className="absolute left-1/2 -translate-x-1/2 bottom-8 h-auto z-40 pointer-events-none flex items-center min-h-0">
-                        <div className={`pointer-events-auto flex items-center backdrop-blur-md border rounded-[2rem] overflow-hidden transition-all shadow-2xl ${themeClasses.panel}`}>
+                        <div className={`pointer-events-auto flex items-center backdrop-blur-md border rounded-cm overflow-hidden transition-all shadow-panel ${themeClasses.panel}`}>
                             {!protectedWorkflow && (roleMode ? <RoleSidebar catalog={displayCatalog} isDark={isDark} /> : <Sidebar isDark={isDark} />)}
                             {protectedWorkflow && <p role="note" className="px-5 py-3 text-sm">{t(mixedWorkflow ? 'workflow.roleProtection'
                                 : catalogLoading ? 'common.loading' : catalogEmpty ? 'workflow.roleCanvas.emptyCatalog' : 'workflow.roleEditUnavailable')}</p>}
@@ -896,7 +896,7 @@ const FlowInner = ({
                         className="absolute top-24 left-4 z-50 rounded-lg border border-red-300 bg-red-50 text-red-800 p-3 text-sm">{canvasError}</button>}
                     {showExitConfirm && (
                         <div className={`fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/40 dark:bg-zinc-950/60 backdrop-blur-md`}>
-                            <div className={`relative w-full max-w-sm p-6 rounded-[2rem] border shadow-2xl ${isDark ? 'bg-zinc-900 border-zinc-700/50 text-zinc-100' : 'bg-white border-slate-200 text-slate-900'}`}>
+                            <div className={`relative w-full max-w-sm p-6 rounded-3xl border shadow-2xl ${isDark ? 'bg-zinc-900 border-zinc-700/50 text-zinc-100' : 'bg-white border-slate-200 text-slate-900'}`}>
                                 <h3 className="text-lg font-black mb-3">{t('workflow.exit.title')}</h3>
                                 <p className={`text-sm mb-6 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{t('workflow.exit.desc')}</p>
                                 <div className="flex gap-4">
@@ -950,7 +950,7 @@ const UnifiedWorkflow = ({
 
     if (mode === 'view' && !isLoading && nodes.length === 0) {
         return (
-            <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-800/20 rounded-[2rem] border-2 border-dashed border-zinc-200 dark:border-zinc-700/50 transition-all duration-300">
+            <div className="w-full h-full min-h-[300px] flex flex-col items-center justify-center p-8 bg-zinc-50/50 dark:bg-zinc-800/20 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-700/50 transition-all duration-300">
                 <div className="w-20 h-20 mb-6 rounded-3xl bg-white dark:bg-zinc-800/80 shadow-md flex items-center justify-center border border-zinc-100 dark:border-zinc-700/50">
                     <Layers className="w-10 h-10 text-zinc-300 dark:text-zinc-600" strokeWidth={1.5} />
                 </div>
@@ -962,7 +962,7 @@ const UnifiedWorkflow = ({
         );
     }
 
-    const baseBg = isDark ? "bg-[#0f172a]" : "bg-[#f8fafc]";
+    const baseBg = isDark ? "bg-cm-night" : "bg-cm-canvas";
     const editWrapperClass = visible
         ? `absolute inset-0 z-[50] translate-y-0 opacity-100 transition-all duration-300 ${baseBg}`
         : `absolute inset-0 z-[-1] translate-y-4 opacity-0 pointer-events-none transition-all duration-300 ${baseBg}`;

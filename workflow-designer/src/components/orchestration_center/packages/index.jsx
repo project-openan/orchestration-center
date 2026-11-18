@@ -90,13 +90,13 @@ const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadin
     };
 
     return (
-        <div className="h-full w-full flex flex-col overflow-hidden animate-in fade-in duration-300">
-            <div className="shrink-0 px-10 pt-8 pb-4">
+        <div className="flex h-full w-full animate-in flex-col overflow-hidden bg-cm-canvas dark:bg-cm-night">
+            <div className="shrink-0 px-6 pb-4 pt-1">
                 <button
                     onClick={onBack}
-                    className="group flex items-center gap-2 text-xs font-black text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all uppercase tracking-[0.2em] mb-6"
+                    className="group mb-4 flex items-center gap-1.5 text-[11px] font-medium text-cm-muted transition-colors hover:text-cm-primary dark:text-zinc-400 dark:hover:text-blue-400"
                 >
-                    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                    <ArrowLeft size={13} className="transition-transform group-hover:-translate-x-0.5" />
                     {t('orchestration.back_to_options')}
                 </button>
 
@@ -106,10 +106,10 @@ const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadin
                     onDrop={handleDrop}
                     onClick={() => fileInput.current?.click()}
                     className={`
-                        relative flex flex-col items-center justify-center gap-4 p-10 rounded-3xl border-2 border-dashed cursor-pointer transition-all duration-300
+                        relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-cm border border-dashed bg-white px-6 py-7 transition-all duration-200
                         ${dragOver
-                            ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/10 scale-[1.01]'
-                            : 'border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-amber-300 dark:hover:border-amber-600 hover:bg-amber-50/50 dark:hover:bg-amber-900/5'
+                            ? 'border-cm-primary bg-cm-primary-soft dark:border-blue-500 dark:bg-blue-950/30'
+                            : 'border-cm-line hover:border-[#ADC8FA] hover:bg-cm-primary-soft/60 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-blue-700 dark:hover:bg-zinc-800/70'
                         }
                         ${loading ? 'pointer-events-none opacity-60' : ''}
                     `}
@@ -123,14 +123,14 @@ const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadin
                     />
                     {loading ? (
                         <>
-                            <Loader2 size={36} className="animate-spin text-amber-500" />
+                            <Loader2 size={22} className="animate-spin text-cm-primary dark:text-blue-400" />
                             <div className="text-center">
-                                <p className="text-sm font-black text-zinc-700 dark:text-zinc-300">
+                                <p className="text-[13px] font-semibold text-cm-ink dark:text-zinc-200">
                                     {t(loadingStatus)} {Math.floor(progress)}%
                                 </p>
-                                <div className="mt-3 w-48 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                <div className="mt-2.5 h-1 w-48 overflow-hidden rounded-full bg-cm-line-soft dark:bg-zinc-800">
                                     <div
-                                        className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-300"
+                                        className="h-full rounded-full bg-cm-primary transition-all duration-300 dark:bg-blue-400"
                                         style={{ width: `${progress}%` }}
                                     />
                                 </div>
@@ -138,14 +138,14 @@ const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadin
                         </>
                     ) : (
                         <>
-                            <div className="p-4 rounded-2xl bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                <Upload size={28} />
-                            </div>
+                            <span className="cm-entity-icon-square dark:bg-zinc-800 dark:text-blue-400">
+                                <Upload size={17} />
+                            </span>
                             <div className="text-center">
-                                <p className="text-sm font-black text-zinc-700 dark:text-zinc-300 mb-1">
+                                <p className="mb-0.5 text-[13px] font-semibold text-cm-ink dark:text-zinc-200">
                                     {t('orchestration.packages_upload_title')}
                                 </p>
-                                <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                                <p className="text-[11px] text-cm-faint dark:text-zinc-500">
                                     {t('orchestration.packages_upload_hint')}
                                 </p>
                             </div>
@@ -154,97 +154,91 @@ const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadin
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-10 pb-8 custom-scrollbar">
-                <div className="flex items-center gap-3 mb-4 mt-2">
-                    <h3 className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em]">
+            <div className="custom-scrollbar flex-1 overflow-y-auto px-6 pb-6">
+                <div className="mb-3 flex items-center gap-2">
+                    <h3 className="cm-eyebrow text-cm-muted dark:text-zinc-500">
                         {t('orchestration.packages_list_title')}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black text-zinc-500 dark:text-zinc-400">
+                    <span className="cm-chip-neutral h-[20px] px-1.5 py-0 text-[10px] font-semibold dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                         {packages.length}
                     </span>
                     <button
                         onClick={refresh}
-                        className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="cm-icon-btn h-6 w-6 dark:hover:bg-zinc-800 dark:hover:text-blue-400"
                         title="refresh"
                     >
-                        <RefreshCw size={13} />
+                        <RefreshCw size={12} />
                     </button>
                 </div>
 
                 {listLoading ? (
-                    <div className="flex items-center justify-center py-16 text-zinc-400 gap-3">
-                        <Loader2 size={20} className="animate-spin" />
+                    <div className="flex items-center justify-center gap-3 py-16 text-cm-faint dark:text-zinc-500">
+                        <Loader2 size={18} className="animate-spin" />
                     </div>
                 ) : packages.length === 0 ? (
-                    <div className="py-16 text-center text-sm text-zinc-400">
+                    <div className="rounded-cm border border-dashed border-cm-line px-6 py-14 text-center text-[12px] text-cm-faint dark:border-zinc-700 dark:text-zinc-500">
                         暂无已导入的解决方案包——拖入上方区域即可导入解析。
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="cm-card divide-y divide-cm-line-soft overflow-hidden dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
                         {packages.map(pkg => {
                             const links = workflowLinks(pkg, t);
                             return (
                                 <div
                                     key={pkg.pdf_filename}
-                                    className="group p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-amber-200 dark:hover:border-amber-700 hover:shadow-lg transition-all duration-300"
+                                    className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-cm-canvas-soft dark:hover:bg-zinc-800/60"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                                            <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 shrink-0">
-                                                <FileText size={20} />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <h4 className="text-sm font-black text-zinc-800 dark:text-zinc-200 truncate">
-                                                    {pkg.pdf_filename}
-                                                </h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <Clock size={11} className="text-zinc-400" />
-                                                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                                                        {formatDate(pkg.created_at)}
-                                                    </span>
-                                                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                                                        · {pkg.chapter_count ?? Object.keys(pkg.chapters || {}).length} 章节
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <span className="cm-entity-icon-square shrink-0 dark:bg-zinc-800 dark:text-blue-400">
+                                        <FileText size={16} />
+                                    </span>
 
-                                        <div className="flex items-center gap-3 shrink-0 ml-4">
-                                            {links.length > 0 ? (
-                                                links.map(link => (
-                                                    <button
-                                                        key={link.id}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onViewWorkflow(link.id);
-                                                        }}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white bg-blue-500 hover:bg-blue-600 shadow-sm shadow-blue-500/20 transition-all"
-                                                    >
-                                                        <Link2 size={13} />
-                                                        Workflow
-                                                        {link.label && (
-                                                            <span className="px-1.5 py-0.5 rounded-md bg-white/25 text-[10px] font-bold tracking-normal normal-case">
-                                                                {link.label}
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                ))
-                                            ) : (
-                                                <span className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-800">
-                                                    Workflow 未生成
-                                                </span>
-                                            )}
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDelete(pkg);
-                                                }}
-                                                className="p-2 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-                                                title={t('skills.delete_package')}
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="truncate text-[13px] font-semibold text-cm-ink dark:text-zinc-100">
+                                            {pkg.pdf_filename}
+                                        </h4>
+                                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-cm-faint dark:text-zinc-500">
+                                            <Clock size={11} className="shrink-0" />
+                                            <span>{formatDate(pkg.created_at)}</span>
+                                            <span className="h-[3px] w-[3px] shrink-0 rounded-full bg-cm-line-strong dark:bg-zinc-600" />
+                                            <span>{pkg.chapter_count ?? Object.keys(pkg.chapters || {}).length} 章节</span>
                                         </div>
+                                    </div>
+
+                                    <div className="ml-2 flex shrink-0 items-center gap-2">
+                                        {links.length > 0 ? (
+                                            links.map(link => (
+                                                <button
+                                                    key={link.id}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onViewWorkflow(link.id);
+                                                    }}
+                                                    className="cm-btn-soft h-[27px] min-h-0 px-2.5 text-[11px] font-semibold dark:border-zinc-700 dark:bg-zinc-800 dark:text-blue-300 dark:hover:bg-zinc-700 dark:hover:text-blue-200"
+                                                >
+                                                    <Link2 size={12} />
+                                                    Workflow
+                                                    {link.label && (
+                                                        <span className="rounded-[4px] bg-cm-primary/10 px-1 py-px text-[10px] font-medium text-cm-primary dark:bg-blue-400/15 dark:text-blue-300">
+                                                            {link.label}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <span className="rounded-cm-sm bg-cm-canvas px-2.5 py-1 text-[11px] text-cm-faint dark:bg-zinc-800 dark:text-zinc-500">
+                                                Workflow 未生成
+                                            </span>
+                                        )}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(pkg);
+                                            }}
+                                            className="cm-icon-btn h-[27px] w-[27px] hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                                            title={t('skills.delete_package')}
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
                                     </div>
                                 </div>
                             );
