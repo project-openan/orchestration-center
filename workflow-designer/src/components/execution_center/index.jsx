@@ -1882,13 +1882,23 @@ const ExecutionCenter = ({ isDark }) => {
 
                     {/* Workflow Canvas */}
                     <div className={`flex-1 relative min-h-0 ${theme.content}`}>
-                        {selectedId || nodes.length > 0 ? (
+                        {selectedId === 'dispatch' && nodes.length === 0 && !isRunning ? (
+                            // A dispatch is orchestrated inside the host agent, so
+                            // there is no graph to draw after it finishes.
+                            <div className="h-full flex flex-col items-center justify-center gap-2 px-8 text-center">
+                                <div className="w-14 h-14 rounded-cm bg-cm-primary-faint dark:bg-zinc-800 grid place-items-center text-cm-primary dark:text-zinc-400">
+                                    <MessageSquare size={24} strokeWidth={1.5} />
+                                </div>
+                                <p className="text-[13px] font-semibold text-cm-heading dark:text-zinc-300">{t('execution.dispatch_no_graph')}</p>
+                                <p className="text-[11px] text-cm-faint dark:text-zinc-500 max-w-sm leading-relaxed">{t('execution.dispatch_no_graph_hint')}</p>
+                            </div>
+                        ) : selectedId || nodes.length > 0 ? (
                             <UnifiedWorkflow
                                 mode="view"
                                 isDark={isDark}
                                 nodes={nodes}
                                 edges={edges}
-                                isLoading={(isRunning && nodes.length === 0) || isMatching}
+                                isLoading={((isRunning && nodes.length === 0) && !isDispatching) || isMatching}
                                 loadingMessage={isMatching ? t('execution.matching') : t('execution.init')}
                                 onSelectChange={handleNodeSelect}
                             />
@@ -1899,6 +1909,15 @@ const ExecutionCenter = ({ isDark }) => {
                                 </div>
                                 <p className="text-[13px] font-semibold text-cm-heading dark:text-zinc-300">{t('execution.standby')}</p>
                                 <p className="text-[11px] text-cm-faint dark:text-zinc-500 mt-1">{t('execution.standby_hint')}</p>
+                            </div>
+                        )}
+
+                        {isDispatching && nodes.length === 0 && (
+                            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 bg-cm-canvas-soft/80 dark:bg-zinc-900/80 backdrop-blur-[2px]">
+                                <Loader size={22} className="text-cm-primary animate-spin" />
+                                <p className="text-[13px] font-semibold text-cm-heading dark:text-zinc-200">{t('execution.dispatching')}</p>
+                                <p className="text-[11px] text-cm-muted dark:text-zinc-400 max-w-sm text-center px-6 leading-relaxed">{t('execution.dispatching_hint')}</p>
+                                <span className="cm-chip">{t('execution.event_count', {count: events.length})}</span>
                             </div>
                         )}
 

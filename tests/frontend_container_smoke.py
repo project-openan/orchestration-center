@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import tempfile
 import time
-from urllib.error import URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,7 +78,10 @@ def run():
                             result = json.load(response)
                         assert result == {"path": "/probe", "authorization": "Bearer synthetic-proxy-token", "browser_gateway": "1"}
                         break
-                    except URLError:
+                    except OSError:
+                        # A container that is still starting can reset the socket
+                        # before nginx listens; that surfaces as a connection error
+                        # rather than URLError, so retry the whole OSError family.
                         if time.monotonic() >= deadline:
                             raise RuntimeError(command("docker", "logs", frontend).stdout[-3000:])
                         time.sleep(0.2)
@@ -93,8 +95,17 @@ def run():
                     request = Request(f"http://{address}/api/orchestrate/{path}",
                                       headers={"Authorization": "Bearer synthetic-account-token",
                                                "X-OpenAN-Browser-Gateway": ""})
-                    with opener.open(request, timeout=3) as response:
-                        result = json.load(response)
+                    deadline = time.monotonic() + 30
+                    while True:
+                        try:
+                            with opener.open(request, timeout=3) as response:
+                                result = json.load(response)
+                            break
+                        # Same transient-reset window as the probe above.
+                        except OSError:
+                            if time.monotonic() >= deadline:
+                                raise RuntimeError(command("docker", "logs", frontend).stdout[-3000:])
+                            time.sleep(0.2)
                     assert result == {"path": "/api/v1/executions",
                                       "authorization": "Bearer synthetic-account-token", "browser_gateway": "1"}
                 command("docker", "rm", "-f", frontend, backend)
