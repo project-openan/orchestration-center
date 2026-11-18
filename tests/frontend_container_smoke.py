@@ -79,7 +79,10 @@ def run():
                             result = json.load(response)
                         assert result == {"path": "/probe", "authorization": "Bearer synthetic-proxy-token", "browser_gateway": "1"}
                         break
-                    except URLError:
+                    except (URLError, OSError):
+                        # A published port can accept and then reset the connection
+                        # while nginx is still starting; that surfaces as
+                        # ConnectionResetError, not URLError.
                         if time.monotonic() >= deadline:
                             raise RuntimeError(command("docker", "logs", frontend).stdout[-3000:])
                         time.sleep(0.2)
