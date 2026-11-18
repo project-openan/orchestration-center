@@ -35,25 +35,27 @@ import {
 } from 'lucide-react';
 
 const getTheme = (isDark) => ({
-    bg: isDark ? 'bg-zinc-950' : 'bg-transparent',
+    bg: isDark ? 'bg-cm-night/40' : 'bg-cm-canvas',
     cardBg: isDark ? 'bg-zinc-900' : 'bg-white',
-    border: isDark ? 'border-zinc-800' : 'border-gray-200',
-    textPrimary: isDark ? 'text-zinc-100' : 'text-slate-900',
-    textSecondary: isDark ? 'text-zinc-400' : 'text-slate-500',
-    accent: isDark ? 'text-zinc-200' : 'text-blue-600',
-    accentBg: isDark ? 'bg-zinc-800' : 'bg-blue-50',
-    success: isDark ? 'text-emerald-500' : 'text-emerald-600',
-    skillCardHover: isDark ? 'hover:bg-zinc-800/50' : 'hover:bg-slate-50',
-    label: isDark ? 'text-zinc-500' : 'text-slate-400',
-    cardBorder: isDark ? 'border-zinc-700/50' : 'border-slate-200/60'
+    border: isDark ? 'border-zinc-800' : 'border-cm-line',
+    divider: isDark ? 'border-zinc-800' : 'border-cm-line-soft',
+    textPrimary: isDark ? 'text-zinc-100' : 'text-cm-ink',
+    textSecondary: isDark ? 'text-zinc-400' : 'text-cm-secondary',
+    accent: isDark ? 'text-blue-400' : 'text-cm-primary',
+    accentBg: isDark ? 'bg-zinc-800' : 'bg-cm-primary-faint',
+    chipBg: isDark ? 'bg-zinc-800' : 'bg-cm-tint',
+    chipText: isDark ? 'text-blue-300' : 'text-[#255BCE]',
+    success: isDark ? 'text-emerald-400' : 'text-emerald-600',
+    skillCardHover: isDark ? 'hover:bg-zinc-800/50' : 'hover:bg-cm-primary-soft',
+    label: isDark ? 'text-zinc-500' : 'text-cm-faint',
+    cardBorder: isDark ? 'border-zinc-700/50' : 'border-cm-line'
 });
 
 const InfoCard = ({ title, icon: Icon, children, className = "", theme }) => (
-    <div className={`p-5 rounded-xl border shadow-sm flex flex-col ${theme.cardBg} ${theme.border} ${className}`}>
-        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-dashed border-opacity-50"
-             style={{ borderColor: theme.border ? undefined : '#e5e7eb' }}>
-            {Icon && <Icon className={`w-5 h-5 ${theme.accent}`} />}
-            <h3 className={`font-semibold text-xxxl ${theme.textPrimary}`}>{title}</h3>
+    <div className={`p-4 rounded-cm border shadow-card flex flex-col ${theme.cardBg} ${theme.border} ${className}`}>
+        <div className={`flex items-center gap-2 mb-3 pb-2.5 border-b ${theme.divider}`}>
+            {Icon && <Icon className={`w-4 h-4 ${theme.accent}`} />}
+            <h3 className={`text-[13px] font-bold ${theme.textPrimary}`}>{title}</h3>
         </div>
         <div className="flex-1">
             {children}
@@ -62,31 +64,30 @@ const InfoCard = ({ title, icon: Icon, children, className = "", theme }) => (
 );
 
 const StatusRow = ({ label, value, theme, mono = false }) => (
-    <div className="flex justify-between items-center py-2 border-b last:border-0 border-dashed border-opacity-50"
-         style={{ borderColor: theme.border ? undefined : '#e5e7eb' }}>
-        <span className={`text-sm ${theme.textSecondary}`}>{label}</span>
-        <span className={`text-sm font-medium ${theme.textPrimary} ${mono ? 'font-mono' : ''}`}>{value}</span>
+    <div className={`flex justify-between items-center py-2 border-b last:border-0 ${theme.divider}`}>
+        <span className={`text-[13px] ${theme.textSecondary}`}>{label}</span>
+        <span className={`text-[13px] font-medium ${theme.textPrimary} ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
 );
 
 const CapabilityToggle = ({ label, active, icon: Icon, theme }) => {
     const activeBg = active
-        ? (theme.cardBg.includes('zinc') ? 'bg-zinc-800/50' : 'bg-blue-50/50')
-        : 'opacity-60';
+        ? 'bg-cm-primary-soft border-cm-primary-faint dark:bg-zinc-800/60 dark:border-zinc-700'
+        : `opacity-60 ${theme.border}`;
 
     return (
         <div
-            className={`flex items-center justify-between p-3 rounded-lg border transition-all ${theme.border} ${activeBg}`}>
-            <div className="flex items-center gap-3">
-                <div className={`p-1.5 rounded-md ${active ? theme.accentBg : 'bg-zinc-200 dark:bg-zinc-800'}`}>
-                    <Icon className={`w-4 h-4 ${active ? theme.accent : 'text-zinc-500'}`} />
+            className={`flex items-center justify-between p-2.5 rounded-cm-sm border transition-colors ${activeBg}`}>
+            <div className="flex items-center gap-2.5">
+                <div className={`grid place-items-center w-[26px] h-[26px] rounded-cm-sm ${active ? theme.accentBg : 'bg-cm-canvas dark:bg-zinc-800'}`}>
+                    <Icon className={`w-3.5 h-3.5 ${active ? theme.accent : 'text-cm-faint dark:text-zinc-500'}`} />
                 </div>
-                <span className={`text-sm font-medium ${theme.textPrimary}`}>{label}</span>
+                <span className={`text-[13px] font-medium ${theme.textPrimary}`}>{label}</span>
             </div>
             {active ? (
-                <CheckCircle2 className={`w-5 h-5 ${theme.success}`} />
+                <CheckCircle2 className={`w-4 h-4 ${theme.success}`} />
             ) : (
-                <XCircle className="w-5 h-5 text-zinc-500 opacity-40" />
+                <XCircle className="w-4 h-4 text-cm-faint dark:text-zinc-600" />
             )}
         </div>
     );
@@ -95,26 +96,26 @@ const CapabilityToggle = ({ label, active, icon: Icon, theme }) => {
 const SectionHeader = ({ title, icon: Icon, expanded, onToggle, count, isDark }) => (
     <button
         onClick={onToggle}
-        className={`w-full flex items-center justify-between px-5 py-3.5 rounded-xl border transition-all duration-200
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-cm border transition-colors duration-150
             ${isDark
-                ? 'bg-zinc-900/80 border-zinc-800 hover:bg-zinc-800/80'
-                : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100'}`}
+                ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                : 'bg-white border-cm-line hover:border-[#B8CFFC]'}`}
     >
-        <div className="flex items-center gap-3">
-            <Icon size={18} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-            <span className={`text-sm font-black uppercase tracking-wide ${isDark ? 'text-zinc-200' : 'text-zinc-700'}`}>
+        <div className="flex items-center gap-2.5">
+            <Icon size={16} className={isDark ? 'text-blue-400' : 'text-cm-primary'} />
+            <span className={`text-[13px] font-bold ${isDark ? 'text-zinc-200' : 'text-cm-heading'}`}>
                 {title}
             </span>
             {count !== undefined && (
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black
-                    ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-500'}`}>
+                <span className={`px-1.5 py-[1px] rounded-[5px] text-[10px] font-semibold
+                    ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-cm-tint text-[#255BCE]'}`}>
                     {count}
                 </span>
             )}
         </div>
         {expanded
-            ? <ChevronDown size={16} className={isDark ? 'text-zinc-500' : 'text-zinc-400'} />
-            : <ChevronRight size={16} className={isDark ? 'text-zinc-500' : 'text-zinc-400'} />}
+            ? <ChevronDown size={15} className={isDark ? 'text-zinc-500' : 'text-cm-faint'} />
+            : <ChevronRight size={15} className={isDark ? 'text-zinc-500' : 'text-cm-faint'} />}
     </button>
 );
 
@@ -126,15 +127,15 @@ const AgentDashboard = ({ agent, isDark }) => {
 
     const renderDescriptionList = (desc) => {
         return (
-            <div className={`text-sm leading-relaxed whitespace-pre-wrap ${theme.textSecondary}`}>
+            <div className={`text-[13px] leading-[1.7] whitespace-pre-wrap ${theme.textSecondary}`}>
                 {desc}
             </div>
         );
     };
 
     return (
-        <div className={`w-full ${isDark ? 'bg-zinc-950/50' : 'bg-zinc-50/50'} transition-colors duration-300 p-8`}>
-            <div className="space-y-4">
+        <div className={`w-full ${theme.bg} transition-colors duration-300 p-6`}>
+            <div className="space-y-3">
                 <SectionHeader
                     title={t('agent_profile.basic')}
                     icon={Fingerprint}
@@ -145,13 +146,13 @@ const AgentDashboard = ({ agent, isDark }) => {
                 />
 
                 {basicExpanded && (
-                    <div className="space-y-6 animate-in fade-in duration-300 pl-1">
+                    <div className="space-y-3 animate-in fade-in duration-300">
                         <InfoCard
                             title={t('agent_profile.organization')}
                             icon={Globe}
                             theme={theme}
                         >
-                            <div className={`text-sm font-semibold ${theme.textPrimary}`}>
+                            <div className={`text-[13px] font-semibold ${theme.textPrimary}`}>
                                 {agent.provider?.organization || '-'}
                             </div>
                             {agent.provider?.url && (
@@ -159,7 +160,7 @@ const AgentDashboard = ({ agent, isDark }) => {
                                     href={agent.provider.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className={`text-xs mt-1 inline-block ${theme.accent} hover:underline`}
+                                    className={`text-[11px] mt-1 inline-block truncate max-w-full ${theme.accent} hover:underline`}
                                 >
                                     {agent.provider.url}
                                 </a>
@@ -179,47 +180,48 @@ const AgentDashboard = ({ agent, isDark }) => {
                             icon={Terminal}
                             theme={theme}
                         >
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {agent.skills.map((skill, index) => {
                                     const uniqueKey = `skill-${skill.id || 'no-id'}-${skill.name}-${index}`;
                                     return (
                                         <div
                                             key={uniqueKey}
-                                            className={`group relative p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
+                                            className={`group relative p-3.5 rounded-cm border transition-colors duration-200 ${theme.border} ${theme.skillCardHover}`}>
+                                            <div className="flex justify-between items-start mb-1.5">
+                                                <span className={`font-mono text-[13px] font-semibold truncate ${theme.textPrimary}`}>
                                                     {skill.name}
                                                 </span>
                                             </div>
-                                            <p className={`text-base ${theme.textSecondary} line-clamp-2 mb-3`}>
+                                            <p className={`text-[12px] leading-[1.6] ${theme.textSecondary} line-clamp-2 mb-2.5`}>
                                                 {skill.description}
                                             </p>
                                             <div className="absolute bottom-[calc(100%-10px)] left-1/2 -translate-x-1/2 invisible opacity-0 translate-y-1
                                                 group-hover:visible group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 ease-out z-30 w-full min-w-[200px] max-w-[280px]
                                                 pointer-events-none">
-                                                <div className={`relative px-3 py-2 rounded-lg shadow-xl border text-sm leading-relaxed
-                                                    ${isDark ? 'bg-zinc-800 text-slate-200 border-zinc-700' : 'bg-white text-slate-700 border-slate-200'}`}>
+                                                <div className={`relative px-3 py-2 rounded-cm shadow-panel border text-[12px] leading-relaxed
+                                                    ${isDark ? 'bg-zinc-800 text-zinc-200 border-zinc-700' : 'bg-white text-cm-ink border-cm-line'}`}>
                                                     {skill.description}
                                                     <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 border-b border-r
-                                                        ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-slate-200'}`} />
+                                                        ${isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-cm-line'}`} />
                                                 </div>
                                             </div>
-                                            <div className="flex flex-wrap gap-2 mt-auto">
+                                            <div className="flex flex-wrap gap-1.5 mt-auto">
                                                 {(skill.tags || []).map(tag => (
                                                     <span key={tag}
-                                                        className={`text-[10px] px-1.5 py-0.5 rounded border ${theme.border} ${theme.textSecondary}`}>
+                                                        className={`text-[10px] px-1.5 py-0.5 rounded-[5px] ${theme.chipBg} ${theme.chipText}`}>
                                                         {tag}
                                                     </span>
                                                 ))}
                                             </div>
                                             {(skill.examples || []).length > 0 && (
-                                                <details className="mt-3">
-                                                    <summary className={`text-xs cursor-pointer ${theme.textSecondary} hover:${theme.textPrimary}`}>
+                                                <details className="mt-2.5">
+                                                    <summary className={`text-[11px] cursor-pointer ${theme.textSecondary} hover:text-cm-primary dark:hover:text-blue-400`}>
                                                         {`示例 (${skill.examples.length})`}
                                                     </summary>
-                                                    <div className={`mt-2 space-y-2 max-h-60 overflow-y-auto text-xs leading-relaxed font-mono whitespace-pre-wrap p-2 rounded ${isDark ? 'bg-zinc-900 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+                                                    <div className={`mt-2 space-y-2 max-h-60 overflow-y-auto custom-scrollbar text-[11px] leading-relaxed font-mono whitespace-pre-wrap p-2 rounded-cm-sm border
+                                                        ${isDark ? 'bg-zinc-950 border-zinc-800 text-zinc-300' : 'bg-cm-canvas border-cm-line-soft text-cm-secondary'}`}>
                                                         {skill.examples.map((example, i) => (
-                                                            <div key={i} className="pb-2 border-b last:border-b-0 last:pb-0 border-slate-200 dark:border-zinc-700">
+                                                            <div key={i} className={`pb-2 border-b last:border-b-0 last:pb-0 ${isDark ? 'border-zinc-800' : 'border-cm-line-soft'}`}>
                                                                 {example}
                                                             </div>
                                                         ))}
@@ -234,7 +236,7 @@ const AgentDashboard = ({ agent, isDark }) => {
                     </div>
                 )}
 
-                <div className="pt-2">
+                <div className="pt-1">
                     <SectionHeader
                         title={t('agent_profile.advanced')}
                         icon={Settings}
@@ -246,29 +248,29 @@ const AgentDashboard = ({ agent, isDark }) => {
                 </div>
 
                 {advancedExpanded && (
-                    <div className="animate-in fade-in duration-300 pl-1">
-                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                            <div className="col-span-1 md:col-span-8 space-y-6">
+                    <div className="animate-in fade-in duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                            <div className="col-span-1 md:col-span-8 space-y-3">
                                 {agent.supportedInterfaces && agent.supportedInterfaces.length > 0 && (
                                     <InfoCard
                                         title={`${t('agent_profile.supported_interfaces')} (${agent.supportedInterfaces.length})`}
                                         icon={Server}
                                         theme={theme}
                                     >
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             {agent.supportedInterfaces.map((iface, index) => (
                                                 <div
                                                     key={`interface-${index}`}
-                                                    className={`p-4 rounded-lg border transition-all duration-200 ${theme.border} ${theme.skillCardHover}`}>
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <span className={`font-mono text-base font-semibold ${theme.textPrimary}`}>
+                                                    className={`p-3.5 rounded-cm border transition-colors duration-200 ${theme.border} ${theme.skillCardHover}`}>
+                                                    <div className="flex justify-between items-start mb-1.5 gap-2">
+                                                        <span className={`font-mono text-[13px] font-semibold truncate ${theme.textPrimary}`}>
                                                             {iface.protocolBinding}
                                                         </span>
-                                                        <span className={`text-[10px] px-1 border rounded ${theme.border} ${theme.textSecondary} opacity-60`}>
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-[5px] shrink-0 ${theme.chipBg} ${theme.chipText}`}>
                                                             v{iface.protocolVersion}
                                                         </span>
                                                     </div>
-                                                    <div className={`text-sm ${theme.textSecondary} truncate font-mono`} title={iface.url}>
+                                                    <div className={`text-[11px] font-mono truncate ${theme.textSecondary}`} title={iface.url}>
                                                         {iface.url}
                                                     </div>
                                                 </div>
@@ -277,13 +279,13 @@ const AgentDashboard = ({ agent, isDark }) => {
                                     </InfoCard>
                                 )}
                             </div>
-                            <div className="col-span-1 md:col-span-4 space-y-6">
+                            <div className="col-span-1 md:col-span-4 space-y-3">
                                 <InfoCard
                                     title={t('agent_profile.capabilities')}
                                     icon={Cpu}
                                     theme={theme}
                                 >
-                                    <div className="grid grid-cols-1 gap-3">
+                                    <div className="grid grid-cols-1 gap-2">
                                         <CapabilityToggle
                                             label={t('agent_profile.streaming')}
                                             active={agent.capabilities.streaming}
@@ -313,12 +315,12 @@ const AgentDashboard = ({ agent, isDark }) => {
                                         <div className="space-y-2">
                                             {Object.entries(agent.securitySchemes).map(([name, scheme]) => (
                                                 <div key={name}
-                                                    className={`flex items-center justify-between p-2 rounded border ${theme.border}`}>
-                                                    <div className="flex items-center gap-2">
-                                                        <Shield className="w-4 h-4 text-amber-500" />
-                                                        <span className={`text-sm font-mono font-medium ${theme.textPrimary}`}>{name}</span>
+                                                    className={`flex items-center justify-between gap-2 p-2 rounded-cm-sm border ${theme.border}`}>
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <Shield className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                                        <span className={`text-[13px] font-mono font-medium truncate ${theme.textPrimary}`}>{name}</span>
                                                     </div>
-                                                    <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-600'}`}>
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-[5px] shrink-0 ${theme.chipBg} ${theme.chipText}`}>
                                                         {scheme.httpAuthSecurityScheme?.scheme || scheme.scheme || 'N/A'}
                                                     </span>
                                                 </div>
@@ -335,13 +337,13 @@ const AgentDashboard = ({ agent, isDark }) => {
                                         <div className="space-y-2">
                                             {agent.capabilities.extensions.map((ext, idx) => (
                                                 <div key={idx}
-                                                    className={`p-2 rounded border ${theme.border}`}>
-                                                    <div className={`text-xs font-mono truncate ${theme.textSecondary}`}
+                                                    className={`p-2 rounded-cm-sm border ${theme.border}`}>
+                                                    <div className={`text-[11px] font-mono truncate ${theme.textSecondary}`}
                                                         title={ext.uri}>
                                                         {ext.uri}
                                                     </div>
                                                     {ext.required !== undefined && (
-                                                        <span className={`text-[10px] ${ext.required ? 'text-amber-500' : 'text-zinc-500'}`}>
+                                                        <span className={`text-[10px] ${ext.required ? 'text-amber-600 dark:text-amber-400' : 'text-cm-faint dark:text-zinc-500'}`}>
                                                             {ext.required ? 'required' : 'optional'}
                                                         </span>
                                                     )}
@@ -361,26 +363,26 @@ const AgentDashboard = ({ agent, isDark }) => {
                                             value={`v${agent.version}`}
                                             theme={theme}
                                         />
-                                        <div className="pt-4">
-                                            <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
+                                        <div className="pt-3">
+                                            <span className={`text-[10px] uppercase font-semibold tracking-wider ${theme.label}`}>
                                                 {t('agent_profile.defaultInputModes')}
                                             </span>
-                                            <div className="flex flex-wrap gap-2 mt-2 mb-4">
+                                            <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
                                                 {agent.defaultInputModes.map(m => (
                                                     <span key={m}
-                                                          className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
+                                                          className={`px-1.5 py-0.5 text-[10px] rounded-[5px] ${theme.chipBg} ${theme.chipText}`}>
                                                         {m}
                                                     </span>
                                                 ))}
                                             </div>
 
-                                            <span className={`text-xs uppercase font-semibold tracking-wider ${theme.label}`}>
+                                            <span className={`text-[10px] uppercase font-semibold tracking-wider ${theme.label}`}>
                                                 {t('agent_profile.defaultOutputModes')}
                                             </span>
-                                            <div className="flex flex-wrap gap-2 mt-2">
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
                                                 {agent.defaultOutputModes.map(m => (
                                                     <span key={m}
-                                                          className={`px-2 py-1 text-xs rounded border ${theme.border} ${theme.textSecondary} bg-opacity-50`}>
+                                                          className={`px-1.5 py-0.5 text-[10px] rounded-[5px] ${theme.chipBg} ${theme.chipText}`}>
                                                         {m}
                                                     </span>
                                                 ))}
@@ -392,12 +394,12 @@ const AgentDashboard = ({ agent, isDark }) => {
                                             href={agent.documentationUrl}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className={`mt-6 flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium transition-colors ${isDark
-                                                ? 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400'
-                                                : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                                            className={`mt-4 flex items-center justify-center gap-2 w-full py-2 rounded-cm-sm text-[12px] font-semibold transition-colors ${isDark
+                                                ? 'bg-zinc-800 hover:bg-zinc-700 text-blue-300'
+                                                : 'bg-cm-primary-faint hover:bg-[#E0ECFF] text-[#245FCA]'
                                             }`}
                                         >
-                                            <Globe className="w-4 h-4" />
+                                            <Globe className="w-3.5 h-3.5" />
                                             {t('agent_profile.documentationUrl')}
                                         </a>
                                     )}

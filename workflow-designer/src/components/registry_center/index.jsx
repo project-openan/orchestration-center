@@ -56,6 +56,9 @@ const getAgentLayer = (agent) => {
 
 const TABS = ['all', 'service', 'network', 'vendor'];
 
+// Layer pill: both layers stay on the brand ramp, only the label differs.
+const LAYER_PILL = 'bg-cm-tint text-[#255BCE] dark:bg-zinc-800 dark:text-blue-300';
+
 const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [agents, setAgents] = useState([]);
@@ -160,38 +163,6 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
         vendor: Object.keys(vendorGroups).length,
     }), [agents, vendorGroups]);
 
-    const themeColor = (theme) => {
-        const map = {
-            emerald: 'bg-emerald-500', blue: 'bg-blue-600', indigo: 'bg-indigo-500',
-            rose: 'bg-rose-500', cyan: 'bg-cyan-500', amber: 'bg-amber-500', violet: 'bg-violet-500'
-        };
-        return map[theme] || 'bg-blue-600';
-    };
-
-    const themeBorder = (theme) => {
-        const map = {
-            emerald: 'hover:border-emerald-300 dark:hover:border-emerald-700',
-            blue: 'hover:border-blue-300 dark:hover:border-blue-700',
-            indigo: 'hover:border-indigo-300 dark:hover:border-indigo-700',
-            rose: 'hover:border-rose-300 dark:hover:border-rose-700',
-            cyan: 'hover:border-cyan-300 dark:hover:border-cyan-700',
-            amber: 'hover:border-amber-300 dark:hover:border-amber-700',
-            violet: 'hover:border-violet-300 dark:hover:border-violet-700'
-        };
-        return map[theme] || 'hover:border-blue-300';
-    };
-
-    const layerBadge = (layer) => {
-        if (layer === 'network') {
-            return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
-        }
-        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
-    };
-
-    const layerBg = () => {
-        return 'bg-white dark:bg-zinc-900';
-    };
-
     // The list item carries UI-only decorations (id/displayName/theme/icon/
     // layer/_raw) that must never be sent back to the registry.
     const toCardPayload = (agent) => {
@@ -277,20 +248,24 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
         <div
             key={agent.id}
             onClick={() => { setSelectedAgent(agent); setViewMode('structured'); }}
-            className={`group relative p-6 rounded-2xl border cursor-pointer transition-all duration-300
-                ${layerBg()} border-zinc-100 dark:border-zinc-800
-                ${themeBorder(agent.theme)}
-                hover:shadow-lg hover:-translate-y-1 animate-in fade-in duration-300`}
+            className="group relative flex flex-col p-[17px_16px_14px] cursor-pointer cm-card cm-card-hover
+                dark:bg-zinc-900 dark:border-zinc-800 dark:hover:border-blue-700
+                animate-in fade-in duration-300"
         >
-            <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-xl text-white shadow-lg ${agent.layer === 'network' ? 'bg-emerald-500' : themeColor(agent.theme)}`}>
-                    {React.cloneElement(agent.icon, { size: 22 })}
+            <div className="flex items-start gap-3">
+                <div className="cm-entity-icon-square shrink-0 dark:bg-zinc-800 dark:text-blue-400">
+                    {React.cloneElement(agent.icon, { size: 18 })}
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" />
-                    <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase">
-                        V{agent.version}
-                    </span>
+                <div className="min-w-0 flex-1">
+                    <h3 className="cm-entity-title dark:text-zinc-100" title={agent.id}>
+                        {agent.id}
+                    </h3>
+                    <p className="cm-entity-meta dark:text-zinc-500">
+                        {agent.provider?.organization} · V{agent.version}
+                    </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                     {isAdmin && (
                         <DeleteConfirm
                             title={t('registry.delete_agent_confirm')}
@@ -298,7 +273,9 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
                             isDark={isDark}
                         >
                             <button
-                                className="p-1.5 rounded-lg text-zinc-300 dark:text-zinc-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                                className="cm-icon-btn opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity
+                                    hover:bg-rose-50 hover:text-rose-600
+                                    dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                                 title={t('registry.delete_agent')}
                             >
                                 <Trash2 size={14} />
@@ -308,135 +285,121 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
                 </div>
             </div>
 
-            <h3 className="text-sm font-black text-zinc-900 dark:text-white mb-2 leading-tight truncate">
-                {agent.id}
-            </h3>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-4 leading-relaxed min-h-[2.5em]">
+            <p className="mt-3 text-[12px] leading-[1.6] text-cm-secondary dark:text-zinc-400 line-clamp-2 min-h-[38px]">
                 {agent.description}
             </p>
 
-            <div className="flex flex-wrap gap-1.5 mb-4">
+            <div className="flex flex-wrap gap-1.5 mt-3">
                 {(agent.skills || []).slice(0, 3).map(skill => (
-                    <span key={skill.id}
-                        className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+                    <span key={skill.id} className="cm-chip dark:bg-zinc-800 dark:text-blue-300">
                         {skill.name}
                     </span>
                 ))}
                 {(agent.skills || []).length > 3 && (
-                    <span className="px-2 py-0.5 rounded-md text-[9px] font-bold text-zinc-400 dark:text-zinc-500">
+                    <span className="cm-chip-neutral dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-400">
                         +{agent.skills.length - 3}
                     </span>
                 )}
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                <div className="flex items-center gap-2">
-                    <span className={`text-xs font-black px-4 py-1 rounded-lg border uppercase ${layerBadge(agent.layer)}`}>
-                        {agent.layer === 'network' ? 'Network' : 'Service'}
-                    </span>
-                    <span className={`text-xs font-black px-3 py-1 rounded-lg border ${agent.layer === 'network' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'}`}>
-                        {agent.provider?.organization}
-                    </span>
-                </div>
-                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+            <div className="mt-auto pt-3 flex items-center justify-between border-t border-cm-line-soft dark:border-zinc-800">
+                <span className="text-[11px] text-cm-faint dark:text-zinc-500">
                     {agent.skills?.length || 0} {t('registry.skills_count')}
+                </span>
+                <span className={`text-[11px] font-semibold px-2 py-[3px] rounded-[5px] whitespace-nowrap ${LAYER_PILL}`}>
+                    {agent.layer === 'network' ? 'Network' : 'Service'}
                 </span>
             </div>
         </div>
     );
 
     return (
-        <div className="h-full p-6 flex flex-col w-full transition-all animate-in fade-in duration-500 overflow-hidden font-sans">
-            <div className="shrink-0 flex items-center justify-between mb-6 px-2">
-                <div className="flex items-center gap-4">
-                    <div className="p-2.5 bg-zinc-900 dark:bg-blue-600 rounded-xl text-white shadow-lg">
-                        <Server size={20} />
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-black text-zinc-900 dark:text-white uppercase leading-none">
-                            {t('registry.title')}
-                        </h1>
-                        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">
-                            {agents.length} {t('registry.units')} · {t('registry.online')}
-                        </span>
-                    </div>
+        <div className="h-full p-6 flex flex-col w-full transition-all animate-in fade-in duration-500 overflow-hidden font-sans bg-cm-canvas dark:bg-cm-night">
+            <div className="shrink-0 flex items-start justify-between gap-4 mb-5">
+                <div className="min-w-0">
+                    <h1 className="cm-section-title dark:text-zinc-100">
+                        {t('registry.title')}
+                    </h1>
+                    <p className="mt-1 text-[12px] text-cm-muted dark:text-zinc-400">
+                        {agents.length} {t('registry.units')} · {t('registry.online')}
+                    </p>
                 </div>
-                <div className="relative w-72">
+                <div className="cm-search shrink-0 w-[300px] dark:bg-zinc-900 dark:border-zinc-700">
+                    <Search size={15} className="shrink-0 text-cm-faint dark:text-zinc-500" />
                     <input
                         type="text"
                         placeholder={t('registry.search_placeholder')}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all dark:text-white"
                         onChange={(e) => setSearchTerm(e.target.value)}
                         value={searchTerm}
+                        className="dark:text-zinc-100 dark:placeholder:text-zinc-500"
                     />
-                    <Search className="absolute left-3.5 top-3 text-zinc-400" size={14} />
                 </div>
             </div>
 
-            <div className="shrink-0 flex items-center gap-1 mb-6 px-2">
+            <div className="shrink-0 flex items-center gap-1.5 mb-5">
                 {TABS.map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide transition-all duration-300
+                        className={`flex items-center gap-1.5 h-8 px-3 rounded-cm-sm text-[12px] transition-colors duration-150
                             ${activeTab === tab
-                                ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
-                                : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                                ? 'bg-cm-tint dark:bg-zinc-800 text-[#255BCE] dark:text-blue-300 font-bold'
+                                : 'text-cm-muted dark:text-zinc-400 font-medium hover:bg-cm-tint/70 dark:hover:bg-zinc-800 hover:text-[#255BCE] dark:hover:text-zinc-200'}`}
                     >
                         {tab === 'all' && <Layers size={14} />}
                         {tab === 'service' && <Radio size={14} />}
                         {tab === 'network' && <Network size={14} />}
                         {tab === 'vendor' && <Globe size={14} />}
                         {t(`registry.tab_${tab}`)}
-                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black
+                        <span className={`px-1.5 py-[1px] rounded-[5px] text-[10px] font-semibold
                             ${activeTab === tab
-                                ? 'bg-white/20 dark:bg-zinc-900/20'
-                                : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                                ? 'bg-white text-[#255BCE] dark:bg-zinc-900 dark:text-blue-300'
+                                : 'bg-cm-canvas text-cm-faint dark:bg-zinc-800 dark:text-zinc-500'}`}>
                             {tabCounts[tab]}
                         </span>
                     </button>
                 ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 px-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
                 {loading ? (
                     <div className="h-full flex items-center justify-center">
-                        <div className="flex flex-col items-center gap-3 text-zinc-400">
-                            <div className="w-8 h-8 border-2 border-zinc-300 dark:border-zinc-600 border-t-blue-500 rounded-full animate-spin" />
-                            <span className="text-sm font-bold uppercase tracking-wider">{t('registry.synchronizing')}</span>
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-7 h-7 border-2 border-cm-line dark:border-zinc-700 border-t-cm-primary dark:border-t-blue-400 rounded-full animate-spin" />
+                            <span className="text-[12px] font-medium tracking-wide text-cm-muted dark:text-zinc-400">{t('registry.synchronizing')}</span>
                         </div>
                     </div>
                 ) : activeTab === 'vendor' ? (
-                    <div className="space-y-8 pb-8">
+                    <div className="space-y-7 pb-8">
                         {Object.entries(vendorGroups).map(([org, orgAgents]) => (
                             <div key={org}>
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                                        <Globe size={16} className="text-zinc-500" />
+                                <div className="flex items-center gap-2.5 mb-3">
+                                    <div className="cm-entity-icon-square h-7 w-7 min-w-[28px] dark:bg-zinc-800 dark:text-blue-400">
+                                        <Globe size={14} />
                                     </div>
-                                    <h2 className="text-sm font-black text-zinc-700 dark:text-zinc-300 uppercase">
+                                    <h2 className="text-[13px] font-bold text-cm-heading dark:text-zinc-100">
                                         {org}
                                     </h2>
-                                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+                                    <span className="cm-chip-neutral dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-400">
                                         {orgAgents.length} {t('registry.units')}
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[17px]">
                                     {orgAgents.map(renderCard)}
                                 </div>
                             </div>
                         ))}
                         {Object.keys(vendorGroups).length === 0 && (
-                            <div className="h-64 flex items-center justify-center text-zinc-400 text-sm font-bold">
+                            <div className="h-64 flex items-center justify-center text-[13px] text-cm-faint dark:text-zinc-500">
                                 {t('registry.no_agents')}
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[17px] pb-8">
                         {filteredAgents.map(renderCard)}
                         {filteredAgents.length === 0 && (
-                            <div className="col-span-full h-64 flex items-center justify-center text-zinc-400 text-sm font-bold">
+                            <div className="col-span-full h-64 flex items-center justify-center text-[13px] text-cm-faint dark:text-zinc-500">
                                 {t('registry.no_agents')}
                             </div>
                         )}
@@ -445,49 +408,46 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
             </div>
 
             {selectedAgent && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-950 w-full max-w-5xl h-[85vh] rounded-[2rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-xl text-white shadow-lg ${selectedAgent.layer === 'network' ? 'bg-emerald-500' : themeColor(selectedAgent.theme)}`}>
-                                    {React.cloneElement(selectedAgent.icon, { size: 24 })}
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-cm-ink-strong/40 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl h-[85vh] rounded-3xl shadow-modal border border-cm-line dark:border-zinc-800 flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="px-5 py-4 border-b border-cm-line dark:border-zinc-800 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="cm-entity-icon-square shrink-0 dark:bg-zinc-800 dark:text-blue-400">
+                                    {React.cloneElement(selectedAgent.icon, { size: 18 })}
                                 </div>
-                                <div>
-                                    <h2 className="text-lg font-black dark:text-white leading-none">{selectedAgent.id}</h2>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-[10px] font-bold text-zinc-400 uppercase">{selectedAgent.provider?.organization}</span>
-                                        <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                                        <span className="text-[10px] font-bold text-zinc-400">V{selectedAgent.version}</span>
-                                        <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                                        <span className="text-[10px] font-bold text-zinc-400">{selectedAgent.skills?.length} {t('registry.skills_count')}</span>
+                                <div className="min-w-0">
+                                    <h2 className="text-[15px] font-bold text-cm-heading dark:text-zinc-100 leading-tight truncate">{selectedAgent.id}</h2>
+                                    <div className="flex items-center gap-2 mt-1 text-[11px] text-cm-faint dark:text-zinc-500">
+                                        <span className="truncate">{selectedAgent.provider?.organization}</span>
+                                        <span className="w-[3px] h-[3px] rounded-full bg-cm-line-strong dark:bg-zinc-600 shrink-0" />
+                                        <span className="shrink-0">V{selectedAgent.version}</span>
+                                        <span className="w-[3px] h-[3px] rounded-full bg-cm-line-strong dark:bg-zinc-600 shrink-0" />
+                                        <span className="shrink-0">{selectedAgent.skills?.length} {t('registry.skills_count')}</span>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 shrink-0">
                                 {isAdmin && (
                                     <button
                                         onClick={() => openEdit(selectedAgent)}
-                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-[11px] font-black uppercase shadow-sm bg-blue-600 hover:bg-blue-700 text-white"
+                                        className="cm-btn-primary"
                                     >
-                                        <Pencil size={14} />
+                                        <Pencil size={13} />
                                         {t('registry.edit_agent')}
                                     </button>
                                 )}
                                 <button
                                     onClick={() => setViewMode(viewMode === 'structured' ? 'raw' : 'structured')}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-[11px] font-black uppercase shadow-sm
-                                        ${isDark
-                                            ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
-                                            : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600'}`}
+                                    className="cm-btn dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-700 dark:hover:text-white"
                                 >
-                                    {viewMode === 'structured' ? <Code2 size={14} /> : <LayoutDashboard size={14} />}
+                                    {viewMode === 'structured' ? <Code2 size={13} /> : <LayoutDashboard size={13} />}
                                     {viewMode === 'structured' ? t('registry.switch_to_raw') : t('registry.switch_to_gui')}
                                 </button>
                                 <button
                                     onClick={() => setSelectedAgent(null)}
-                                    className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                    className="cm-icon-btn dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                                 >
-                                    <X size={20} className="text-zinc-400" />
+                                    <X size={18} className="text-cm-faint dark:text-zinc-500" />
                                 </button>
                             </div>
                         </div>
@@ -507,48 +467,46 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
             )}
 
             {editState && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-950 w-full max-w-2xl max-h-[85vh] rounded-[2rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
-                            <div>
-                                <h2 className="text-base font-black dark:text-white leading-none">{t('registry.edit_agent_title')}</h2>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] font-bold text-zinc-400 uppercase">{editState.agent.id}</span>
-                                    <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                                    <span className="text-[10px] font-bold text-zinc-400">{editState.agent.provider?.organization}</span>
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-cm-ink-strong/40 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl max-h-[85vh] rounded-3xl shadow-modal border border-cm-line dark:border-zinc-800 flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="px-5 py-4 border-b border-cm-line dark:border-zinc-800 flex justify-between items-center shrink-0">
+                            <div className="min-w-0">
+                                <h2 className="text-[15px] font-bold text-cm-heading dark:text-zinc-100 leading-tight">{t('registry.edit_agent_title')}</h2>
+                                <div className="flex items-center gap-2 mt-1 text-[11px] text-cm-faint dark:text-zinc-500">
+                                    <span className="truncate">{editState.agent.id}</span>
+                                    <span className="w-[3px] h-[3px] rounded-full bg-cm-line-strong dark:bg-zinc-600 shrink-0" />
+                                    <span className="truncate">{editState.agent.provider?.organization}</span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                                 <button
                                     onClick={() => setEditState(prev => ({ ...prev, mode: 'form' }))}
-                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase transition-all shadow-sm
-                                        ${editState.mode === 'form'
-                                            ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
-                                            : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300'}`}
+                                    className={editState.mode === 'form'
+                                        ? 'cm-btn-soft dark:bg-zinc-800 dark:border-zinc-700 dark:text-blue-300 font-semibold'
+                                        : 'cm-btn dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'}
                                 >
                                     {t('registry.edit_mode_form')}
                                 </button>
                                 <button
                                     onClick={() => setEditState(prev => ({ ...prev, mode: 'json' }))}
-                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase transition-all shadow-sm
-                                        ${editState.mode === 'json'
-                                            ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
-                                            : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300'}`}
+                                    className={editState.mode === 'json'
+                                        ? 'cm-btn-soft dark:bg-zinc-800 dark:border-zinc-700 dark:text-blue-300 font-semibold'
+                                        : 'cm-btn dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800'}
                                 >
                                     {t('registry.edit_mode_json')}
                                 </button>
                                 <button
                                     onClick={() => setEditState(null)}
-                                    className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                                    className="cm-icon-btn dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                                 >
-                                    <X size={20} className="text-zinc-400" />
+                                    <X size={18} className="text-cm-faint dark:text-zinc-500" />
                                 </button>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
                             {editState.mode === 'form' ? (
                                 <>
-                                    <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl px-3 py-2">
+                                    <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-cm px-3 py-2">
                                         {t('registry.edit_identity_hint')}
                                     </p>
                                     <EditField
@@ -579,7 +537,7 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
                                             onChange={(v) => setEditState(prev => ({ ...prev, form: { ...prev.form, iconUrl: v } }))}
                                         />
                                     </div>
-                                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                                    <p className="text-[11px] text-cm-faint dark:text-zinc-500">
                                         {t('registry.edit_form_hint')}
                                     </p>
                                 </>
@@ -588,21 +546,21 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
                                     value={editState.jsonText}
                                     onChange={(e) => setEditState(prev => ({ ...prev, jsonText: e.target.value }))}
                                     spellCheck={false}
-                                    className="w-full h-full min-h-[320px] font-mono text-[12px] leading-relaxed p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 outline-none focus:border-blue-400 resize-none"
+                                    className="w-full h-full min-h-[320px] font-mono text-[12px] leading-relaxed p-4 rounded-cm bg-cm-canvas dark:bg-zinc-950 border border-cm-line dark:border-zinc-700 text-cm-ink dark:text-zinc-200 outline-none focus:border-cm-primary resize-none"
                                 />
                             )}
                         </div>
-                        <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3 bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
+                        <div className="px-5 py-3.5 border-t border-cm-line dark:border-zinc-800 flex justify-end gap-2 shrink-0">
                             <button
                                 onClick={() => setEditState(null)}
-                                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                                className="cm-btn dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                             >
                                 {t('common.cancel')}
                             </button>
                             <button
                                 onClick={handleSaveEdit}
                                 disabled={editState.saving}
-                                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 disabled:opacity-50 transition-all"
+                                className="cm-btn-primary"
                             >
                                 {editState.saving ? t('registry.saving') : t('registry.save_agent')}
                             </button>
@@ -612,7 +570,7 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
             )}
 
             {toast.show && (
-                <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-2 px-5 py-2.5 rounded-full shadow-2xl text-xs font-black uppercase tracking-wide animate-in slide-in-from-top-4 fade-in duration-300
+                <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-2 px-4 py-2 rounded-cm shadow-modal text-[12px] font-semibold animate-in slide-in-from-top-4 fade-in duration-300
                     ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
                     {toast.type === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
                     {toast.msg}
@@ -624,19 +582,19 @@ const AgentRegistry = ({ isDark, t, isAdmin = false }) => {
 
 const EditField = ({ label, value, onChange, isTextArea }) => (
     <div className="space-y-1.5">
-        <label className="text-[11px] font-black uppercase tracking-widest text-zinc-400">{label}</label>
+        <label className="text-[11px] font-medium text-cm-muted dark:text-zinc-400">{label}</label>
         {isTextArea ? (
             <textarea
                 rows={3}
                 value={value || ''}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 outline-none focus:border-blue-400 transition-all resize-none"
+                className="cm-input h-auto py-2 leading-relaxed resize-none dark:bg-zinc-950 dark:border-zinc-700 dark:text-zinc-200"
             />
         ) : (
             <input
                 value={value || ''}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 outline-none focus:border-blue-400 transition-all"
+                className="cm-input dark:bg-zinc-950 dark:border-zinc-700 dark:text-zinc-200"
             />
         )}
     </div>

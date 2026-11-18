@@ -35,45 +35,36 @@ const MethodCard = ({ icon: Icon, title, onClick, color, loading, progress, stat
         onClick={onClick}
         disabled={loading}
         className={`
-            group relative flex flex-col items-center gap-6 p-10 w-56
-            bg-white dark:bg-zinc-800 
-            rounded-[3rem] shadow-xl hover:shadow-3xl 
-            ${!loading ? 'hover:-translate-y-3' : 'cursor-wait'} 
-            transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-            animate-in fade-in slide-in-from-bottom-8 fill-mode-both
-            overflow-hidden
+            group relative flex w-full flex-col items-start gap-3 overflow-hidden p-[17px] text-left
+            cm-card cm-card-hover dark:border-zinc-800 dark:bg-zinc-900
+            ${!loading ? 'cursor-pointer' : 'cursor-wait'}
         `}
     >
         {loading && (
             <div
-                className="absolute inset-0 bg-blue-500/5 dark:bg-blue-400/5 transition-all duration-300 ease-out origin-left"
+                className="absolute inset-y-0 left-0 origin-left bg-cm-primary/[0.05] transition-all duration-300 ease-out dark:bg-blue-400/[0.06]"
                 style={{ width: `${progress}%` }}
             />
         )}
 
-        <div className={`
-            p-6 rounded-[2rem] bg-zinc-50 dark:bg-zinc-700 
-            ${!loading && 'group-hover:rotate-6'} transition-all duration-500
-            ${color} 
-            shadow-outer z-10
-        `}>
-            <Icon size={32} strokeWidth={2.5} />
-        </div>
+        <span className={`cm-entity-icon-square dark:bg-zinc-800 dark:text-blue-400 ${color} relative z-10`}>
+            <Icon size={17} strokeWidth={2} />
+        </span>
 
-        <div className="flex flex-col items-center z-10">
-            <span className="text-[17px] font-black text-zinc-900 dark:text-zinc-200 mb-1">
+        <div className="relative z-10 flex w-full flex-col gap-1">
+            <span className="cm-entity-title dark:text-zinc-100">
                 {title}
             </span>
-            {loading && (<span className="text-[13px] font-black text-zinc-800 dark:text-zinc-200 mb-1">
+            {loading && (<span className="cm-entity-meta dark:text-zinc-400">
                 {t ? t(status) : status} {Math.floor(progress)}%
             </span>)}
-            <div className={`h-1 transition-all duration-500 rounded-full w-0 group-hover:w-8 bg-blue-500`} />
+            <div className="mt-2 h-[3px] w-6 rounded-full bg-cm-primary-faint transition-all duration-300 group-hover:w-10 dark:bg-zinc-700" />
         </div>
 
         {loading && (
-            <div className="absolute bottom-0 left-0 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800">
+            <div className="absolute bottom-0 left-0 h-[3px] w-full bg-cm-line-soft dark:bg-zinc-800">
                 <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                    className="h-full bg-cm-primary transition-all duration-300 dark:bg-blue-400"
                     style={{ width: `${progress}%` }}
                 />
             </div>
@@ -369,144 +360,146 @@ const OrchestrationCenter = ({ isDark }) => {
         switch (activeView) {
             case 'welcome':
                 return (
-                    <div className="h-full w-full relative flex flex-col items-center overflow-y-auto custom-scrollbar py-12">
-                        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
-                            style={{
-                                backgroundImage: 'radial-gradient(#000 1px, transparent 0)',
-                                backgroundSize: '40px 40px'
-                            }} />
+                    <div className="custom-scrollbar h-full w-full overflow-y-auto bg-cm-canvas dark:bg-cm-night">
+                        <div className="relative w-full px-6 pb-6 pt-1">
+                            <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-cm-sky/70 to-transparent dark:from-zinc-900/40" />
 
-                        <div className="my-auto z-10 flex flex-col items-center w-full">
-                        <div className="mb-16 text-center z-10 animate-in fade-in zoom-in-95 duration-1000">
-                            <h2 className="text-4xl font-black text-zinc-900 dark:text-white mb-3">
-                                {t('orchestration.build_workflow')}
-                            </h2>
-                        </div>
-
-                        <div className="flex flex-wrap justify-center gap-8 z-10 px-4">
-                            <MethodCard
-                                icon={Upload} title={t('orchestration.method_import')} color="text-amber-500"
-                                onClick={() => setActiveView('packages')}
-                            />
-                            <MethodCard
-                                icon={Layout} title={t('orchestration.method_graph')} color="text-blue-500"
-                                onClick={() => {
-                                    setSelectedId(null);
-                                    setCurrentWf(null);
-                                    setSavedWorkflowId(null);
-                                    setActiveView('editor');
-                                    setNodes([]);
-                                    setEdges([]);
-                                }}
-                            />
-                            <MethodCard
-                                icon={MessageSquare} title={t('orchestration.method_ai')} color="text-purple-500"
-                                onClick={() => setActiveView('ai')}
-                                loading={loading && loadingStatus === LOADING_STAGES.GENERATING}
-                                progress={progress}
-                                status={loadingStatus}
-                                t={t}
-                            />
-                            <MethodCard
-                                icon={Eye} title={t('orchestration.manage_workflow')} color="text-emerald-500"
-                                onClick={() => {
-                                    setSelectedId(null);
-                                    setActiveView('browse');
-                                }}
-                            />
-                        </div>
-
-                        {templates.length > 0 && (
-                            <div className="z-10 mt-14 w-full max-w-4xl px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <div className="text-center mb-4">
-                                    <h3 className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em]">
-                                        {t('orchestration.templates')}
-                                    </h3>
-                                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
-                                        {t('orchestration.templates_hint')}
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap justify-center gap-4">
-                                    {templates.map(tpl => (
-                                        <button
-                                            key={tpl.id}
-                                            onClick={() => handleImportTemplate(tpl.id)}
-                                            disabled={importingTpl === tpl.id}
-                                            className={`
-                                                group relative text-left p-5 w-64 rounded-2xl border transition-all duration-300
-                                                bg-white dark:bg-zinc-800/50 border-zinc-100 dark:border-zinc-700
-                                                hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-lg
-                                                ${importingTpl === tpl.id ? 'opacity-60 cursor-wait' : 'hover:-translate-y-1 cursor-pointer'}
-                                            `}
-                                        >
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Sparkles size={14} className="text-amber-500" />
-                                                <span className="font-black text-sm text-zinc-900 dark:text-white truncate">
-                                                    {tpl.name}
-                                                </span>
-                                            </div>
-                                            <p className="text-[11px] text-zinc-400 dark:text-zinc-500 line-clamp-2 mb-3 leading-relaxed">
-                                                {tpl.description}
-                                            </p>
-                                            <div className="flex items-center gap-3 text-[10px] font-bold text-zinc-400">
-                                                <span>{tpl.step_count} {t('orchestration.steps')}</span>
-                                                <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                                                <span>{tpl.agent_count} {t('orchestration.agents')}</span>
-                                            </div>
-                                            {tpl.tags?.length > 0 && (
-                                                <div className="flex flex-wrap gap-1 mt-2">
-                                                    {tpl.tags.slice(0, 3).map(tag => (
-                                                        <span key={tag} className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
-                                                            {tag}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-700 flex items-center gap-1.5 text-[10px] font-bold text-blue-500 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                                <Download size={12} />
-                                                <span className="uppercase tracking-widest">{t('orchestration.import_btn')}</span>
-                                            </div>
-                                            {importingTpl === tpl.id && (
-                                                <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-zinc-800/80 rounded-2xl">
-                                                    <Loader2 size={18} className="animate-spin text-blue-500" />
-                                                </div>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="relative mb-5 animate-in">
+                                <h2 className="cm-section-title dark:text-zinc-100">
+                                    {t('orchestration.build_workflow')}
+                                </h2>
+                                <div className="mt-2 h-[3px] w-9 rounded-full bg-cm-primary dark:bg-blue-400" />
                             </div>
-                        )}
 
+                            <div className="relative grid grid-cols-1 gap-[17px] sm:grid-cols-2 xl:grid-cols-4">
+                                <MethodCard
+                                    icon={Upload} title={t('orchestration.method_import')} color="text-brand-600"
+                                    onClick={() => setActiveView('packages')}
+                                />
+                                <MethodCard
+                                    icon={Layout} title={t('orchestration.method_graph')} color="text-brand-500"
+                                    onClick={() => {
+                                        setSelectedId(null);
+                                        setCurrentWf(null);
+                                        setSavedWorkflowId(null);
+                                        setActiveView('editor');
+                                        setNodes([]);
+                                        setEdges([]);
+                                    }}
+                                />
+                                <MethodCard
+                                    icon={MessageSquare} title={t('orchestration.method_ai')} color="text-cm-accent"
+                                    onClick={() => setActiveView('ai')}
+                                    loading={loading && loadingStatus === LOADING_STAGES.GENERATING}
+                                    progress={progress}
+                                    status={loadingStatus}
+                                    t={t}
+                                />
+                                <MethodCard
+                                    icon={Eye} title={t('orchestration.manage_workflow')} color="text-brand-700"
+                                    onClick={() => {
+                                        setSelectedId(null);
+                                        setActiveView('browse');
+                                    }}
+                                />
+                            </div>
+
+                            {templates.length > 0 && (
+                                <div className="relative mt-7 animate-in">
+                                    <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                        <h3 className="cm-eyebrow text-cm-muted dark:text-zinc-500">
+                                            {t('orchestration.templates')}
+                                        </h3>
+                                        <p className="text-[11px] text-cm-faint dark:text-zinc-500">
+                                            {t('orchestration.templates_hint')}
+                                        </p>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-[17px] md:grid-cols-2 lg:grid-cols-3">
+                                        {templates.map(tpl => (
+                                            <button
+                                                key={tpl.id}
+                                                onClick={() => handleImportTemplate(tpl.id)}
+                                                disabled={importingTpl === tpl.id}
+                                                className={`
+                                                    cm-card cm-card-hover group relative flex flex-col overflow-hidden p-[17px] pb-[14px] text-left
+                                                    dark:border-zinc-800 dark:bg-zinc-900
+                                                    ${importingTpl === tpl.id ? 'cursor-wait opacity-60' : 'cursor-pointer'}
+                                                `}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <span className="cm-entity-icon-square shrink-0 dark:bg-zinc-800 dark:text-blue-400">
+                                                        <Sparkles size={16} />
+                                                    </span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <span className="cm-entity-title block dark:text-zinc-100">
+                                                            {tpl.name}
+                                                        </span>
+                                                        <span className="cm-entity-meta block dark:text-zinc-400">
+                                                            {tpl.step_count} {t('orchestration.steps')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <p className="mt-3 min-h-[38px] text-[12px] leading-[1.6] text-cm-secondary line-clamp-2 dark:text-zinc-400">
+                                                    {tpl.description}
+                                                </p>
+                                                {tpl.tags?.length > 0 && (
+                                                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                                                        {tpl.tags.slice(0, 3).map(tag => (
+                                                            <span key={tag} className="cm-chip text-cm-accent dark:bg-zinc-800 dark:text-blue-300">
+                                                                {tag}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div className="mt-3 flex items-center justify-between gap-2 border-t border-cm-line-soft pt-3 dark:border-zinc-800">
+                                                    <span className="text-[11px] text-cm-faint dark:text-zinc-500">
+                                                        {tpl.agent_count} {t('orchestration.agents')}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1 rounded-cm-sm bg-cm-primary px-2 py-[3px] text-[11px] font-medium text-white shadow-none transition-colors group-hover:bg-cm-primary-hover">
+                                                        <Download size={11} />
+                                                        {t('orchestration.import_btn')}
+                                                    </span>
+                                                </div>
+                                                {importingTpl === tpl.id && (
+                                                    <div className="absolute inset-0 flex items-center justify-center rounded-cm bg-white/80 dark:bg-zinc-900/80">
+                                                        <Loader2 size={18} className="animate-spin text-cm-primary dark:text-blue-400" />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
 
             case 'browse':
                 return (
-                    <div className="h-full flex animate-in fade-in duration-300">
-                        <div className="w-[300px] shrink-0 border-r border-zinc-100 dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-zinc-900/50">
-                            <div className="p-5 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="flex h-full animate-in bg-cm-canvas dark:bg-cm-night">
+                        <div className="flex w-[292px] shrink-0 flex-col border-r border-cm-line bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                            <div className="space-y-3 border-b border-cm-line p-4 dark:border-zinc-800">
                                 <button
                                     onClick={() => {
                                         setSelectedId(null);
                                         setActiveView('welcome');
                                     }}
-                                    className="group flex items-center gap-2 text-xs font-black text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all uppercase tracking-[0.2em] mb-4"
+                                    className="group flex items-center gap-1.5 text-[11px] font-medium text-cm-muted transition-colors hover:text-cm-primary dark:text-zinc-400 dark:hover:text-blue-400"
                                 >
-                                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                    <ArrowLeft size={13} className="transition-transform group-hover:-translate-x-0.5" />
                                     {t('orchestration.back_to_options')}
                                 </button>
-                                <div className="relative">
+                                <div className="cm-search dark:border-zinc-700 dark:bg-zinc-800">
+                                    <Search size={14} className="shrink-0" />
                                     <input
                                         type="text"
                                         placeholder={t('orchestration.search')}
-                                        className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
+                                        className="dark:text-zinc-100 dark:placeholder:text-zinc-500"
                                         onChange={e => setSearchTerm(e.target.value)}
                                     />
-                                    <Search className="absolute left-3 top-3 text-zinc-400" size={13} />
                                 </div>
                             </div>
-                            <div className="flex-1 overflow-y-auto space-y-2 p-4 custom-scrollbar">
+                            <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto p-3">
                                 {(() => {
                                     const filtered = workflows.filter(wf => wf.name.toLowerCase().includes(searchTerm.toLowerCase()));
                                     const grouped = {};
@@ -524,23 +517,23 @@ const OrchestrationCenter = ({ isDark }) => {
                                         unknown: Hash
                                     };
                                     const sourceColors = {
-                                        graph_editor: 'text-blue-500',
-                                        ai_intent: 'text-purple-500',
-                                        solution_package: 'text-amber-500',
-                                        template: 'text-emerald-500',
-                                        unknown: 'text-zinc-400'
+                                        graph_editor: 'text-cm-primary dark:text-blue-400',
+                                        ai_intent: 'text-brand-500 dark:text-blue-400',
+                                        solution_package: 'text-cm-accent dark:text-blue-300',
+                                        template: 'text-brand-700 dark:text-blue-300',
+                                        unknown: 'text-cm-faint dark:text-zinc-500'
                                     };
                                     return sourceOrder.filter(src => grouped[src]?.length > 0).map(src => {
                                         const Icon = sourceIcons[src] || Hash;
-                                        const color = sourceColors[src] || 'text-zinc-400';
+                                        const color = sourceColors[src] || 'text-cm-faint dark:text-zinc-500';
                                         return (
-                                            <div key={src} className="mb-4">
-                                                <div className="flex items-center gap-2 px-2 py-2 mb-2">
-                                                    <Icon size={12} className={color} />
-                                                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${color}`}>
+                                            <div key={src}>
+                                                <div className="mb-1.5 flex items-center gap-1.5 px-2 py-1">
+                                                    <Icon size={12} className={`shrink-0 ${color}`} />
+                                                    <span className={`text-[11px] font-semibold ${color}`}>
                                                         {t(`orchestration.source_${src}`)}
                                                     </span>
-                                                    <span className="text-[10px] font-bold text-zinc-300 dark:text-zinc-600">
+                                                    <span className="text-[11px] text-cm-faint dark:text-zinc-500">
                                                         ({grouped[src].length})
                                                     </span>
                                                 </div>
@@ -550,22 +543,22 @@ const OrchestrationCenter = ({ isDark }) => {
                                                         <div
                                                             key={wf.id}
                                                             onClick={() => {
-                                                setSelectedId(wf.id);
-                                                setBrowseMode('view');
-                                            }}
-                                                            className={`group p-4 rounded-xl border transition-all duration-300 cursor-pointer relative overflow-hidden mb-2
+                                                                setSelectedId(wf.id);
+                                                                setBrowseMode('view');
+                                                            }}
+                                                            className={`group relative mb-1.5 cursor-pointer overflow-hidden rounded-cm-sm border px-3 py-2.5 transition-colors
                                                                 ${isSelected
-                                                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 shadow-sm'
-                                                                    : 'border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-blue-200 dark:hover:border-blue-700'
+                                                                    ? 'border-cm-topbar-line bg-cm-sky dark:border-blue-800 dark:bg-blue-950/40'
+                                                                    : 'border-transparent hover:border-cm-line hover:bg-cm-canvas dark:hover:border-zinc-700 dark:hover:bg-zinc-800'
                                                                 }`}
                                                         >
                                                             {isSelected && (
-                                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r" />
+                                                                <div className="absolute inset-y-0 left-0 w-[3px] bg-cm-primary dark:bg-blue-400" />
                                                             )}
-                                                            <div className="flex items-center justify-between mb-1.5 pl-2">
-                                                                <div className={`flex items-center gap-2 ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                                                                    <Hash size={14} />
-                                                                    <h3 className="font-black text-sm uppercase leading-none truncate max-w-[180px]">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className={`flex min-w-0 items-center gap-2 ${isSelected ? 'text-cm-accent dark:text-blue-300' : 'text-cm-ink dark:text-zinc-200'}`}>
+                                                                    <Hash size={13} className="shrink-0 opacity-70" />
+                                                                    <h3 className={`truncate text-[13px] ${isSelected ? 'font-semibold' : 'font-medium'}`}>
                                                                         {wf.name}
                                                                     </h3>
                                                                 </div>
@@ -575,12 +568,12 @@ const OrchestrationCenter = ({ isDark }) => {
                                                                         setWfToDelete(wf);
                                                                         setShowDeleteConfirm(true);
                                                                     }}
-                                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-all"
+                                                                    className="cm-icon-btn h-6 w-6 shrink-0 opacity-0 transition-all group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
                                                                 >
                                                                     <Trash2 size={12} />
                                                                 </button>
                                                             </div>
-                                                            <div className={`pl-6 text-[10px] font-black uppercase truncate max-w-[200px] ${isSelected ? 'text-blue-500 dark:text-blue-400' : 'text-zinc-400'}`}>
+                                                            <div className={`mt-1 truncate pl-5 text-[11px] ${isSelected ? 'text-cm-accent/80 dark:text-blue-300/80' : 'text-cm-faint dark:text-zinc-500'}`}>
                                                                 {wf.tags?.length > 0 ? wf.tags.join(', ') : t('orchestration.no_tags')}
                                                             </div>
                                                         </div>
@@ -591,47 +584,43 @@ const OrchestrationCenter = ({ isDark }) => {
                                     });
                                 })()}
                                 {workflows.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center py-16 text-zinc-400 dark:text-zinc-600">
-                                        <Hash size={32} className="mb-3 opacity-30" />
-                                        <p className="text-xs font-bold uppercase tracking-widest">{t('orchestration.no_workflows')}</p>
+                                    <div className="flex flex-col items-center justify-center py-16 text-cm-faint dark:text-zinc-500">
+                                        <Hash size={28} className="mb-2 opacity-30" />
+                                        <p className="text-[11px] font-medium">{t('orchestration.no_workflows')}</p>
                                     </div>
                                 )}
                             </div>
                         </div>
-                        <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex flex-1 flex-col overflow-hidden">
                             {selectedId ? (
                                 <>
-                                    <div className="shrink-0 px-4 py-2 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2 bg-white dark:bg-zinc-900 z-10">
+                                    <div className="z-10 flex shrink-0 items-center gap-2 border-b border-cm-line bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
                                         <button
                                             onClick={() => setShowConfig(!showConfig)}
-                                            className="p-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full shadow-sm hover:scale-110 transition-all"
+                                            className="cm-icon-btn border border-cm-line bg-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                                         >
                                             {showConfig ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                                         </button>
                                         <button
                                             onClick={() => setBrowseMode(browseMode === 'view' ? 'edit' : 'view')}
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md uppercase text-[11px] font-bold shadow-sm active:scale-95 transition-all
-                                                ${isDark
-                                                    ? 'bg-zinc-100 hover:bg-slate-500 text-black'
-                                                    : 'bg-slate-900 hover:bg-slate-800 text-white'
-                                                }`}
+                                            className="cm-btn-soft h-[30px] min-h-0 px-3 text-[12px] font-semibold text-cm-primary dark:border-zinc-700 dark:bg-zinc-800 dark:text-blue-300 dark:hover:bg-zinc-700 dark:hover:text-blue-200"
                                         >
                                             <Code2 size={13} />
                                             <span>{browseMode === 'view' ? t('orchestration.edit') : t('orchestration.preview_mode')}</span>
                                         </button>
                                     </div>
-                                    <div className="flex-1 flex overflow-hidden">
+                                    <div className="flex flex-1 overflow-hidden">
                                         {showConfig && (
-                                            <div className="w-1/3 shrink-0 border-r border-zinc-100 dark:border-zinc-900 flex flex-col bg-zinc-50/30 dark:bg-zinc-900 p-6 overflow-hidden">
-                                                <div className="text-[10px] font-black text-zinc-400 uppercase mb-3">workflow</div>
+                                            <div className="flex w-1/3 shrink-0 flex-col overflow-hidden border-r border-cm-line bg-cm-canvas-soft p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                                                <div className="cm-eyebrow mb-2 text-cm-muted dark:text-zinc-500">workflow</div>
                                                 <textarea
                                                     readOnly={true}
                                                     value={dump(currentWf?.rawText || {})}
-                                                    className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 font-mono text-xs shadow-inner outline-none min-h-0"
+                                                    className="min-h-0 flex-1 rounded-cm border border-cm-line bg-white p-3 font-mono text-[11px] leading-[1.6] text-cm-ink outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
                                                 />
                                             </div>
                                         )}
-                                        <div className="flex-1 min-w-0 h-full relative">
+                                        <div className="relative h-full min-w-0 flex-1">
                                             <UnifiedWorkflow
                                                 mode={browseMode}
                                                 isDark={isDark}
@@ -653,9 +642,9 @@ const OrchestrationCenter = ({ isDark }) => {
                                     </div>
                                 </>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-zinc-300 dark:text-zinc-700">
-                                    <Eye size={48} className="mb-4 opacity-30" />
-                                    <p className="text-sm font-black uppercase tracking-widest">{t('orchestration.select_workflow_hint')}</p>
+                                <div className="flex h-full flex-col items-center justify-center text-cm-faint dark:text-zinc-500">
+                                    <Eye size={36} className="mb-3 opacity-30" />
+                                    <p className="text-[12px] font-medium">{t('orchestration.select_workflow_hint')}</p>
                                 </div>
                             )}
                         </div>
@@ -681,35 +670,33 @@ const OrchestrationCenter = ({ isDark }) => {
             case 'ai':
                 return (
                     <div
-                        className="h-full w-full relative flex flex-col items-center justify-center p-10 overflow-hidden bg-zinc-50/20 dark:bg-zinc-950/20">
+                        className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-cm-canvas p-8 dark:bg-cm-night">
                         <div
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
+                            className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-cm-sky/70 to-transparent dark:from-zinc-900/50" />
                         <div
-                            className="w-full max-w-6xl relative group animate-in zoom-in-95 slide-in-from-bottom-8 duration-700">
+                            className="relative w-full max-w-[820px] animate-in">
                             <div
-                                className="absolute -inset-[1px] bg-gradient-to-r from-purple-300 via-blue-500 to-purple-200 rounded-[3rem] opacity-20 group-focus-within:opacity-40 blur-[2px] transition-opacity duration-500" />
-                            <div
-                                className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[3rem] p-10 shadow-2xl overflow-hidden">
-                                <div className="flex items-center justify-between mb-8">
+                                className="cm-card overflow-hidden dark:border-zinc-800 dark:bg-zinc-900">
+                                <div className="flex items-center justify-between gap-3 border-b border-cm-line-soft px-5 py-4 dark:border-zinc-800">
                                     <div className="flex items-center gap-3">
-                                        <div
-                                            className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                                            <Sparkles size={20} />
-                                        </div>
+                                        <span
+                                            className="cm-entity-icon-square dark:bg-zinc-800 dark:text-blue-400">
+                                            <Sparkles size={17} />
+                                        </span>
                                         <div>
-                                            <h3 className="text-base font-black text-zinc-900 dark:text-white uppercase tracking-tight">{t('orchestration.ai_orchestrator')}</h3>
+                                            <h3 className="cm-entity-title dark:text-zinc-100">{t('orchestration.ai_orchestrator')}</h3>
                                         </div>
                                     </div>
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
                                 </div>
                                 <textarea
                                     value={aiPrompt}
                                     onChange={e => setAiPrompt(e.target.value)}
-                                    className="w-full bg-transparent border-none outline-none text-xl font-medium leading-relaxed text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 h-40 resize-none custom-scrollbar transition-all"
+                                    className="custom-scrollbar h-40 w-full resize-none border-none bg-transparent px-5 py-4 text-[13px] leading-[1.7] text-cm-ink outline-none placeholder:text-cm-faint dark:text-zinc-100 dark:placeholder:text-zinc-600"
                                     placeholder="..."
                                 />
                                 <div
-                                    className="flex items-center justify-between mt-6 pt-6 border-t border-zinc-50 dark:border-zinc-800/50">
+                                    className="flex items-center justify-between border-t border-cm-line-soft px-5 py-3.5 dark:border-zinc-800">
                                     <div className="flex items-center gap-4">
                                     </div>
 
@@ -737,21 +724,20 @@ const OrchestrationCenter = ({ isDark }) => {
                                             }
                                         }}
                                         disabled={loading}
-                                        className={`
-        group flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-xs tracking-widest transition-all duration-500
+                                        className={`group flex items-center gap-2 px-4 py-2 text-[13px]
         ${aiPrompt.trim() && !loading
-                                                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-[0_10px_30px_rgba(0,0,0,0.2)] dark:shadow-[0_10px_30px_rgba(255,255,255,0.1)] hover:-translate-x-1 active:scale-95'
-                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed opacity-50'}
+                                                ? 'cm-btn-primary'
+                                                : 'cm-btn cursor-not-allowed opacity-50'}
     `}
                                     >
                                         <span className="relative">
                                             {loading ? t('orchestration.generating') : t('orchestration.generate')}
                                         </span>
                                         {loading ? (
-                                            <Loader2 size={18} className="animate-spin" />
+                                            <Loader2 size={15} className="animate-spin" />
                                         ) : (
-                                            <ChevronRight size={18}
-                                                className="group-hover:translate-x-1 transition-transform duration-300" />
+                                            <ChevronRight size={15}
+                                                className="transition-transform duration-200 group-hover:translate-x-0.5" />
                                         )}
                                     </button>
                                 </div>
@@ -763,9 +749,9 @@ const OrchestrationCenter = ({ isDark }) => {
                                 setActiveView('welcome');
                                 setAiPrompt("");
                             }}
-                            className="mt-12 group flex items-center gap-2 text-[11px] font-black text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all uppercase tracking-[0.2em]"
+                            className="group relative mt-6 flex items-center gap-2 text-[11px] font-medium text-cm-muted transition-colors hover:text-cm-primary dark:text-zinc-400 dark:hover:text-blue-400"
                         >
-                            <div className="w-6 h-[1px] bg-zinc-300 dark:bg-zinc-700 group-hover:w-10 transition-all" />
+                            <div className="h-[1px] w-6 bg-cm-line-strong transition-all group-hover:w-9 dark:bg-zinc-700" />
                             {t('orchestration.back_to_options')}
                         </button>
                     </div>
@@ -774,27 +760,27 @@ const OrchestrationCenter = ({ isDark }) => {
             case 'detail':
             case 'editor':
                 return (
-                    <div className="h-full flex animate-in fade-in duration-300">
+                    <div className="flex h-full animate-in bg-cm-canvas dark:bg-cm-night">
                         <div
-                            className={`border-r border-zinc-100 dark:border-zinc-900 flex flex-col bg-zinc-50/30 dark:bg-zinc-900  duration-500 ease-in-out relative
-                    ${showConfig ? 'w-1/3 p-8 opacity-100' : 'w-0 p-0 opacity-0 pointer-events-none'}`}
+                            className={`relative flex flex-col border-r border-cm-line bg-cm-canvas-soft transition-all duration-300 ease-in-out dark:border-zinc-800 dark:bg-zinc-900
+                    ${showConfig ? 'w-1/3 p-4 opacity-100' : 'pointer-events-none w-0 p-0 opacity-0'}`}
                         >
                             <div className="flex items-center justify-between">
-                                <div className="text-[10px] font-black text-zinc-400 uppercase">
+                                <div className="cm-eyebrow text-cm-muted dark:text-zinc-500">
                                     workflow
                                 </div>
                             </div>
                             <textarea
                                 readOnly={true}
                                 value={dump(currentWf?.rawText || {})}
-                                className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6 font-mono text-xs shadow-inner outline-none"
+                                className="mt-2 flex-1 rounded-cm border border-cm-line bg-white p-4 font-mono text-[11px] leading-[1.6] text-cm-ink outline-none dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
                             />
                         </div>
 
-                        <div className="flex-1 relative">
+                        <div className="relative flex-1">
                             <button
                                 onClick={() => setShowConfig(!showConfig)}
-                                className={`absolute left-4 top-8 -translate-y-1/2 z-[70] p-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-lg hover:scale-110 transition-all
+                                className={`cm-icon-btn absolute left-4 top-8 z-[70] -translate-y-1/2 border border-cm-line bg-white shadow-card transition-all hover:border-[#B8CFFC] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300
                         ${!showConfig ? 'translate-x-0' : 'translate-x-[-10px]'}`}
                             >
                                 {showConfig ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
@@ -837,14 +823,32 @@ const OrchestrationCenter = ({ isDark }) => {
         }
     };
 
+    // Muted 12px line under the page title; each view reuses its existing copy.
+    const headerSubtitle = activeView === 'welcome' ? t('brand.slogan')
+        : activeView === 'ai' ? t('orchestration.method_ai')
+            : activeView === 'packages' ? t('orchestration.packages_list_title')
+                : activeView === 'browse' ? t('orchestration.browse_workflow_hint')
+                    : null;
+
     return (
         <div
-            className="h-full p-8 flex items-stretch w-full bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans">
+            className="flex h-full w-full items-stretch overflow-hidden bg-cm-canvas font-sans dark:bg-cm-night">
             <div
-                className="flex-1 bg-white dark:bg-zinc-900 rounded-[3.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl relative overflow-hidden flex flex-col">
+                className="relative flex flex-1 flex-col overflow-hidden">
                 <div
-                    className="px-10 py-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center  bg-white dark:bg-zinc-900 backdrop-blur-md shrink-0">
-                    <div className="flex items-center gap-4">
+                    className="flex shrink-0 items-start justify-between gap-4 px-6 pb-3 pt-5">
+                    <div className="min-w-0">
+                        <h2 className="cm-section-title truncate dark:text-zinc-100">
+                            {activeView === 'welcome' ? t('orchestration.start') : (activeView === 'ai' ? t('orchestration.ai_orchestrator') : (activeView === 'packages' ? t('orchestration.packages_title') : (activeView === 'browse' ? t('orchestration.browse_workflow') : (currentWf?.name || t('orchestration.new_design')))))}
+                        </h2>
+                        {headerSubtitle && (
+                            <p className="mt-[3px] truncate text-[12px] text-cm-muted dark:text-zinc-400">
+                                {headerSubtitle}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
                         {activeView === 'detail' && openedFromPackage && (
                             <button
                                 onClick={() => {
@@ -853,9 +857,9 @@ const OrchestrationCenter = ({ isDark }) => {
                                     setCurrentWf(null);
                                     setOpenedFromPackage(false);
                                 }}
-                                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                                className="cm-btn group h-[33px] dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-blue-300"
                             >
-                                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                <ArrowLeft size={13} className="transition-transform group-hover:-translate-x-0.5" />
                                 {t('orchestration.back_to_packages')}
                             </button>
                         )}
@@ -871,27 +875,17 @@ const OrchestrationCenter = ({ isDark }) => {
                                     setCurrentWf(null);
                                     setAiPrompt('');
                                 }}
-                                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all uppercase tracking-widest"
+                                className="cm-btn group h-[33px] dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-blue-300"
                             >
-                                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                <ArrowLeft size={13} className="transition-transform group-hover:-translate-x-0.5" />
                                 {t('orchestration.back_to_options')}
                             </button>
                         )}
-                        <h2 className="text-lg font-black text-zinc-900 dark:text-white uppercase">
-                            {activeView === 'welcome' ? t('orchestration.start') : (activeView === 'ai' ? t('orchestration.ai_orchestrator') : (activeView === 'packages' ? t('orchestration.packages_title') : (activeView === 'browse' ? t('orchestration.browse_workflow') : (currentWf?.name || t('orchestration.new_design')))))}
-                        </h2>
 
                         {activeView === 'detail' && (
-
                             <button
                                 onClick={() => setActiveView('editor')}
-                                className={`
-        flex items-center gap-2 px-3 py-1.5 rounded-md  uppercase text-[12px] font-bold shadow-sm
-        active:scale-95 active:shadow-inner
-        ${isDark
-                                        ? 'bg-zinc-100 hover:bg-slate-500 text-black shadow-blue-900/20'
-                                        : 'bg-slate-900 hover:bg-slate-800 text-white shadow-blue-200'}
-    `}
+                                className="cm-btn-primary h-[33px] dark:border-blue-500 dark:bg-blue-500 dark:hover:border-blue-400 dark:hover:bg-blue-400"
                             >
                                 <Code2 size={14} />
                                 <span>{t('orchestration.edit')}</span>
@@ -900,11 +894,11 @@ const OrchestrationCenter = ({ isDark }) => {
                     </div>
                 </div>
 
-                {['welcome', 'ai', 'packages'].includes(activeView) && <div className="px-10 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                {['welcome', 'ai', 'packages'].includes(activeView) && <div className="flex shrink-0 items-center gap-3 px-6 pb-3">
                     <GenerationMode value={generationBinding} onChange={value => { setGenerationBinding(value); setGenerationError(null); }} disabled={loading} />
                 </div>}
-                {generationError && <p role="alert" className="px-10 py-3 text-sm text-rose-600">{generationError}</p>}
-                <div className="flex-1 relative overflow-hidden">
+                {generationError && <p role="alert" className="border-b border-rose-100 bg-rose-50/60 px-6 py-2.5 text-[12px] text-rose-600 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-400">{generationError}</p>}
+                <div className="relative flex-1 overflow-hidden">
                     {renderContent()}
                 </div>
             </div>
@@ -915,34 +909,34 @@ const OrchestrationCenter = ({ isDark }) => {
 
             {/* Delete confirmation dialog */}
             {showDeleteConfirm && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/20 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl w-full max-w-md scale-in-center animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/25 backdrop-blur-sm animate-in">
+                    <div className="w-full max-w-[420px] animate-in rounded-3xl border border-cm-line bg-white p-6 shadow-modal dark:border-zinc-800 dark:bg-zinc-900">
                         <div className="flex flex-col items-center text-center">
-                            <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl mb-6">
-                                <Trash2 size={32} />
-                            </div>
-                            <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2 uppercase tracking-tight">
+                            <span className="mb-4 grid h-11 w-11 place-items-center rounded-cm bg-rose-50 text-rose-500 dark:bg-rose-950/30 dark:text-rose-400">
+                                <Trash2 size={20} />
+                            </span>
+                            <h3 className="mb-1.5 text-[16px] font-bold text-cm-heading dark:text-zinc-100">
                                 {t('orchestration.delete_workflow_title')}
                             </h3>
-                            <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8">
+                            <p className="mb-6 text-[12px] leading-[1.7] text-cm-muted dark:text-zinc-400">
                                 {t('orchestration.delete_workflow_confirm')}
                                 <br />
-                                <span className="font-bold text-zinc-900 dark:text-zinc-100 italic">"{wfToDelete?.name}"</span>
+                                <span className="font-semibold text-cm-ink italic dark:text-zinc-200">"{wfToDelete?.name}"</span>
                             </p>
 
-                            <div className="flex gap-4 w-full">
+                            <div className="flex w-full gap-2.5">
                                 <button
                                     onClick={() => {
                                         setShowDeleteConfirm(false);
                                         setWfToDelete(null);
                                     }}
-                                    className="flex-1 px-6 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                                    className="cm-btn flex-1 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                                 >
                                     {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={handleDeleteWorkflow}
-                                    className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold text-xs uppercase tracking-widest hover:bg-red-600 shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                                    className="cm-btn flex-1 border-rose-600 bg-rose-600 text-white hover:border-rose-500 hover:bg-rose-500 hover:text-white active:translate-y-px"
                                 >
                                     {t('common.delete')}
                                 </button>
@@ -953,23 +947,23 @@ const OrchestrationCenter = ({ isDark }) => {
             )}
             {/* Leave-editor confirmation dialog (global header back button) */}
             {showLeaveEditorConfirm && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/20 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 shadow-2xl w-full max-w-md scale-in-center animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/25 backdrop-blur-sm animate-in">
+                    <div className="w-full max-w-[420px] animate-in rounded-3xl border border-cm-line bg-white p-6 shadow-modal dark:border-zinc-800 dark:bg-zinc-900">
                         <div className="flex flex-col items-center text-center">
-                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-500 rounded-2xl mb-6">
-                                <TriangleAlert size={32} />
-                            </div>
-                            <h3 className="text-xl font-black dark:text-white mb-2 uppercase tracking-tight">
+                            <span className="mb-4 grid h-11 w-11 place-items-center rounded-cm bg-amber-50 text-amber-500 dark:bg-amber-950/30 dark:text-amber-400">
+                                <TriangleAlert size={20} />
+                            </span>
+                            <h3 className="mb-1.5 text-[16px] font-bold text-cm-heading dark:text-zinc-100">
                                 {t('workflow.exit.title')}
                             </h3>
-                            <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8">
+                            <p className="mb-6 text-[12px] leading-[1.7] text-cm-muted dark:text-zinc-400">
                                 {t('workflow.exit.desc')}
                             </p>
 
-                            <div className="flex gap-4 w-full">
+                            <div className="flex w-full gap-2.5">
                                 <button
                                     onClick={() => setShowLeaveEditorConfirm(false)}
-                                    className="flex-1 px-6 py-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold text-xs uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                                    className="cm-btn flex-1 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                                 >
                                     {t('common.cancel')}
                                 </button>
@@ -982,7 +976,7 @@ const OrchestrationCenter = ({ isDark }) => {
                                         setCurrentWf(null);
                                         setSavedWorkflowId(null);
                                     }}
-                                    className="flex-1 px-6 py-3 rounded-xl bg-amber-500 text-white font-bold text-xs uppercase tracking-widest hover:bg-amber-600 shadow-lg shadow-amber-500/20 active:scale-95 transition-all"
+                                    className="cm-btn-primary flex-1"
                                 >
                                     {t('common.confirm')}
                                 </button>

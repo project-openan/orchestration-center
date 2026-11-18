@@ -194,8 +194,8 @@ function groupEventsByStep(events, workflow) {
  * ────────────────────────────────────────────────────────────────── */
 
 const StepStatusMap = {
-    pending:   { icon: Clock,        color: 'text-zinc-400',    dot: 'bg-zinc-300' },
-    running:   { icon: Loader,       color: 'text-blue-500',    dot: 'bg-blue-500 animate-pulse' },
+    pending:   { icon: Clock,        color: 'text-cm-faint',    dot: 'bg-cm-line-strong' },
+    running:   { icon: Loader,       color: 'text-cm-primary',  dot: 'bg-cm-primary animate-pulse' },
     completed: { icon: CheckCircle2, color: 'text-emerald-500', dot: 'bg-emerald-500' },
     failed:    { icon: XCircle,      color: 'text-rose-500',    dot: 'bg-rose-500' },
 };
@@ -213,28 +213,28 @@ function formatDuration(startTime, endTime) {
  * ────────────────────────────────────────────────────────────────── */
 
 const mdComponents = {
-    h1: ({ children }) => <h1 className="text-lg font-bold text-zinc-800 dark:text-zinc-100 mt-4 mb-2">{children}</h1>,
-    h2: ({ children }) => <h2 className="text-base font-bold text-zinc-800 dark:text-zinc-100 mt-4 mb-2">{children}</h2>,
-    h3: ({ children }) => <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-200 mt-3 mb-1">{children}</h3>,
-    p: ({ children }) => <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed mb-1">{children}</p>,
+    h1: ({ children }) => <h1 className="text-[15px] font-bold text-cm-heading dark:text-zinc-100 mt-4 mb-2">{children}</h1>,
+    h2: ({ children }) => <h2 className="text-[14px] font-bold text-cm-heading dark:text-zinc-100 mt-4 mb-2">{children}</h2>,
+    h3: ({ children }) => <h3 className="text-[13px] font-bold text-cm-ink dark:text-zinc-200 mt-3 mb-1">{children}</h3>,
+    p: ({ children }) => <p className="text-[12px] text-cm-secondary dark:text-zinc-400 leading-relaxed mb-1">{children}</p>,
     ul: ({ children }) => <ul className="list-disc pl-5 space-y-1 my-2">{children}</ul>,
     ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1 my-2">{children}</ol>,
-    li: ({ children }) => <li className="text-xs text-zinc-600 dark:text-zinc-400">{children}</li>,
-    strong: ({ children }) => <strong className="font-bold text-zinc-800 dark:text-zinc-200">{children}</strong>,
+    li: ({ children }) => <li className="text-[12px] text-cm-secondary dark:text-zinc-400">{children}</li>,
+    strong: ({ children }) => <strong className="font-bold text-cm-ink dark:text-zinc-200">{children}</strong>,
     em: ({ children }) => <em className="italic">{children}</em>,
     code: ({ className, children }) => {
         const isBlock = className?.includes('language-');
-        if (isBlock) return <code className="block bg-zinc-100 dark:bg-zinc-800 rounded p-2 text-[10px] font-mono text-zinc-700 dark:text-zinc-300 overflow-x-auto">{children}</code>;
-        return <code className="bg-zinc-100 dark:bg-zinc-800 rounded px-1 py-0.5 text-[10px] font-mono text-zinc-700 dark:text-zinc-300">{children}</code>;
+        if (isBlock) return <code className="block bg-cm-canvas dark:bg-zinc-800 rounded-[5px] p-2 text-[10px] font-mono text-cm-ink dark:text-zinc-300 overflow-x-auto">{children}</code>;
+        return <code className="bg-cm-canvas dark:bg-zinc-800 rounded-[5px] px-1 py-0.5 text-[10px] font-mono text-cm-ink dark:text-zinc-300">{children}</code>;
     },
-    pre: ({ children }) => <pre className="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-3 my-2 overflow-x-auto">{children}</pre>,
+    pre: ({ children }) => <pre className="bg-cm-canvas dark:bg-zinc-800 rounded-cm-sm p-3 my-2 overflow-x-auto">{children}</pre>,
     table: ({ children }) => <table className="w-full text-[10px] border-collapse my-2">{children}</table>,
-    thead: ({ children }) => <thead className="bg-zinc-100 dark:bg-zinc-800">{children}</thead>,
-    th: ({ children }) => <th className="border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-left font-semibold text-zinc-700 dark:text-zinc-300">{children}</th>,
-    td: ({ children }) => <td className="border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-zinc-600 dark:text-zinc-400">{children}</td>,
-    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{children}</a>,
-    hr: () => <hr className="border-zinc-200 dark:border-zinc-700 my-3" />,
-    blockquote: ({ children }) => <blockquote className="border-l-3 border-zinc-300 dark:border-zinc-600 pl-3 my-2 text-zinc-500 dark:text-zinc-400 italic">{children}</blockquote>,
+    thead: ({ children }) => <thead className="bg-cm-canvas dark:bg-zinc-800">{children}</thead>,
+    th: ({ children }) => <th className="border border-cm-line dark:border-zinc-700 px-2 py-1 text-left font-semibold text-cm-ink dark:text-zinc-300">{children}</th>,
+    td: ({ children }) => <td className="border border-cm-line dark:border-zinc-700 px-2 py-1 text-cm-secondary dark:text-zinc-400">{children}</td>,
+    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-cm-primary hover:underline">{children}</a>,
+    hr: () => <hr className="border-cm-line-soft dark:border-zinc-700 my-3" />,
+    blockquote: ({ children }) => <blockquote className="border-l-2 border-cm-line-strong dark:border-zinc-600 pl-3 my-2 text-cm-muted dark:text-zinc-400 italic">{children}</blockquote>,
 };
 
 const MarkdownRenderer = React.memo(({ text }) => {
@@ -268,36 +268,36 @@ const ProtocolCard = React.memo(({ direction, data, timestamp, isDark }) => {
     const hasNotif = data.notification;
 
     const icon = hasAuth ? <Shield size={12} className="text-amber-500" />
-        : hasNotif ? <Bell size={12} className="text-purple-500" />
-        : isRequest ? <ArrowRight size={12} className="text-blue-500" />
+        : hasNotif ? <Bell size={12} className="text-cm-primary" />
+        : isRequest ? <ArrowRight size={12} className="text-cm-primary" />
         : <ArrowLeft size={12} className="text-emerald-500" />;
 
     const label = hasAuth ? 'AUTH' : hasNotif ? 'NOTIF' : isRequest ? 'REQUEST' : 'RESPONSE';
     const bgClass = isRequest
-        ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-        : 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800';
+        ? 'bg-cm-primary-soft dark:bg-zinc-800/40 border-cm-line dark:border-zinc-700'
+        : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800';
     const ts = timestamp ? new Date(timestamp * 1000).toLocaleTimeString('en-GB') : '';
 
     return (
-        <div className={`rounded-lg border ${bgClass} overflow-hidden`}>
+        <div className={`rounded-cm-sm border ${bgClass} overflow-hidden`}>
             {/* Card Header (clickable) */}
             <div
-                className="flex items-center gap-2 px-3 py-2 border-b border-inherit bg-white/50 dark:bg-zinc-900/30 cursor-pointer select-none hover:bg-white/80 dark:hover:bg-zinc-900/50 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 border-b border-inherit bg-white/70 dark:bg-zinc-900/40 cursor-pointer select-none hover:bg-white dark:hover:bg-zinc-900/60 transition-colors"
                 onClick={() => setExpanded(!expanded)}
             >
                 {icon}
-                <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-400">{label}</span>
-                {ts && <span className="text-[10px] text-zinc-400 font-mono">{ts}</span>}
+                <span className="text-[11px] font-semibold text-cm-secondary dark:text-zinc-400">{label}</span>
+                {ts && <span className="text-[11px] text-cm-faint font-mono">{ts}</span>}
                 {state && (
-                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
-                        state.includes('COMPLETED') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                        : state.includes('FAILED') ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-                        : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-[5px] ${
+                        state.includes('COMPLETED') ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300'
+                        : state.includes('FAILED') ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300'
+                        : 'bg-cm-primary-faint text-cm-accent dark:bg-zinc-800 dark:text-zinc-300'
                     }`}>
                         {state.replace('TASK_STATE_', '')}
                     </span>
                 )}
-                <span className="ml-auto text-zinc-400">
+                <span className="ml-auto text-cm-faint dark:text-zinc-500">
                     {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </span>
             </div>
@@ -310,11 +310,11 @@ const ProtocolCard = React.memo(({ direction, data, timestamp, isDark }) => {
                         const headerKeys = Object.keys(metadata).filter(k => k.includes('tmforum.org') || k.includes('a2aproject'));
                         if (headerKeys.length === 0) return null;
                         return (
-                            <div className="px-3 py-2 border-b border-inherit bg-zinc-50/50 dark:bg-zinc-800/30">
-                            <div className="text-[9px] font-semibold text-zinc-500 dark:text-zinc-400 mb-1">A2A-Extensions</div>
+                            <div className="px-3 py-2 border-b border-inherit bg-cm-canvas/60 dark:bg-zinc-800/30">
+                            <div className="text-[10px] font-semibold text-cm-muted dark:text-zinc-400 mb-1">A2A-Extensions</div>
                                 <div className="flex flex-wrap gap-1">
                                     {headerKeys.map((k, idx) => (
-                                        <span key={idx} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300">
+                                        <span key={idx} className="text-[10px] font-mono px-1.5 py-0.5 rounded-[5px] bg-cm-canvas border border-cm-line text-cm-muted dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
                                             {k.split('/').pop()}
                                         </span>
                                     ))}
@@ -325,11 +325,11 @@ const ProtocolCard = React.memo(({ direction, data, timestamp, isDark }) => {
 
                     {/* Metadata (primary, expanded by default) */}
                     {hasMetadata && (
-                        <div className="px-3 py-2 bg-white/60 dark:bg-zinc-900/40 overflow-y-auto custom-scrollbar">
+                        <div className="px-3 py-2 bg-white/80 dark:bg-zinc-900/40 overflow-y-auto custom-scrollbar">
                             <div className="space-y-2">
                                 {Object.entries(metadata).map(([key, val], idx) => (
-                                    <div key={idx} className="text-[10px]">
-                                        <span className="font-semibold text-zinc-600 dark:text-zinc-400 break-all">{getExtensionLabel(key)}:</span>
+                                    <div key={idx} className="text-[11px]">
+                                        <span className="font-semibold text-cm-secondary dark:text-zinc-400 break-all">{getExtensionLabel(key)}:</span>
                                         <div className="ml-2 mt-0.5">
                                             <MarkdownRenderer text={typeof val === 'string' ? val : JSON.stringify(val, null, 2)} />
                                         </div>
@@ -341,10 +341,10 @@ const ProtocolCard = React.memo(({ direction, data, timestamp, isDark }) => {
 
                     {/* Text Part (secondary, collapsed by default) */}
                     {text && !hasA2atContent && (
-                        <div className="px-3 py-2 border-t border-inherit bg-zinc-50/30 dark:bg-zinc-800/20">
+                        <div className="px-3 py-2 border-t border-inherit bg-cm-canvas/40 dark:bg-zinc-800/20">
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowText(!showText); }}
-                                className="flex items-center gap-1 text-[10px] font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+                                className="flex items-center gap-1 text-[11px] font-medium text-cm-muted hover:text-cm-primary dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
                             >
                                 {showText ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                 Text Part
@@ -370,13 +370,13 @@ const AgentInteraction = React.memo(({ interaction, isDark }) => {
     const agent = interaction.agent || 'Unknown';
     const [negExpanded, setNegExpanded] = useState(false);
     return (
-        <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30 overflow-hidden">
+        <div className="rounded-cm-sm border border-cm-line dark:border-zinc-700 bg-white dark:bg-zinc-800/30 overflow-hidden">
             {/* Agent Header */}
-            <div className="flex items-center gap-2.5 px-3 py-2 border-b border-zinc-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-900/30">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
-                    <Bot size={12} className="text-white" />
+            <div className="flex items-center gap-2.5 px-3 py-2 border-b border-cm-line-soft dark:border-zinc-700 bg-cm-canvas/70 dark:bg-zinc-900/30">
+                <div className="w-6 h-6 rounded-[5px] bg-cm-primary-faint dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                    <Bot size={12} className="text-cm-primary" />
                 </div>
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate">{agent}</span>
+                <span className="text-[12px] font-semibold text-cm-ink dark:text-zinc-200 truncate">{agent}</span>
             </div>
 
             {/* Interaction Content */}
@@ -388,9 +388,9 @@ const AgentInteraction = React.memo(({ interaction, isDark }) => {
                     <ProtocolCard direction="response" data={interaction} timestamp={interaction.timestamp} isDark={isDark} />
                 )}
                 {interaction.negotiations && interaction.negotiations.length > 0 && (
-                    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                    <div className="rounded-cm-sm border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3">
                         <div
-                            className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 cursor-pointer select-none"
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400 cursor-pointer select-none"
                             onClick={() => setNegExpanded(!negExpanded)}
                         >
                             <MessageSquare size={11} />
@@ -405,11 +405,11 @@ const AgentInteraction = React.memo(({ interaction, isDark }) => {
                                     const label = neg.type.replace('negotiation_', '');
                                     const negotiation = getNegotiationPayload(neg);
                                     const content = negotiation.text;
-                                    const labelColor = label === 'request' ? 'text-blue-600 dark:text-blue-400'
+                                    const labelColor = label === 'request' ? 'text-cm-primary dark:text-blue-400'
                                         : label === 'resolved' ? 'text-emerald-600 dark:text-emerald-400'
                                         : label === 'failed' ? 'text-rose-600 dark:text-rose-400'
                                         : 'text-amber-600 dark:text-amber-400';
-                                    const borderColor = label === 'request' ? 'border-blue-300 dark:border-blue-700'
+                                    const borderColor = label === 'request' ? 'border-[#A9C8FB] dark:border-blue-700'
                                         : label === 'resolved' ? 'border-emerald-300 dark:border-emerald-700'
                                         : label === 'failed' ? 'border-rose-300 dark:border-rose-700'
                                         : 'border-amber-300 dark:border-amber-700';
@@ -420,13 +420,13 @@ const AgentInteraction = React.memo(({ interaction, isDark }) => {
                                                 {content ? (
                                                     <MarkdownRenderer text={content} />
                                                 ) : (
-                                                    <span className="text-[10px] italic text-zinc-400">No Negotiation-T content</span>
+                                                    <span className="text-[10px] italic text-cm-faint">No Negotiation-T content</span>
                                                 )}
                                                 {Object.entries(negotiation.metadata).length > 0 && (
                                                     <div className="mt-2 space-y-1">
                                                         {Object.entries(negotiation.metadata).map(([key, value], metaIdx) => (
                                                             <div key={metaIdx} className="text-[10px]">
-                                                                <span className="font-semibold text-zinc-500 dark:text-zinc-400 break-all">
+                                                                <span className="font-semibold text-cm-muted dark:text-zinc-400 break-all">
                                                                     {getExtensionLabel(key)}:
                                                                 </span>
                                                                 <div className="ml-2 mt-0.5">
@@ -462,34 +462,34 @@ const SelfLoopCard = React.memo(({ step, isDark }) => {
         }
         return Object.entries(step.output).map(([taskDesc, output], idx) => (
             <div key={idx} className="mb-3 last:mb-0">
-                <div className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 mb-1">{taskDesc}</div>
+                <div className="text-[10px] font-semibold text-cm-accent dark:text-blue-300 mb-1">{taskDesc}</div>
                 <MarkdownRenderer text={typeof output === 'string' ? output : JSON.stringify(output, null, 2)} />
             </div>
         ));
     };
     return (
-        <div className="flex flex-col gap-2 pl-3 border-l-2 border-purple-300 dark:border-purple-700 ml-2">
+        <div className="flex flex-col gap-2 pl-3 border-l-2 border-[#A9C8FB] dark:border-blue-800 ml-2">
             <div
                 className="flex items-center gap-2 cursor-pointer select-none"
                 onClick={() => step.output && setExpanded(!expanded)}
             >
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shrink-0">
-                    <RotateCcw size={12} className="text-white" />
+                <div className="w-6 h-6 rounded-[5px] bg-cm-primary-faint dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                    <RotateCcw size={12} className="text-cm-primary" />
                 </div>
-                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Self-Loop (Local Processing)</span>
+                <span className="text-[12px] font-bold text-cm-primary dark:text-blue-300">Self-Loop (Local Processing)</span>
                 {step.output && (
-                    <span className="ml-auto text-purple-400">
+                    <span className="ml-auto text-cm-faint dark:text-zinc-500">
                         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     </span>
                 )}
             </div>
             {expanded && step.output && (
-                <div className="rounded-lg bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900 p-3 overflow-y-auto custom-scrollbar">
+                <div className="rounded-cm-sm bg-cm-primary-soft dark:bg-zinc-800/40 border border-cm-line dark:border-zinc-700 p-3 overflow-y-auto custom-scrollbar">
                     {renderOutput()}
                 </div>
             )}
             {step.status === 'running' && !step.output && (
-                <div className="flex items-center gap-2 text-xs text-purple-500">
+                <div className="flex items-center gap-2 text-[12px] text-cm-primary">
                     <Loader size={12} className="animate-spin" />
                     <span>Processing...</span>
                 </div>
@@ -505,14 +505,14 @@ const SelfLoopCard = React.memo(({ step, isDark }) => {
 const RouteDecisionCard = React.memo(({ data }) => {
     if (!data) return null;
     return (
-        <div className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/40 p-2 ml-4">
-            <GitBranch size={14} className="text-zinc-500" />
-            <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400">
-                Route: <span className="text-zinc-800 dark:text-zinc-200">{data.step || ''}</span>
+        <div className="flex items-center gap-2 rounded-cm-sm border border-cm-line dark:border-zinc-700 bg-cm-canvas/70 dark:bg-zinc-900/40 p-2 ml-4">
+            <GitBranch size={14} className="text-cm-faint" />
+            <span className="text-[10px] font-bold text-cm-secondary dark:text-zinc-400">
+                Route: <span className="text-cm-ink dark:text-zinc-200">{data.step || ''}</span>
                 <ChevronRight size={10} className="inline mx-1" />
-                <span className="text-blue-600 dark:text-blue-400">{data.next || data.next_step || ''}</span>
+                <span className="text-cm-primary dark:text-blue-400">{data.next || data.next_step || ''}</span>
             </span>
-            {data.reason && <span className="text-[10px] text-zinc-400 ml-2">{data.reason}</span>}
+            {data.reason && <span className="text-[10px] text-cm-faint ml-2">{data.reason}</span>}
         </div>
     );
 });
@@ -531,45 +531,42 @@ const StepPhase = React.memo(({ step, isDark }) => {
     const hasContent = step.isSelfLoop || interactionCount > 0 || step.route || step.output || step.error;
 
     return (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/50 overflow-hidden">
+        <div className="rounded-cm border border-cm-line dark:border-zinc-700 bg-white dark:bg-zinc-900/40 overflow-hidden">
             {/* Step Header (clickable) */}
             <div
-                className={`px-4 py-3 cursor-pointer select-none transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 ${
-                    step.status === 'running' ? 'bg-blue-50/50 dark:bg-blue-950/20' :
-                    step.status === 'completed' ? 'bg-emerald-50/30 dark:bg-emerald-950/10' :
-                    step.status === 'failed' ? 'bg-rose-50/30 dark:bg-rose-950/10' :
-                    'bg-zinc-50 dark:bg-zinc-800/30'
-                } ${!collapsed ? 'border-b border-zinc-100 dark:border-zinc-800' : ''}`}
+                className={`px-4 py-3 cursor-pointer select-none transition-colors hover:bg-cm-canvas dark:hover:bg-zinc-800/50 ${
+                    step.status === 'running' ? 'bg-cm-primary-soft dark:bg-zinc-800/60' : 'bg-white dark:bg-transparent'
+                } ${!collapsed ? 'border-b border-cm-line-soft dark:border-zinc-800' : ''}`}
                 onClick={() => hasContent && setCollapsed(!collapsed)}
             >
                 <div className="flex items-center gap-2.5">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                        step.status === 'running' ? 'bg-blue-100 dark:bg-blue-900/40' :
-                        step.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/40' :
-                        step.status === 'failed' ? 'bg-rose-100 dark:bg-rose-900/40' :
-                        'bg-zinc-100 dark:bg-zinc-800'
+                    <div className={`w-7 h-7 rounded-cm-sm flex items-center justify-center ${
+                        step.status === 'running' ? 'bg-cm-primary-faint dark:bg-zinc-800' :
+                        step.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-900/30' :
+                        step.status === 'failed' ? 'bg-rose-50 dark:bg-rose-900/30' :
+                        'bg-cm-canvas dark:bg-zinc-800'
                     }`}>
                         <StatusIcon size={14} className={statusInfo.color + (step.status === 'running' ? ' animate-spin' : '')} />
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{step.name}</span>
+                            <span className="text-[13px] font-semibold text-cm-heading dark:text-zinc-100 truncate">{step.name}</span>
                             {step.isSelfLoop && (
-                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300">
+                                <span className="cm-chip tracking-wide dark:bg-zinc-800 dark:text-blue-300">
                                     SELF-LOOP
                                 </span>
                             )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-[10px] font-medium ${statusInfo.color}`}>
+                            <span className={`text-[11px] font-medium ${statusInfo.color}`}>
                                 {step.status === 'running' ? '执行中' : step.status === 'completed' ? '已完成' : step.status === 'failed' ? '失败' : '等待中'}
                             </span>
-                            {duration && <span className="text-[10px] text-zinc-400">· {duration}</span>}
-                            {interactionCount > 0 && <span className="text-[10px] text-zinc-400">· {interactionCount} 次交互</span>}
+                            {duration && <span className="text-[11px] text-cm-faint dark:text-zinc-500">· {duration}</span>}
+                            {interactionCount > 0 && <span className="text-[11px] text-cm-faint dark:text-zinc-500">· {interactionCount} 次交互</span>}
                         </div>
                     </div>
                     {hasContent && (
-                        <div className="text-zinc-400 transition-transform duration-200">
+                        <div className="text-cm-faint transition-transform duration-200">
                             {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                         </div>
                     )}
@@ -578,7 +575,7 @@ const StepPhase = React.memo(({ step, isDark }) => {
 
             {/* Step Content (collapsible) */}
             {!collapsed && (
-                <div className="p-4 space-y-3">
+                <div className="p-3.5 space-y-2.5">
                     {step.isSelfLoop ? (
                         <SelfLoopCard step={step} isDark={isDark} />
                     ) : (
@@ -589,10 +586,10 @@ const StepPhase = React.memo(({ step, isDark }) => {
                     {step.route && <RouteDecisionCard data={step.route} />}
 
                     {step.error && (
-                        <div className="rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-3">
+                        <div className="rounded-cm-sm bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 p-3">
                             <div className="flex items-start gap-2">
                                 <XCircle size={14} className="text-rose-500 shrink-0 mt-0.5" />
-                                <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
+                                <span className="text-[12px] font-medium text-rose-600 dark:text-rose-400">
                                     {formatWorkflowError(step.error)}
                                 </span>
                             </div>
@@ -625,37 +622,37 @@ const WorkflowHeader = React.memo(({ events, steps, isRunning }) => {
     const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
 
     return (
-        <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-gradient-to-r from-zinc-50 to-white dark:from-zinc-800/50 dark:to-zinc-900/50 p-4">
+        <div className="rounded-cm border border-cm-line dark:border-zinc-700 bg-white dark:bg-zinc-900/40 p-4">
             <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    overallStatus === 'failed' ? 'bg-rose-100 dark:bg-rose-900/30' :
-                    overallStatus === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
-                    overallStatus === 'running' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                    'bg-zinc-100 dark:bg-zinc-800'
+                <div className={`w-9 h-9 rounded-cm flex items-center justify-center ${
+                    overallStatus === 'failed' ? 'bg-rose-50 dark:bg-rose-900/30' :
+                    overallStatus === 'completed' ? 'bg-emerald-50 dark:bg-emerald-900/30' :
+                    overallStatus === 'running' ? 'bg-cm-primary-faint dark:bg-zinc-800' :
+                    'bg-cm-canvas dark:bg-zinc-800'
                 }`}>
-                    <StatusIcon size={20} className={statusInfo.color + (overallStatus === 'running' ? ' animate-spin' : '')} />
+                    <StatusIcon size={18} className={statusInfo.color + (overallStatus === 'running' ? ' animate-spin' : '')} />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{wfName || 'Workflow Execution'}</div>
+                    <div className="text-[14px] font-bold text-cm-heading dark:text-zinc-100 truncate">{wfName || 'Workflow Execution'}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-xs font-medium ${statusInfo.color}`}>
+                        <span className={`text-[12px] font-medium ${statusInfo.color}`}>
                             {overallStatus === 'running' ? '执行中' : overallStatus === 'completed' ? '已完成' : overallStatus === 'failed' ? '失败' : '等待中'}
                         </span>
                         {totalSteps > 0 && (
-                            <span className="text-xs text-zinc-400">
+                            <span className="text-[11px] text-cm-faint dark:text-zinc-500">
                                 · {completedSteps}/{totalSteps} 步骤
                                 {failedSteps > 0 && <span className="text-rose-500"> ({failedSteps} 失败)</span>}
                             </span>
                         )}
-                        {duration && <span className="text-xs text-zinc-400">· {duration}</span>}
+                        {duration && <span className="text-[11px] text-cm-faint dark:text-zinc-500">· {duration}</span>}
                     </div>
                 </div>
             </div>
             {totalSteps > 0 && (
-                <div className="w-full h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+                <div className="w-full h-1 rounded-[2px] bg-cm-line-soft dark:bg-zinc-800 overflow-hidden">
                     <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                            overallStatus === 'failed' ? 'bg-rose-500' : overallStatus === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'
+                        className={`h-full rounded-[2px] transition-all duration-500 ${
+                            overallStatus === 'failed' ? 'bg-rose-500' : overallStatus === 'completed' ? 'bg-emerald-500' : 'bg-cm-primary'
                         }`}
                         style={{ width: `${progress}%` }}
                     />
@@ -681,12 +678,12 @@ const ExecutionTimeline = React.memo(({ events, isDark, isRunning, workflow }) =
 
     if (events.length === 0) {
         return (
-            <div className="h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 py-16">
-                <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
-                    <Clock size={28} strokeWidth={1.5} />
+            <div className="h-full flex flex-col items-center justify-center text-cm-faint dark:text-zinc-500 py-16">
+                <div className="w-14 h-14 rounded-cm bg-cm-primary-faint dark:bg-zinc-800 flex items-center justify-center mb-3 text-cm-primary dark:text-zinc-400">
+                    <Clock size={24} strokeWidth={1.5} />
                 </div>
-                <p className="text-sm font-medium">等待执行</p>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">执行工作流后将在此显示进度</p>
+                <p className="text-[13px] font-medium text-cm-muted dark:text-zinc-400">等待执行</p>
+                <p className="text-[11px] text-cm-faint dark:text-zinc-500 mt-1">执行工作流后将在此显示进度</p>
             </div>
         );
     }
@@ -696,9 +693,13 @@ const ExecutionTimeline = React.memo(({ events, isDark, isRunning, workflow }) =
             <WorkflowHeader events={events} steps={steps} isRunning={isRunning} />
             {events.filter(event => ['resolution', 'error', 'dispatch_error'].includes(event.type)).map((event, index) => (
                 <section key={index} role={event.type === 'resolution' ? 'status' : 'alert'}
-                    className={`rounded-xl border p-4 ${event.type === 'resolution' ? 'border-blue-300 dark:border-blue-800' : 'border-rose-300 text-rose-600 dark:border-rose-800'}`}>
-                    {event.type === 'resolution' && <h3 className="font-semibold mb-2">{t('execution.roleResolution')}</h3>}
-                    <p className="text-xs whitespace-pre-wrap break-words">{event.type === 'resolution'
+                    className={`rounded-cm border p-4 ${
+                        event.type === 'resolution'
+                            ? 'border-cm-line bg-cm-primary-soft dark:border-zinc-700 dark:bg-zinc-800/40'
+                            : 'border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400'
+                    }`}>
+                    {event.type === 'resolution' && <h3 className="text-[13px] font-bold text-cm-heading dark:text-zinc-100 mb-2">{t('execution.roleResolution')}</h3>}
+                    <p className="text-[12px] whitespace-pre-wrap break-words">{event.type === 'resolution'
                         ? formatRoleResolution(event.data) : formatWorkflowError(event.data)}</p>
                 </section>
             ))}

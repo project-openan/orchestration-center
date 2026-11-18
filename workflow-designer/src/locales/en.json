@@ -6,10 +6,15 @@
       "orchestration": "Orchestration Center",
       "execution": "Execution Center",
       "skills": "Skill Center"
-    }
+    },
+    "toggle_theme": "Toggle theme"
   },
   "login": {
     "title": "Access Password",
+    "welcome_subtitle": "Sign in for the agent registry, workflow designer and execution center.",
+    "feature_orchestration": "Visual workflow orchestration",
+    "feature_agents": "Multi-agent collaboration",
+    "feature_observability": "End-to-end execution insight",
     "username_placeholder": "Username",
     "remember_username": "Remember username",
     "recent_usernames": "Recent usernames",
@@ -584,5 +589,12 @@
     "risk_low": "Low Risk",
     "risk_medium": "Medium Risk",
     "risk_high": "High Risk"
+  },
+  "brand": {
+    "company": "China Mobile",
+    "product": "Agent Orchestration Center",
+    "tagline": "A2A-T Multi-Agent Orchestration",
+    "slogan": "The orchestration hub for connected agents: assemble scattered agent capabilities into executable, observable business workflows.",
+    "copyright": "© 2026 China Mobile Communications Group Co., Ltd."
   }
 }

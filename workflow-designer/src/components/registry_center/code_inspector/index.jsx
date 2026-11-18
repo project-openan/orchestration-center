@@ -30,42 +30,40 @@ const CodeInspector = ({ data, fileName = 'manifest.json', isDark = false }) => 
 
     const jsonString = JSON.stringify(data, null, 4);
 
-    return (<div className={`flex h-full flex-col transition-all duration-300 ${isDark ? 'dark' : ''}`}>
-        <div className={`flex-1 rounded-[1rem] border shadow-2xl overflow-hidden flex flex-col relative transition-colors duration-300 ${isDark ? 'bg-zinc-950 border-zinc-800 shadow-black/50' : 'bg-zinc-50 border-zinc-200 shadow-zinc-200/50'}`}>
-            <div className={`flex items-center justify-between px-6 py-2 border-b backdrop-blur-md sticky top-0 z-10 transition-colors ${isDark ? 'bg-zinc-950/80 border-zinc-800' : 'bg-zinc-200/50 border-zinc-200'}`}>
-                <div className={"flex items-center gap-4"}>
-                    <div className={`flex items-center gap-2 px-3 py-1 rounded-md ${isDark ? 'bg-zinc-800' : 'bg-white shadow-sm'}`}>
-                        <FileJson size={12} className={isDark ? 'text-blue-400' : 'text-blue-600'} />
-                        <span className={`text-[12px] font-black  leading-none ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                            {fileName}
-                        </span>
-                    </div>
+    return (<div className={`flex h-full flex-col p-4 transition-all duration-300 ${isDark ? 'dark' : ''}`}>
+        <div className={`flex-1 rounded-cm border overflow-hidden flex flex-col relative transition-colors duration-300 ${isDark ? 'bg-zinc-950 border-zinc-800 shadow-card' : 'bg-white border-cm-line shadow-card'}`}>
+            <div className={`flex items-center justify-between gap-3 px-4 py-2 border-b sticky top-0 z-10 backdrop-blur-md transition-colors ${isDark ? 'bg-zinc-950/90 border-zinc-800' : 'bg-white/95 border-cm-line-soft'}`}>
+                <div className="flex items-center gap-2 min-w-0">
+                    <FileJson size={13} className={`shrink-0 ${isDark ? 'text-blue-400' : 'text-cm-primary'}`} />
+                    <span className={`text-[12px] font-semibold truncate leading-none ${isDark ? 'text-zinc-300' : 'text-cm-secondary'}`}>
+                        {fileName}
+                    </span>
                 </div>
 
                 <button onClick={handleCopy}
-                    className={`relative flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200 active:scale-95 ${isDark
-                        ? 'bg-zinc-800 text-zinc-400 hover:bg-blue-600/20 hover:text-blue-400 border border-zinc-700/50 hover:border-blue-500/50'
-                        : 'bg-white text-zinc-600 border border-zinc-200 shadow-sm hover:border-blue-500 hover:text-blue-600'}`}
+                    className={`cm-icon-btn relative shrink-0 transition-all duration-200 active:scale-95 ${isDark
+                        ? 'text-zinc-400 hover:bg-zinc-800 hover:text-blue-400'
+                        : ''}`}
                     title={copied ? t('common.copied') : t('common.copy_raw_json')}>
                     <div className={`transition-all duration-300 ${copied ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}>
-                        <Copy size={16} strokeWidth={2.5} />
+                        <Copy size={15} strokeWidth={2} />
                     </div>
                     <div className={`absolute transition-all duration-300 ${copied ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
-                        <Check size={18} strokeWidth={3} className={"text-emerald-500"} />
+                        <Check size={16} strokeWidth={2.5} className={"text-emerald-500"} />
                     </div>
                 </button>
             </div>
 
-            <div className={"flex-1 overflow-auto custom-scrollbar p-8"}>
-                <pre className={"font-mono text-sm leading-relaxed selection:bg-blue-500/30"}>
-                    <code className={`whitespace-pre transition-colors duration-0 ${isDark ? 'text-emerald-400/90' : 'text-blue-700'}`}>
+            <div className={"flex-1 overflow-auto custom-scrollbar px-5 py-4"}>
+                <pre className={"font-mono text-[12px] leading-[1.7] selection:bg-cm-primary/20"}>
+                    <code className={`whitespace-pre transition-colors duration-0 ${isDark ? 'text-blue-300' : 'text-cm-accent'}`}>
                         {jsonString}
                     </code>
                 </pre>
             </div>
 
-            <div className={`px-6 py-2 border-t flex justify-end transition-colors ${isDark ? 'bg-zinc-900/30 border-zinc-800' : 'bg-zinc-100/50 border-zinc-200'}`}>
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>
+            <div className={`px-4 py-1.5 border-t flex justify-end transition-colors ${isDark ? 'bg-zinc-900/40 border-zinc-800' : 'bg-cm-canvas border-cm-line-soft'}`}>
+                <span className={`text-[10px] font-medium tracking-wider ${isDark ? 'text-zinc-500' : 'text-cm-faint'}`}>
                     UTF-8 · JSON · {jsonString.length} {t('common.chars')}
                 </span>
             </div>

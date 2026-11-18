@@ -11,31 +11,201 @@
  *         http://www.apache.org/licenses/LICENSE-2.0
  *
  *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- *    License for the specific language governing permissions and limitations
- *    under the License.
+ *    distributed under the License is distributed on an "AS IS" BASIS,
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *    See the License for the specific language governing permissions and
+ *    limitations under the License.
  */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+ * China Mobile theme layer.
+ *
+ * Colour tokens live in tailwind.config.js; this file owns what utilities
+ * cannot express: the app canvas, card/button/input primitives, focus rings,
+ * scrollbars and the React Flow canvas.
+ * ------------------------------------------------------------------------- */
+
 @layer base {
     html {
         scroll-behavior: smooth;
+        -webkit-tap-highlight-color: transparent;
     }
 
     body {
-        @apply bg-zinc-50 text-zinc-900 antialiased;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        @apply bg-cm-canvas text-cm-ink antialiased;
+        font-family: theme('fontFamily.sans');
+        font-size: 13px;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
 
     html.dark body {
-        @apply bg-zinc-950 text-zinc-100;
+        @apply bg-cm-night text-zinc-100;
+    }
+
+    ::selection {
+        background: #CADFFF;
+        color: #142843;
+    }
+
+    :focus-visible {
+        outline: 2px solid rgba(36, 100, 232, 0.4);
+        outline-offset: 2px;
+    }
+
+    h1, h2, h3, h4 {
+        font-weight: 650;
+        letter-spacing: -0.01em;
     }
 }
+
+@layer components {
+    /* Card: white, #E1E9F6 hairline, very light navy shadow (reference .card). */
+    .cm-card {
+        @apply bg-white border border-cm-line rounded-cm shadow-card transition-all duration-200
+        dark:bg-zinc-900 dark:border-zinc-800;
+    }
+
+    .cm-card-hover:hover {
+        @apply border-[#ADC8FA] shadow-card-hover -translate-y-0.5 dark:border-blue-700;
+    }
+
+    /* Floating panel used by the designer sidebars and toolbars. */
+    .cm-panel {
+        @apply bg-white/95 backdrop-blur-xl border border-cm-line shadow-panel rounded-cm-panel;
+    }
+
+    /* Small capability pill (reference .pill). */
+    .cm-chip {
+        @apply inline-flex items-center gap-1 rounded-[5px] px-[7px] py-[5px] text-[11px]
+        bg-[#ECF3FF] text-[#225CCA] whitespace-nowrap
+        dark:bg-cm-primary/15 dark:text-blue-300;
+    }
+
+    .cm-chip-neutral {
+        @apply inline-flex items-center gap-1 rounded-[5px] px-[7px] py-[5px] text-[11px]
+        bg-cm-canvas text-cm-muted border border-cm-line whitespace-nowrap
+        dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-400;
+    }
+
+    /* Buttons (reference .button). */
+    .cm-btn {
+        @apply inline-flex items-center justify-center gap-1.5 rounded-cm-sm min-h-[33px] px-3.5
+        text-[13px] border border-cm-line bg-white text-[#526B8B] transition-all duration-150
+        hover:border-[#B8CFFC] hover:text-cm-primary hover:bg-[#F9FBFF]
+        disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap
+        dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-300
+        dark:hover:bg-zinc-800 dark:hover:text-white dark:hover:border-blue-700;
+    }
+
+    .cm-btn-primary {
+        @apply cm-btn bg-cm-primary border-cm-primary text-white shadow-none
+        hover:bg-cm-primary-hover hover:border-cm-primary-hover hover:text-white
+        hover:shadow-brand-sm active:translate-y-px;
+    }
+
+    .cm-btn-soft {
+        @apply cm-btn bg-cm-primary-faint border-cm-primary-faint text-[#245FCA]
+        hover:border-[#D6E5FF] hover:text-cm-primary hover:bg-[#E0ECFF];
+    }
+
+    .cm-icon-btn {
+        @apply grid place-items-center w-[30px] h-[30px] rounded-cm-sm text-[#7895B8]
+        hover:bg-cm-primary-faint hover:text-cm-primary transition-colors
+        dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white;
+    }
+
+    /* Search field (reference .search-box). */
+    .cm-search {
+        @apply flex items-center gap-2 h-[39px] rounded-cm-sm border border-cm-line bg-white px-3
+        text-[#8CA3BF] transition-all
+        focus-within:border-[#9ABDFB] focus-within:shadow-[0_0_0_3px_rgba(219,234,255,0.5)]
+        dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-400;
+    }
+
+    .cm-search input {
+        @apply flex-1 min-w-0 h-full bg-transparent border-0 text-[13px] text-cm-ink
+        placeholder:text-[#9DB1C8] outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500;
+    }
+
+    .cm-input {
+        @apply w-full h-[39px] rounded-cm-sm border border-cm-line bg-white px-3 text-[13px]
+        text-cm-ink placeholder:text-[#9DB1C8] transition-all
+        focus:outline-none focus:border-[#9ABDFB] focus:shadow-[0_0_0_3px_rgba(219,234,255,0.5)]
+        dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-100 dark:placeholder:text-zinc-500;
+    }
+
+    .cm-eyebrow {
+        @apply text-[11px] font-medium tracking-[0.12em] uppercase text-cm-faint dark:text-zinc-500;
+    }
+
+    .cm-section-title {
+        @apply text-[18px] font-bold text-cm-heading tracking-[-0.3px] dark:text-zinc-100;
+    }
+
+    .cm-hairline {
+        background: linear-gradient(90deg,
+        rgba(205, 223, 247, 0) 0%,
+        rgba(205, 223, 247, 0.9) 12%,
+        rgba(36, 100, 232, 0.28) 50%,
+        rgba(205, 223, 247, 0.9) 88%,
+        rgba(205, 223, 247, 0) 100%);
+    }
+
+    /* Entity head used by cards and detail headers (reference .entity-head). */
+    .cm-entity-icon {
+        @apply h-9 w-9 min-w-[36px] grid place-items-center rounded-full bg-[#E5EFFF] text-[#2866DF]
+        dark:bg-zinc-800 dark:text-blue-400;
+    }
+
+    .cm-entity-icon-square {
+        @apply cm-entity-icon rounded-cm;
+    }
+
+    .cm-entity-title {
+        @apply text-[14px] font-bold text-[#263C59] truncate dark:text-zinc-100;
+    }
+
+    .cm-entity-meta {
+        @apply mt-1 text-[11px] text-[#94A9C2] truncate dark:text-zinc-500;
+    }
+}
+
+@layer utilities {
+    /* The previous theme used font-black (900) for nearly every title. A 700
+       ceiling keeps the hierarchy with the lighter reference type treatment. */
+    .font-black {
+        font-weight: 700;
+    }
+}
+
+/* --- Scrollbars ----------------------------------------------------------- */
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-zinc-300 rounded-full transition-colors;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    @apply bg-zinc-700;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-zinc-400;
+}
+
+/* --- Motion (kept from the upstream theme) -------------------------------- */
 
 @keyframes fadeIn {
     from {
@@ -65,26 +235,6 @@
     animation: pulse-soft 2s infinite ease-in-out;
 }
 
-::-webkit-scrollbar {
-    width: 6px;
-}
-
-::-webkit-scrollbar-track {
-    @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    @apply bg-zinc-300 rounded-full transition-colors;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-700;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    @apply bg-zinc-400;
-}
-
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -97,7 +247,7 @@
 }
 
 .card-glow:hover {
-    @apply shadow-[0_0_20px_rgba(59,130,246,0.15)] -translate-y-1;
+    @apply shadow-card-hover -translate-y-1;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -129,11 +279,11 @@
 }
 
 .custom-scrollbar-h:hover::-webkit-scrollbar-thumb {
-    background-color: rgba(156, 163, 175, 0.3);
+    background-color: rgba(148, 169, 194, 0.35);
 }
 
 .custom-scrollbar-h::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(37, 99, 235, 0.5);
+    background-color: rgba(36, 100, 232, 0.5);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -145,7 +295,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(155, 155, 155, 0.3);
+    background-color: rgba(148, 169, 194, 0.3);
     border-radius: 20px;
     border: 2px solid transparent;
     background-clip: content-box;
@@ -153,33 +303,46 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     border: 0px;
-    background-color: rgba(155, 155, 155, 0.6);
+    background-color: rgba(113, 136, 170, 0.55);
 }
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(110, 110, 110, 0.4);
+    background-color: rgba(110, 130, 155, 0.4);
 }
+
+/* --- Workflow canvas ----------------------------------------------------- */
 
 .workflow-editor-container {
     display: flex;
     width: 100%;
     height: 100%;
-    background-color: #f8fafc;
-    color: #1e293b;
+    background-color: #F5F8FE;
+    color: #172D4D;
+    touch-action: none;
+}
+
+.dark .workflow-editor-container {
+    background-color: #0C1B2E;
+    color: #E1E9F6;
 }
 
 .panel-glass {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(16px);
+    border: 1px solid #E1E9F6;
+    box-shadow: 0 18px 60px rgba(15, 49, 81, 0.14);
     z-index: 10;
     display: flex;
     flex-direction: column;
 }
 
+.dark .panel-glass {
+    background: rgba(20, 40, 67, 0.94);
+    border-color: rgba(207, 219, 236, 0.14);
+}
+
 .react-flow__node {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     transition: all 0.2s ease;
 }
 
@@ -191,6 +354,69 @@
 .react-flow__node {
     border: none !important;
 }
+
+/* React Flow (v12) reads its chrome from CSS variables. */
+.react-flow {
+    --xy-background-color: transparent;
+    --xy-background-pattern-color: #CFDBEC;
+    --xy-edge-stroke-default: #A9C8FB;
+    --xy-edge-stroke-selected-default: #2464E8;
+    --xy-connectionline-stroke-default: #2464E8;
+    --xy-handle-background-color-default: #FFFFFF;
+    --xy-handle-border-color-default: #2464E8;
+    --xy-controls-button-background-color-default: rgba(255, 255, 255, 0.96);
+    --xy-controls-button-background-color-hover-default: #EEF5FF;
+    --xy-controls-button-color-default: #506988;
+    --xy-controls-button-color-hover-default: #2464E8;
+    --xy-controls-button-border-color-default: #E1E9F6;
+    --xy-controls-box-shadow-default: 0 3px 14px rgba(37, 86, 151, 0.08);
+    --xy-minimap-background-color-default: rgba(255, 255, 255, 0.96);
+    --xy-minimap-mask-background-color-default: rgba(234, 242, 254, 0.6);
+    --xy-attribution-background-color-default: transparent;
+}
+
+.dark .react-flow {
+    --xy-background-pattern-color: #1D3352;
+    --xy-edge-stroke-default: #357BF1;
+    --xy-edge-stroke-selected-default: #6E9DF4;
+    --xy-handle-background-color-default: #142843;
+    --xy-handle-border-color-default: #6E9DF4;
+    --xy-controls-button-background-color-default: rgba(20, 40, 67, 0.96);
+    --xy-controls-button-background-color-hover-default: #1D3352;
+    --xy-controls-button-color-default: #E1E9F6;
+    --xy-controls-button-color-hover-default: #FFFFFF;
+    --xy-controls-button-border-color-default: #33496A;
+    --xy-minimap-background-color-default: rgba(20, 40, 67, 0.96);
+    --xy-minimap-mask-background-color-default: rgba(12, 27, 46, 0.7);
+}
+
+.react-flow__controls {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #E1E9F6;
+}
+
+.react-flow__minimap {
+    border-radius: 10px;
+    border: 1px solid #E1E9F6;
+}
+
+.react-flow__edge-text {
+    font-size: 11px;
+    font-weight: 500;
+    fill: #506988;
+}
+
+.react-flow__edge-textbg {
+    fill: #FFFFFF;
+    rx: 5px;
+}
+
+.dark .react-flow__edge-textbg {
+    fill: #142843;
+}
+
+/* --- Modal chrome -------------------------------------------------------- */
 
 @keyframes modalShow {
     from {
@@ -205,10 +431,6 @@
 
 .animate-flow__edge-textbg {
     rx: 5px;
-}
-
-.workflow-editor-container {
-    touch-action: none;
 }
 
 @keyframes slideDown {
@@ -263,10 +485,3 @@
 .dark-svg-fix {
     filter: invert(0.9) hue-rotate(180deg);
 }
-
-
-
-
-
-
-

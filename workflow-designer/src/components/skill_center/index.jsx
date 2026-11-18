@@ -52,78 +52,54 @@ const SkillCenter = ({ isDark }) => {
         common: mockSkills.filter(s => s.category === 'Common').length,
     }), []);
 
-    const themeColor = (domain) => {
-        const map = {
-            '网': 'bg-indigo-500',
-            '云': 'bg-emerald-500',
-            '维': 'bg-amber-500',
-            '算': 'bg-violet-500',
-            '营': 'bg-rose-500'
-        };
-        return map[domain] || 'bg-blue-600';
-    };
-
-    const themeBorder = (domain) => {
-        const map = {
-            '网': 'hover:border-indigo-300 dark:hover:border-indigo-700',
-            '云': 'hover:border-emerald-300 dark:hover:border-emerald-700',
-            '维': 'hover:border-amber-300 dark:hover:border-amber-700',
-            '算': 'hover:border-violet-300 dark:hover:border-violet-700',
-            '营': 'hover:border-rose-300 dark:hover:border-rose-700'
-        };
-        return map[domain] || 'hover:border-blue-300';
-    };
-
     const renderCard = (skill) => {
         const activeVersions = skill.versions.filter(v => v.status === 'active').length;
         return (
             <div
                 key={skill.id}
                 onClick={() => setSelectedSkill(skill)}
-                className={`group relative p-8 rounded-2xl border cursor-pointer transition-all duration-300
-                    bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800
-                    ${themeBorder(skill.domain)}
-                    hover:shadow-lg hover:-translate-y-1 animate-in fade-in duration-300`}
+                className="cm-card cm-card-hover group relative flex flex-col cursor-pointer p-[17px_16px_14px]
+                    dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-blue-700"
             >
-                <div className="flex items-start justify-between mb-5">
-                    <div className={`p-4 rounded-xl text-white shadow-lg ${themeColor(skill.domain)}`}>
-                        <Package size={26} />
+                <div className="flex items-start gap-3">
+                    <span className="cm-entity-icon-square shrink-0 dark:bg-zinc-800 dark:text-blue-400">
+                        <Package size={18} strokeWidth={1.8} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <h3 className="cm-entity-title dark:text-zinc-100" title={skill.name}>
+                            {skill.name}
+                        </h3>
+                        <p className="cm-entity-meta dark:text-zinc-500">
+                            {skill.domain} · {skill.vendor.name}
+                        </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" />
-                        <span className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase">
+                    <div className="flex shrink-0 items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                        <span className="text-[11px] text-cm-faint dark:text-zinc-500">
                             {activeVersions}/{skill.versions.length} {t('skills.ver')}
                         </span>
                     </div>
                 </div>
 
-                <h3 className="text-base font-black text-zinc-900 dark:text-white mb-3 leading-tight line-clamp-1">
-                    {skill.name}
-                </h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-5 leading-relaxed min-h-[3em]">
+                <p className="mt-3 min-h-[38px] line-clamp-2 text-[12px] leading-[1.6] text-cm-secondary dark:text-zinc-400">
                     {skill.description}
                 </p>
 
-                <div className="flex flex-wrap gap-2 mb-5">
+                <div className="mt-3 flex flex-wrap gap-1.5">
                     {skill.tags.slice(0, 3).map(tag => (
-                        <span key={tag}
-                            className="px-2.5 py-1 rounded-md text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-                            {tag}
-                        </span>
+                        <span key={tag} className="cm-chip dark:bg-zinc-800 dark:text-blue-300">{tag}</span>
                     ))}
                     {skill.tags.length > 3 && (
-                        <span className="px-2.5 py-1 rounded-md text-xs font-bold text-zinc-400 dark:text-zinc-500">
-                            +{skill.tags.length - 3}
-                        </span>
+                        <span className="cm-chip cm-chip-neutral dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">+{skill.tags.length - 3}</span>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                    <span className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase">
-                        {skill.vendor.name}
+                <div className="mt-auto pt-3 flex items-center justify-between gap-2 border-t border-cm-line-soft dark:border-zinc-800">
+                    <span className="truncate text-[11px] font-mono text-cm-faint dark:text-zinc-500">
+                        v{skill.versions[0].version}
                     </span>
-                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500">
-                        {skill.domain}
+                    <span className="shrink-0 text-[11px] text-cm-muted dark:text-zinc-400">
+                        {skill.vendor.supportLevel}
                     </span>
                 </div>
             </div>
@@ -131,65 +107,68 @@ const SkillCenter = ({ isDark }) => {
     };
 
     return (
-        <div className="h-full p-6 flex flex-col w-full transition-all animate-in fade-in duration-500 overflow-hidden font-sans">
-            <div className="shrink-0 flex items-center justify-between mb-6 px-2">
-                <div className="flex items-center gap-4">
-                    <div className="p-2.5 bg-zinc-900 dark:bg-violet-600 rounded-xl text-white shadow-lg">
-                        <Layers size={20} />
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-black text-zinc-900 dark:text-white uppercase leading-none">
+        <div className="h-full p-6 flex flex-col w-full transition-all animate-in fade-in duration-500 overflow-hidden font-sans bg-cm-canvas dark:bg-cm-night">
+            <div className="shrink-0 flex items-start justify-between gap-4 mb-5">
+                <div className="flex min-w-0 items-center gap-3">
+                    <span className="cm-entity-icon-square shrink-0 dark:bg-zinc-800 dark:text-blue-400">
+                        <Layers size={18} strokeWidth={1.8} />
+                    </span>
+                    <div className="min-w-0">
+                        <h1 className="cm-section-title truncate dark:text-zinc-100">
                             {t('skills.title')}
                         </h1>
-                        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">
+                        <p className="mt-[3px] truncate text-[12px] text-cm-muted dark:text-zinc-400">
                             {mockSkills.length} {t('skills.total_skills')}
-                        </span>
+                        </p>
                     </div>
                 </div>
-                <div className="relative w-72">
+                <div className="cm-search shrink-0 w-[300px] max-w-[55%] dark:border-zinc-700 dark:bg-zinc-900">
+                    <Search size={15} className="shrink-0 text-cm-faint dark:text-zinc-500" />
                     <input
                         type="text"
                         placeholder={t('skills.search_placeholder')}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 outline-none transition-all dark:text-white"
+                        className="dark:text-zinc-100 dark:placeholder:text-zinc-500"
                         onChange={(e) => setKeyword(e.target.value)}
                         value={keyword}
                     />
-                    <Search className="absolute left-3.5 top-3 text-zinc-400" size={14} />
                 </div>
             </div>
 
-            <div className="shrink-0 flex items-center gap-1 mb-6 px-2">
-                {TABS.map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide transition-all duration-300
-                            ${activeTab === tab
-                                ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'
-                                : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
-                    >
-                        {tab === 'all' && <Layers size={14} />}
-                        {tab === 'service' && <Server size={14} />}
-                        {tab === 'common' && <Wrench size={14} />}
-                        {t(`skills.tab_${tab}`)}
-                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black
-                            ${activeTab === tab
-                                ? 'bg-white/20 dark:bg-zinc-900/20'
-                                : 'bg-zinc-100 dark:bg-zinc-800'}`}>
-                            {tabCounts[tab]}
-                        </span>
-                    </button>
-                ))}
+            <div className="shrink-0 flex items-center gap-1.5 mb-5">
+                {TABS.map(tab => {
+                    const isActive = activeTab === tab;
+                    return (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-cm-sm text-[12px] transition-colors duration-150
+                                ${isActive
+                                    ? 'bg-cm-primary-faint font-semibold text-cm-primary dark:bg-zinc-800 dark:text-blue-300'
+                                    : 'font-medium text-cm-secondary hover:bg-cm-primary-soft hover:text-cm-primary dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'}`}
+                        >
+                            {tab === 'all' && <Layers size={14} />}
+                            {tab === 'service' && <Server size={14} />}
+                            {tab === 'common' && <Wrench size={14} />}
+                            {t(`skills.tab_${tab}`)}
+                            <span className={`rounded-[5px] px-1.5 py-[1px] text-[10px] font-semibold leading-[14px]
+                                ${isActive
+                                    ? 'bg-white text-cm-primary dark:bg-white/10 dark:text-blue-300'
+                                    : 'bg-cm-canvas text-cm-muted dark:bg-zinc-800 dark:text-zinc-400'}`}>
+                                {tabCounts[tab]}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 px-2">
+            <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar pb-4">
                 {filteredSkills.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-zinc-400 gap-3">
-                        <Package size={48} strokeWidth={1.5} />
-                        <p className="text-sm font-bold uppercase tracking-wider">{t('skills.no_skills')}</p>
+                    <div className="flex h-full flex-col items-center justify-center gap-2.5 text-cm-faint dark:text-zinc-500">
+                        <Package size={40} strokeWidth={1.4} />
+                        <p className="text-[12px] font-medium">{t('skills.no_skills')}</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-8">
+                    <div className="grid grid-cols-1 gap-[17px] md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {filteredSkills.map(renderCard)}
                     </div>
                 )}

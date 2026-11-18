@@ -203,7 +203,7 @@ export const transformWorkflowToReactFlow = (rawInput) => {
                 label: link.condition || '',
                 data: { condition: link.condition || '' },
                 animated: nodeStatus === 'running',
-                style: { stroke: '#94a3b8', strokeWidth: 2 }
+                style: { stroke: '#A9C8FB', strokeWidth: 2 }
             });
         });
     });
@@ -211,7 +211,7 @@ export const transformWorkflowToReactFlow = (rawInput) => {
     const startNodes = steps.filter(s => !targetStepNames.has(s.name));
     if (startNodes.length > 0) {
         nodes.unshift({ id: 'START_NODE', type: 'startNode', position: { x: 0, y: 0 }, width: 120, height: 50, deletable: false, data: { label: 'START', status: 'completed' } });
-        startNodes.forEach(sn => edges.unshift({ id: `e-start-${sn.name}`, source: 'START_NODE', target: sn.name, style: { stroke: '#94a3b8', strokeDasharray: '5,5' } }));
+        startNodes.forEach(sn => edges.unshift({ id: `e-start-${sn.name}`, source: 'START_NODE', target: sn.name, style: { stroke: '#A9C8FB', strokeDasharray: '5,5' } }));
     }
 
     const terminalNodes = steps.filter(s => !s._normalizedNext || s._normalizedNext.length === 0);
@@ -224,7 +224,7 @@ export const transformWorkflowToReactFlow = (rawInput) => {
             const endNode = nodes.find(n => n.id === 'END_OF_WORKFLOW');
             if (endNode) endNode.data.status = endStatus;
         }
-        terminalNodes.forEach(tn => edges.push({ id: `e-${tn.name}-implicit-end`, source: tn.name, target: 'END_OF_WORKFLOW', style: { stroke: '#94a3b8', strokeWidth: 2 } }));
+        terminalNodes.forEach(tn => edges.push({ id: `e-${tn.name}-implicit-end`, source: tn.name, target: 'END_OF_WORKFLOW', style: { stroke: '#A9C8FB', strokeWidth: 2 } }));
     }
 
     steps.forEach(s => delete s._normalizedNext);

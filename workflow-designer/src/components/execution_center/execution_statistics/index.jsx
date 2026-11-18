@@ -23,7 +23,11 @@ import {
 import { Calendar, TrendingUp, Award, Activity } from 'lucide-react';
 import { getExecutionRecords } from '@/service/api.js';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+// Status bars are drawn in the order success / failed / running, so the palette
+// leads with the semantic colours (emerald success, rose error, brand blue for
+// running) and continues down the China Mobile brand ramp. Recharts needs real
+// colour values here, so these are the token values from tailwind.config.js.
+const COLORS = ['#10B981', '#F43F5E', '#2464E8', '#6E9DF4', '#357BF1', '#1B4FD1', '#A9C8FB', '#2F60B6'];
 
 const ExecutionStatistics = ({ isDark }) => {
     const { t } = useTranslation();
@@ -115,20 +119,20 @@ const ExecutionStatistics = ({ isDark }) => {
 
     const theme = {
         bg: isDark ? 'bg-zinc-900' : 'bg-white',
-        border: isDark ? 'border-zinc-800' : 'border-zinc-200',
-        text: isDark ? 'text-zinc-100' : 'text-zinc-900',
-        textSecondary: isDark ? 'text-zinc-400' : 'text-zinc-600',
-        chartText: isDark ? '#a1a1aa' : '#52525b',
-        grid: isDark ? '#27272a' : '#e4e4e7',
-        tooltip: isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-zinc-200'
+        border: isDark ? 'border-zinc-700' : 'border-cm-line',
+        text: isDark ? 'text-zinc-100' : 'text-cm-heading',
+        textSecondary: isDark ? 'text-zinc-400' : 'text-cm-muted',
+        chartText: isDark ? '#94A9C2' : '#7188AA',
+        grid: isDark ? '#33496A' : '#EAF0F8',
+        tooltip: isDark ? 'bg-zinc-800 border-zinc-700' : 'bg-white border-cm-line'
     };
 
     if (loading) {
         return (
             <div className="h-full flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3 text-zinc-400">
-                    <div className="w-8 h-8 border-2 border-zinc-300 dark:border-zinc-600 border-t-blue-500 rounded-full animate-spin" />
-                    <span className="text-sm font-bold uppercase tracking-wider">{t('common.loading')}</span>
+                <div className="flex flex-col items-center gap-3 text-cm-faint dark:text-zinc-500">
+                    <div className="w-7 h-7 border-2 border-cm-line dark:border-zinc-700 border-t-cm-primary rounded-full animate-spin" />
+                    <span className="text-[12px] font-medium">{t('common.loading')}</span>
                 </div>
             </div>
         );
@@ -136,17 +140,17 @@ const ExecutionStatistics = ({ isDark }) => {
 
     return (
         <div className="h-full p-6 overflow-y-auto custom-scrollbar">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-black dark:text-white uppercase">
+            <div className="flex items-center justify-between mb-5">
+                <h2 className="cm-section-title dark:text-zinc-100">
                     {t('execution.statistics_title')}
                 </h2>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div className={`${theme.bg} ${theme.border} border rounded-2xl p-6`}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <div className="cm-card p-5 dark:bg-zinc-900 dark:border-zinc-700">
                     <div className="flex items-center gap-2 mb-4">
-                        <Award size={20} className="text-blue-500" />
-                        <h3 className={`text-sm font-black uppercase ${theme.text}`}>
+                        <Award size={16} className="text-cm-primary" />
+                        <h3 className={`text-[14px] font-bold ${theme.text}`}>
                             {t('execution.frequency_ranking')}
                         </h3>
                     </div>
@@ -154,30 +158,30 @@ const ExecutionStatistics = ({ isDark }) => {
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={frequencyRanking} layout="vertical" margin={{ left: 20 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
-                                <XAxis type="number" stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 12 }} />
-                                <YAxis dataKey="name" type="category" width={150} stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 12 }} />
+                                <XAxis type="number" stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 11 }} />
+                                <YAxis dataKey="name" type="category" width={150} stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 11 }} />
                                 <Tooltip
                                     contentStyle={{
-                                        backgroundColor: isDark ? '#18181b' : '#fff',
-                                        border: `1px solid ${isDark ? '#3f3f46' : '#e4e4e7'}`,
-                                        borderRadius: '8px',
-                                        color: isDark ? '#fafafa' : '#18181b'
+                                        backgroundColor: isDark ? '#142843' : '#FFFFFF',
+                                        border: `1px solid ${isDark ? '#33496A' : '#E1E9F6'}`,
+                                        borderRadius: '7px',
+                                        color: isDark ? '#EEF3FB' : '#172D4D'
                                     }}
                                 />
-                                <Bar dataKey="count" fill="#3b82f6" radius={[0, 8, 8, 0]} />
+                                <Bar dataKey="count" fill="#2464E8" radius={[0, 4, 4, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="h-[300px] flex items-center justify-center text-zinc-400 text-sm">
+                        <div className="h-[300px] flex items-center justify-center text-cm-faint dark:text-zinc-500 text-[13px]">
                             {t('execution.no_data')}
                         </div>
                     )}
                 </div>
 
-                <div className={`${theme.bg} ${theme.border} border rounded-2xl p-6`}>
+                <div className="cm-card p-5 dark:bg-zinc-900 dark:border-zinc-700">
                     <div className="flex items-center gap-2 mb-4">
-                        <Activity size={20} className="text-emerald-500" />
-                        <h3 className={`text-sm font-black uppercase ${theme.text}`}>
+                        <Activity size={16} className="text-cm-primary" />
+                        <h3 className={`text-[14px] font-bold ${theme.text}`}>
                             {t('execution.status_distribution')}
                         </h3>
                     </div>
@@ -185,15 +189,15 @@ const ExecutionStatistics = ({ isDark }) => {
                         <div className="space-y-4">
                             {statusDistribution.map((item, idx) => (
                                 <div key={item.name}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-sm font-bold ${theme.text}`}>{item.name}</span>
-                                        <span className={`text-sm font-mono ${theme.textSecondary}`}>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className={`text-[13px] font-medium ${theme.text}`}>{item.name}</span>
+                                        <span className={`text-[12px] font-mono ${theme.textSecondary}`}>
                                             {item.value} ({item.percentage}%)
                                         </span>
                                     </div>
-                                    <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                    <div className="h-2 bg-cm-line-soft dark:bg-zinc-800 rounded-[3px] overflow-hidden">
                                         <div
-                                            className="h-full rounded-full transition-all duration-500"
+                                            className="h-full rounded-[3px] transition-all duration-500"
                                             style={{
                                                 width: `${item.percentage}%`,
                                                 backgroundColor: COLORS[idx % COLORS.length]
@@ -204,26 +208,25 @@ const ExecutionStatistics = ({ isDark }) => {
                             ))}
                         </div>
                     ) : (
-                        <div className="h-[300px] flex items-center justify-center text-zinc-400 text-sm">
+                        <div className="h-[300px] flex items-center justify-center text-cm-faint dark:text-zinc-500 text-[13px]">
                             {t('execution.no_data')}
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className={`${theme.bg} ${theme.border} border rounded-2xl p-6`}>
-                <div className="flex items-center justify-between mb-4">
+            <div className="cm-card p-5 dark:bg-zinc-900 dark:border-zinc-700">
+                <div className="flex items-center justify-between gap-3 mb-4">
                     <div className="flex items-center gap-2">
-                        <TrendingUp size={20} className="text-purple-500" />
-                        <h3 className={`text-sm font-black uppercase ${theme.text}`}>
+                        <TrendingUp size={16} className="text-cm-primary" />
+                        <h3 className={`text-[14px] font-bold ${theme.text}`}>
                             {t('execution.monthly_trend')}
                         </h3>
                     </div>
                     <select
                         value={selectedWorkflow || ''}
                         onChange={(e) => setSelectedWorkflow(e.target.value)}
-                        className={`px-4 py-2 rounded-lg border text-sm font-bold outline-none
-                            ${theme.bg} ${theme.border} ${theme.text}`}
+                        className="cm-input max-w-[220px] shrink-0 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
                     >
                         {workflowList.map(wf => (
                             <option key={wf} value={wf}>{wf}</option>
@@ -234,28 +237,28 @@ const ExecutionStatistics = ({ isDark }) => {
                     <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
-                            <XAxis dataKey="month" stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 12 }} />
-                            <YAxis stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 12 }} />
+                            <XAxis dataKey="month" stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 11 }} />
+                            <YAxis stroke={theme.chartText} tick={{ fill: theme.chartText, fontSize: 11 }} />
                             <Tooltip
                                 contentStyle={{
-                                    backgroundColor: isDark ? '#18181b' : '#fff',
-                                    border: `1px solid ${isDark ? '#3f3f46' : '#e4e4e7'}`,
-                                    borderRadius: '8px',
-                                    color: isDark ? '#fafafa' : '#18181b'
+                                    backgroundColor: isDark ? '#142843' : '#FFFFFF',
+                                    border: `1px solid ${isDark ? '#33496A' : '#E1E9F6'}`,
+                                    borderRadius: '7px',
+                                    color: isDark ? '#EEF3FB' : '#172D4D'
                                 }}
                             />
                             <Line
                                 type="monotone"
                                 dataKey="count"
-                                stroke="#8b5cf6"
-                                strokeWidth={3}
-                                dot={{ fill: '#8b5cf6', r: 5 }}
-                                activeDot={{ r: 7 }}
+                                stroke="#2464E8"
+                                strokeWidth={2}
+                                dot={{ fill: '#2464E8', r: 3 }}
+                                activeDot={{ r: 5 }}
                             />
                         </LineChart>
                     </ResponsiveContainer>
                 ) : (
-                    <div className="h-[300px] flex items-center justify-center text-zinc-400 text-sm">
+                    <div className="h-[300px] flex items-center justify-center text-cm-faint dark:text-zinc-500 text-[13px]">
                         {t('execution.no_data')}
                     </div>
                 )}

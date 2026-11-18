@@ -101,12 +101,12 @@ export default function CustomEdge({
                 >
                     <div 
                         className={`
-                            px-3 py-1.5 rounded-xl border shadow-sm backdrop-blur-md max-w-[200px]
-                            transition-all duration-300 hover:scale-110 active:scale-95
+                            px-2.5 py-1 rounded-[6px] border shadow-sm max-w-[200px]
+                            transition-all duration-200 hover:scale-105 active:scale-95
                             cursor-help
-                            ${style.stroke === '#475569' || style.stroke === '#94a3b8' 
-                                ? 'bg-zinc-100/80 border-zinc-200 text-zinc-500 dark:bg-zinc-900/80 dark:border-zinc-800 dark:text-zinc-400' 
-                                : 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:bg-blue-400/10 dark:border-blue-400/20 dark:text-blue-400 font-bold'}
+                            ${style.stroke === '#357BF1' || style.stroke === '#A9C8FB'
+                                ? 'bg-white/95 border-cm-line text-cm-muted dark:bg-zinc-900/90 dark:border-zinc-700 dark:text-zinc-400'
+                                : 'bg-cm-primary-faint border-cm-primary/25 text-cm-primary dark:bg-cm-primary/15 dark:border-cm-primary/30 dark:text-blue-300 font-medium'}
                         `}
                     >
                         <div className="line-clamp-2 overflow-hidden text-ellipsis break-words text-center leading-tight">
@@ -128,13 +128,13 @@ export default function CustomEdge({
                     }}
                 >
                     <div className="flex flex-col items-center">
-                        <div className="px-5 py-3 bg-zinc-900/95 dark:bg-zinc-800/95 text-white text-[13px] rounded-2xl shadow-2xl border border-white/10 backdrop-blur-xl max-w-[280px] whitespace-normal break-words leading-relaxed animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-4 py-2.5 bg-[#123253]/97 dark:bg-zinc-800/97 text-white text-[12px] rounded-[10px] shadow-panel border border-white/10 max-w-[280px] whitespace-normal break-words leading-relaxed animate-in fade-in zoom-in-95 duration-200">
                             <div className="max-h-60 overflow-y-auto custom-scrollbar pr-1">
                                 {label}
                             </div>
                         </div>
                         {/* Arrow: located directly below the horizontal center */}
-                        <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-zinc-900/95 dark:border-t-zinc-800/95" />
+                        <div className="w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-[#123253]/97 dark:border-t-zinc-800/97" />
                     </div>
                 </div>,
                 document.body

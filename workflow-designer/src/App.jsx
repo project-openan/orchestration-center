@@ -52,7 +52,7 @@ const MainContainer = () => {
 
    const [isDark, setIsDark] = useState(() => {
         const savedTheme = localStorage.getItem('theme');
-        return (savedTheme || 'dark') === 'dark';
+        return (savedTheme || 'light') === 'dark';
     });
 
     const runAuthCheck = useCallback(() => {
@@ -128,7 +128,7 @@ const MainContainer = () => {
     }, [activeTab]);
 
     useEffect(() => {
-        const lang = localStorage.getItem('lang') || 'en';
+        const lang = localStorage.getItem('lang') || 'zh';
         if (lang !== i18n.language) {
             i18n.changeLanguage(lang);
         }
@@ -137,8 +137,8 @@ const MainContainer = () => {
     return (
         <>
         {authState === 'checking' ? (
-            <div className="h-screen flex items-center justify-center bg-zinc-50 dark:bg-[#09090B]">
-                <div className="text-zinc-400 text-sm animate-pulse">Loading...</div>
+            <div className="h-screen flex flex-col items-center justify-center gap-4 bg-cm-canvas dark:bg-cm-night">
+                <div className="h-11 w-11 rounded-[10px] border border-cm-line bg-white shadow-card grid place-items-center"><span className="block h-5 w-5 rounded-full border-2 border-cm-primary/25 border-t-cm-primary animate-spin"/></div><div className="text-cm-muted text-[13px] animate-pulse">Loading...</div>
             </div>
         ) : authState === 'unreachable' ? (
             // The backend did not answer at all (connection refused/reset, TLS
@@ -146,9 +146,9 @@ const MainContainer = () => {
             // would start guessing credentials for a service that is simply
             // down (see the login fast-path that accepts any password when
             // authentication is disabled).
-            <div data-testid="backend-unreachable" className="h-screen flex flex-col items-center justify-center gap-4 bg-zinc-50 dark:bg-[#09090B]">
-                <ServerOff size={40} className="text-zinc-400"/>
-                <div className="text-zinc-500 dark:text-zinc-400 text-sm text-center max-w-md px-6">
+            <div data-testid="backend-unreachable" className="h-screen flex flex-col items-center justify-center gap-4 bg-cm-canvas dark:bg-cm-night">
+                <ServerOff size={34} className="text-cm-faint"/>
+                <div className="text-cm-secondary dark:text-zinc-400 text-[13px] text-center max-w-md px-6 leading-relaxed">
                     {t('login.backend_unreachable')}
                 </div>
                 <button
@@ -158,7 +158,7 @@ const MainContainer = () => {
                         setAuthState('checking');
                         runAuthCheck();
                     }}
-                    className="px-4 py-2 rounded-lg text-sm font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                    className="cm-btn-primary px-4 text-[13px]"
                 >
                     {t('login.retry')}
                 </button>
@@ -176,7 +176,7 @@ const MainContainer = () => {
                singleAccount={singleAccount}
            />
         ) : (
-        <div className="h-screen flex flex-col bg-zinc-50 dark:bg-[#09090B] overflow-hidden font-sans text-lg transition-colors duration-500">
+        <div className="h-screen flex flex-col bg-cm-canvas dark:bg-cm-night overflow-hidden font-sans transition-colors duration-300">
            {mustChangePassword && (
                <PasswordChangeModal
                    isOpen={true}

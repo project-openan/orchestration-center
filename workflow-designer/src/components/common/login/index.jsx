@@ -16,10 +16,10 @@
 //    under the License.
 import {useState, useEffect, useId} from "react";
 import {useTranslation} from "react-i18next";
-import {Lock, ArrowRight, AlertCircle, Loader2, Settings} from "lucide-react";
+import {Lock, ArrowRight, AlertCircle, Loader2, Settings, Workflow, Boxes, Activity} from "lucide-react";
 import {User} from "lucide-react";
 import SettingsModal from "../setting/index.jsx";
-import openanLogo from "../../../assets/openan-logo.png";
+import {BrandMark} from "../brand/index.jsx";
 import {getBaseUrl, login, register} from "@/service/api.js";
 
 const MAX_RECENT_USERNAMES = 5;
@@ -89,9 +89,9 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
     };
 
     useEffect(() => {
-        let lang = 'en';
+        let lang = 'zh';
         try {
-            lang = localStorage.getItem('lang') || 'en';
+            lang = localStorage.getItem('lang') || 'zh';
         } catch {
             // Login remains available when browser storage is blocked.
         }
@@ -172,27 +172,70 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
         }
     };
 
+    const features = [
+        {icon: Workflow, label: t('login.feature_orchestration')},
+        {icon: Boxes, label: t('login.feature_agents')},
+        {icon: Activity, label: t('login.feature_observability')},
+    ];
+
     return (
-        <div className="h-screen flex items-center justify-center bg-zinc-50 dark:bg-[#09090B] font-sans transition-colors duration-500">
-            <div className="w-full max-w-md px-8">
-                <div className="flex flex-col items-center mb-10">
-                    <div className="w-16 h-16 rounded-xl bg-white p-1.5 flex items-center justify-center shadow-lg mb-4">
-                        <img src={openanLogo} alt="OpenAN" className="w-full h-full object-contain"/>
-                    </div>
-                    <h1 className="text-3xl font-medium tracking-tight text-zinc-900 dark:text-zinc-100">
-                        Open<span className="text-blue-500">AN</span>
-                    </h1>
-                    <p className="text-xs tracking-widest uppercase text-zinc-400 dark:text-zinc-500 mt-1">
-                        Open Autonomous Networks
-                    </p>
+        <div className="min-h-screen flex bg-cm-canvas dark:bg-cm-night font-sans transition-colors duration-300">
+            {/* Brand panel -- hidden on small screens. */}
+            <aside className="hidden lg:flex relative w-[42%] xl:w-[40%] flex-col justify-between overflow-hidden px-12 xl:px-16 py-12 text-white bg-brand-gradient">
+                <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/10 blur-2xl"/>
+                <div className="absolute -bottom-28 -right-20 h-[26rem] w-[26rem] rounded-full bg-white/10 blur-3xl"/>
+                <div
+                    className="absolute inset-0 opacity-[0.14]"
+                    style={{
+                        backgroundImage:
+                            'linear-gradient(rgba(255,255,255,.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.4) 1px, transparent 1px)',
+                        backgroundSize: '42px 42px',
+                    }}
+                />
+                <div className="relative z-10 flex items-center gap-2.5">
+                    <span className="h-8 w-8 grid place-items-center rounded-[8px] bg-white p-1">
+                        <BrandMark className="w-full h-full"/>
+                    </span>
+                    <span className="text-[17px] font-bold tracking-[-0.4px]">{t('brand.company')}</span>
                 </div>
 
-                <form onSubmit={isRegisterMode ? handleRegister : handleSubmit}
-                      className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl p-8 space-y-5">
-                    <div className="flex items-center gap-2 text-zinc-700 dark:text-zinc-200">
-                        <Lock size={18} className="text-blue-500"/>
-                        <span className="text-sm font-medium">{isRegisterMode ? t('login.register_title') : t('login.title')}</span>
-                   </div>
+                <div className="relative z-10 max-w-md">
+                    <h2 className="text-[30px] leading-snug font-bold tracking-[-0.5px]">{t('brand.product')}</h2>
+                    <p className="mt-4 text-[13px] leading-relaxed text-white/80">{t('brand.slogan')}</p>
+                    <ul className="mt-9 space-y-3.5">
+                        {features.map(({icon: Icon, label}) => (
+                            <li key={label} className="flex items-center gap-3 text-[13px] text-white/90">
+                                <span className="h-8 w-8 grid place-items-center rounded-[7px] bg-white/15 border border-white/25">
+                                    <Icon size={15}/>
+                                </span>
+                                {label}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div className="relative z-10 text-[11px] text-white/60">{t('brand.copyright')}</div>
+            </aside>
+
+            <main className="flex-1 flex items-center justify-center px-5 py-10">
+                <div className="w-full max-w-[400px]">
+                    <div className="lg:hidden flex items-center justify-center gap-2.5 mb-8">
+                        <span className="h-8 w-8 grid place-items-center rounded-[8px] bg-white border border-cm-line p-1 shadow-card">
+                            <BrandMark className="w-full h-full"/>
+                        </span>
+                        <span className="text-[16px] font-bold text-[#142843] dark:text-zinc-100">{t('brand.company')}</span>
+                    </div>
+
+                    <form onSubmit={isRegisterMode ? handleRegister : handleSubmit}
+                          className="bg-white dark:bg-zinc-900 rounded-2xl border border-cm-line dark:border-zinc-800 shadow-card p-7 space-y-4">
+                        <div className="mb-1">
+                            <h1 className="text-[19px] font-bold text-cm-heading dark:text-zinc-100 tracking-[-0.3px]">
+                                {isRegisterMode ? t('login.register_title') : t('login.title')}
+                            </h1>
+                            <p className="mt-1.5 text-[12px] text-cm-muted dark:text-zinc-400">
+                                {t('login.welcome_subtitle')}
+                            </p>
+                        </div>
 
                     <div className="relative"
                          onMouseEnter={() => setHistoryOpen(true)}
@@ -226,11 +269,11 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                             onKeyDown={handleUsernameKeyDown}
                             placeholder={t('login.username_placeholder')}
                             disabled={loading}
-                            className="w-full pl-10 pr-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                            className="cm-input pl-10 pr-3"
                         />
-                        <User size={16} className="absolute left-3.5 top-3.5 text-zinc-400"/>
+                        <User size={16} className="absolute left-3 top-[11px] text-cm-faint"/>
                         {historyVisible && (
-                            <div className="absolute top-full left-0 right-0 z-20 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-lg"
+                            <div className="absolute top-full left-0 right-0 z-20 mt-1 overflow-hidden rounded-[10px] border border-cm-line bg-white dark:border-zinc-700 dark:bg-zinc-800 shadow-panel"
                                  onMouseDown={(event) => event.preventDefault()}>
                                 <ul id={historyId} role="listbox" aria-label={t('login.recent_usernames')}>
                                     {matchingUsernames.map((name, index) => (
@@ -239,14 +282,14 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                                                     tabIndex={-1} aria-selected={index === activeUsername}
                                                     onMouseEnter={() => setActiveUsername(index)}
                                                     onClick={() => selectUsername(name)}
-                                                    className={`w-full truncate px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 ${index === activeUsername ? 'bg-blue-50 dark:bg-zinc-700' : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'}`}>
+                                                    className={`w-full truncate px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 ${index === activeUsername ? 'bg-cm-primary-soft dark:bg-zinc-700' : 'hover:bg-zinc-50 dark:hover:bg-zinc-700'}`}>
                                                 {name}
                                             </button>
                                         </li>
                                     ))}
                                 </ul>
                                 <button type="button" onClick={clearRecentUsernames}
-                                        className="w-full border-t border-zinc-200 dark:border-zinc-700 px-4 py-2 text-left text-xs text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400">
+                                        className="w-full border-t border-cm-line-soft dark:border-zinc-700 px-4 py-2 text-left text-[11px] text-cm-muted hover:text-cm-primary">
                                     {t('login.clear_recent_usernames')}
                                 </button>
                             </div>
@@ -262,7 +305,7 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder={t('login.placeholder')}
                             disabled={loading}
-                            className="w-full px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                            className="cm-input pl-10 pr-3"
                         />
                     </div>
 
@@ -276,16 +319,17 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder={t('login.confirm_password')}
                             disabled={loading}
-                            className="w-full pl-10 pr-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                            className="cm-input pl-10 pr-3"
                         />
-                        <Lock size={16} className="absolute left-3.5 top-3.5 text-zinc-400"/>
+                        <Lock size={16} className="absolute left-3 top-[11px] text-cm-faint"/>
                     </div>
                     )}
 
                     {!singleAccount && (
-                        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        <label className="flex items-center gap-2 text-[12px] text-cm-secondary dark:text-zinc-300">
                             <input
                                 type="checkbox"
+                                className="accent-cm-primary"
                                 checked={rememberUsername}
                                 disabled={loading}
                                 onChange={(e) => e.target.checked ? setRememberUsername(true) : clearRecentUsernames()}
@@ -295,57 +339,62 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                     )}
 
                     {error && (
-                        <div className="flex items-center gap-2 text-sm text-red-500">
-                            <AlertCircle size={16}/>
-                            <span>{error}</span>
+                        <div
+                            className="flex items-start gap-2 rounded-[7px] border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] text-rose-600 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
+                            <AlertCircle size={14} className="mt-0.5 shrink-0"/>
+                            <span className="leading-relaxed">{error}</span>
                         </div>
                     )}
 
                     <button
                         type="submit"
                         disabled={loading || !username.trim() || !password.trim()}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium text-sm transition-all">
+                        className="cm-btn-primary w-full min-h-[39px] gap-2">
                         {loading ? (
                             <>
-                                <Loader2 size={18} className="animate-spin"/>
+                                <Loader2 size={16} className="animate-spin"/>
                                 {t('login.loading')}
                             </>
                         ) : (
                             <>
                                 {isRegisterMode ? t('login.register_button') : t('login.button')}
-                                <ArrowRight size={18}/>
+                                <ArrowRight size={16}/>
                             </>
                         )}
                     </button>
 
                     {registrationEnabled && (
-                    <div className="text-center text-sm text-zinc-400">
+                    <div className="text-center text-[12px] text-cm-muted">
                         {isRegisterMode ? (
-                            <span>{t('login.have_account')} <button type="button" onClick={() => {setIsRegisterMode(false); setError("");}} className="text-blue-500 hover:underline font-medium">{t('login.button')}</button></span>
+                            <span>{t('login.have_account')} <button type="button" onClick={() => {setIsRegisterMode(false); setError("");}} className="text-cm-primary hover:underline font-medium">{t('login.button')}</button></span>
                         ) : (
-                            <span>{t('login.no_account')} <button type="button" onClick={() => {setIsRegisterMode(true); setError("");}} className="text-blue-500 hover:underline font-medium">{t('login.register_button')}</button></span>
+                            <span>{t('login.no_account')} <button type="button" onClick={() => {setIsRegisterMode(true); setError("");}} className="text-cm-primary hover:underline font-medium">{t('login.register_button')}</button></span>
                         )}
                     </div>
                     )}
                 </form>
 
-                <div className="flex justify-center mt-6 gap-4 items-center">
-                    <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-full border border-zinc-200 dark:border-zinc-700 shadow-inner">
-                        <button onClick={() => handleLangChange('zh')}
-                                className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${i18n.language === 'zh' ? 'bg-white dark:bg-zinc-600 text-blue-600 dark:text-white shadow-sm' : 'text-zinc-400'}`}>
-                            中
-                        </button>
-                        <button onClick={() => handleLangChange('en')}
-                                className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${i18n.language === 'en' ? 'bg-white dark:bg-zinc-600 text-blue-600 dark:text-white shadow-sm' : 'text-zinc-400'}`}>
-                            EN
-                        </button>
+                <div className="flex justify-center mt-5 items-center gap-3">
+                    <div className="flex items-center gap-0.5 rounded-[7px] border border-cm-line bg-white dark:bg-zinc-900 dark:border-zinc-700 p-0.5 shadow-sm">
+                        {['zh', 'en'].map((code) => (
+                            <button key={code} onClick={() => handleLangChange(code)}
+                                    className={`px-3 py-1 rounded-[5px] text-[11px] transition-colors ${i18n.language === code ? 'bg-cm-primary-faint text-cm-primary font-semibold' : 'text-cm-faint hover:text-cm-primary'}`}>
+                                {code === 'zh' ? '中' : 'EN'}
+                            </button>
+                        ))}
                     </div>
                     <button onClick={() => setIsSettingsOpen(true)}
-                            className="p-2.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">
-                        <Settings size={20} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all"/>
+                            aria-label={t('settings.title')}
+                            className="cm-icon-btn">
+                        <Settings size={16}/>
                     </button>
                 </div>
-            </div>
+
+                <p className="mt-6 text-center text-[11px] text-cm-faint dark:text-zinc-500 lg:hidden">
+                    {t('brand.copyright')}
+                </p>
+                </div>
+            </main>
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} t={t}/>
         </div>
     );
