@@ -14,7 +14,7 @@
 //    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 //    License for the specific language governing permissions and limitations
 //    under the License.
-import {useState, useEffect, useId} from "react";
+import {useState, useEffect, useId, useRef} from "react";
 import {useTranslation} from "react-i18next";
 import {Lock, ArrowRight, AlertCircle, Loader2, Settings, Workflow, Boxes, Activity} from "lucide-react";
 import {User} from "lucide-react";
@@ -59,6 +59,8 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
     const [historyOpen, setHistoryOpen] = useState(false);
     const [activeUsername, setActiveUsername] = useState(-1);
     const historyId = useId();
+    const usernameRef = useRef(null);
+    const passwordRef = useRef(null);
     const matchingUsernames = recentUsernames.filter(name => name.toLowerCase().startsWith(username.toLowerCase()));
     const historyVisible = historyOpen && !singleAccount && !isRegisterMode && !loading && matchingUsernames.length > 0;
 
@@ -122,13 +124,27 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!username.trim() || !password.trim() || loading) return;
+        if (loading) return;
+        if (!username.trim()) {
+            setError(t('login.username_required'));
+            usernameRef.current?.focus();
+            return;
+        }
+        if (!password.trim()) {
+            setError(t('login.password_required'));
+            passwordRef.current?.focus();
+            return;
+        }
         setLoading(true);
         setError("");
         try {
             finishLogin(await login(username, password));
         } catch (err) {
-            const msg = err?.response?.data?.message || err?.message || "";
+            // The backend reports a failed credential check in English; the
+            // localized wording is clearer on this screen.
+            const msg = err?.response?.status === 401
+                ? t('login.error')
+                : (err?.response?.data?.message || err?.message || "");
             setError(msg || t('login.error'));
         } finally {
             setLoading(false);
@@ -137,7 +153,17 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
 
    const handleRegister = async (e) => {
        e.preventDefault();
-       if (!username.trim() || !password.trim() || loading) return;
+       if (loading) return;
+       if (!username.trim()) {
+           setError(t('login.username_required'));
+           usernameRef.current?.focus();
+           return;
+       }
+       if (!password.trim()) {
+           setError(t('login.password_required'));
+           passwordRef.current?.focus();
+           return;
+       }
        if (password.length < 8) {
            setError(t('login.password_too_short'));
            return;
@@ -156,7 +182,9 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
             await register(username, password);
             finishLogin(await login(username, password));
        } catch (err) {
-            const msg = err?.response?.data?.message || err?.message || "";
+            const msg = err?.response?.status === 401
+                ? t('login.error')
+                : (err?.response?.data?.message || err?.message || "");
             setError(msg || t('login.error'));
         } finally {
             setLoading(false);
@@ -251,6 +279,7 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                         <input
                             type="text"
                             name="username"
+                            ref={usernameRef}
                             autoComplete="username"
                             aria-label={t('login.username_placeholder')}
                             role={!singleAccount && !isRegisterMode ? 'combobox' : undefined}
@@ -300,6 +329,7 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
                         <input
                             type="password"
                             name="password"
+                            ref={passwordRef}
                             autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -348,7 +378,7 @@ const Login = ({isDark, onLoginSuccess, onLoginWithUser, registrationEnabled, si
 
                     <button
                         type="submit"
-                        disabled={loading || !username.trim() || !password.trim()}
+                        disabled={loading || !password.trim()}
                         className="cm-btn-primary w-full min-h-[39px] gap-2">
                         {loading ? (
                             <>
