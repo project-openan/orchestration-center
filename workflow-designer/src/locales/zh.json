@@ -20,6 +20,8 @@
     "recent_usernames": "历史登录账号",
     "clear_recent_usernames": "清除记录",
     "placeholder": "请输入访问密码...",
+    "username_required": "请输入用户名",
+    "password_required": "请输入访问密码",
     "button": "进入",
     "loading": "验证中...",
     "error": "登录失败，请检查密码是否正确",
