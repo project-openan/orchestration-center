@@ -383,3 +383,24 @@ async def test_any_success_continues_when_one_subtask_fails():
     assert len(report.stub_interactions) == 2
     assert report.stub_interactions[0].scenario == StubScenario.ERROR
     assert report.stub_interactions[1].scenario == StubScenario.SUCCESS
+
+
+@pytest.mark.asyncio
+async def test_run_sandbox_rejects_non_positive_event_limits():
+    with pytest.raises(ValueError, match="event limits must be positive"):
+        await run_sandbox(_psop(), [_card()], _SandboxControlPoint(), max_events=0)
+    with pytest.raises(ValueError, match="event limits must be positive"):
+        await run_sandbox(_psop(), [_card()], _SandboxControlPoint(), max_event_bytes=0)
+
+
+@pytest.mark.asyncio
+async def test_run_sandbox_tolerates_a_failing_event_sink():
+    def _broken_sink(event):
+        raise RuntimeError("sink down")
+
+    report = await run_sandbox(
+        _psop(), [_card()], _SandboxControlPoint(), event_sink=_broken_sink
+    )
+
+    assert report.verdict.value == "pass"
+    assert report.error is None
