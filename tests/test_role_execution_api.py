@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from orchestrate.core.model.execution_record import ExecutionStatus
@@ -359,3 +360,43 @@ def test_legacy_get_execute_rejects_bad_tie_break(client, stored_psop, cards,
         "tie_break": "loudest",
     })
     assert response.status_code == 400
+
+
+def test_legacy_get_execute_rejects_non_string_override_mapping(client, stored_psop,
+                                                                 cards, resolution_inputs):
+    response = client.get(f"{BASE}/execute", params={
+        "psop_id": stored_psop.id, "scope": "t/city-a/b",
+        "task_overrides": json.dumps({"t1": 123}),
+    })
+    assert response.status_code == 400
+    assert "must map" in response.text
+
+
+def test_preview_tolerates_empty_registry_404(client, stored_psop, monkeypatch,
+                                              resolution_inputs):
+    async def _raise_404():
+        raise HTTPException(status_code=404, detail="registry not found")
+
+    monkeypatch.setattr("orchestrate.server.role_execution_api.get_agent_cards", _raise_404)
+    response = client.post(f"{BASE}/role-execution/preview",
+                            json={"psop_id": stored_psop.id, "scope": "t/city-a/b"})
+    assert response.status_code == 200
+
+
+def test_execute_unknown_workflow_is_404(client, stored_psop, cards, resolution_inputs):
+    response = client.post(f"{BASE}/role-execution/execute", json={
+        "psop_id": "missing", "scope": "t/city-a/b",
+        "confirm_fingerprint": "0" * 64,
+    })
+    assert response.status_code == 404
+
+
+def test_execute_non_role_workflow_is_422(client, monkeypatch, cards, resolution_inputs):
+    plain = _plain_psop()
+    monkeypatch.setattr(SharedHandlers, "retrieval", lambda: SimpleNamespace(
+        get_psop_by_id=lambda _: plain))
+    response = client.post(f"{BASE}/role-execution/execute", json={
+        "psop_id": plain.id, "scope": "t/city-a/b",
+        "confirm_fingerprint": "0" * 64,
+    })
+    assert response.status_code == 422
