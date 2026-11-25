@@ -28,7 +28,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import CustomEdge from './CustomEdge';
-import { Layers, X } from 'lucide-react';
+import { Bot, ChevronDown, ChevronRight, Layers, TriangleAlert, X } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 
 import AgentNode from './CustomNodes/AgentNode/index.jsx';
@@ -41,6 +41,7 @@ import WorkflowLoader from "./loading/index.jsx";
 import PropertyPanel from "./property_panel/index.jsx";
 import Sidebar from "./sidebar/index.jsx";
 import { normalizeStatus, BACKEND_STATUS } from './utils/index.jsx';
+import { AgentRegistryBadges, matchAgentInfo, useAgentRegistryStatus } from './agent_registry.jsx';
 
 
 const nodeTypes = {
@@ -55,33 +56,106 @@ const edgeTypes = {
     custom: CustomEdge,
 };
 
-const DetailRow = ({ label, children, isDark }) => (
-    <div className={`py-3 border-b ${isDark ? 'border-zinc-800/60' : 'border-slate-100'}`}>
-        <div className={`text-[11px] font-bold uppercase tracking-wide mb-1 ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
-            {label}
-        </div>
-        <div className={`text-sm font-medium leading-relaxed break-words ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>
-            {children || '-'}
-        </div>
+const STATUS_CHIP = {
+    success: { dot: 'bg-emerald-500', chip: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500' },
+    running: { dot: 'bg-blue-500 animate-pulse', chip: 'border-blue-500/40 bg-blue-500/10 text-blue-500' },
+    failed: { dot: 'bg-rose-500', chip: 'border-rose-500/40 bg-rose-500/10 text-rose-500' },
+    pending: { dot: 'bg-zinc-400 dark:bg-zinc-500', chip: 'border-zinc-400/40 bg-zinc-500/10 text-zinc-500 dark:border-zinc-600 dark:text-zinc-400' },
+};
+
+const normalizeStatusKey = (status) => {
+    const s = String(status || '').toLowerCase().trim();
+    if (['running', 'current', 'executing', 'active'].includes(s)) return 'running';
+    if (['success', 'completed', 'executed', 'finished'].includes(s)) return 'success';
+    if (['failed', 'error', 'stopped'].includes(s)) return 'failed';
+    return 'pending';
+};
+
+const AGENT_CHIP_COLORS = ['bg-blue-500', 'bg-purple-500', 'bg-teal-500', 'bg-orange-500', 'bg-pink-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-cyan-500'];
+
+const agentAvatarClass = (agentName) => {
+    if (!agentName) return 'bg-slate-400';
+    let hash = 0;
+    for (let i = 0; i < agentName.length; i++) {
+        hash = agentName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return AGENT_CHIP_COLORS[Math.abs(hash) % AGENT_CHIP_COLORS.length];
+};
+
+const StatusPill = ({ status, isDark, t }) => {
+    const key = normalizeStatusKey(status);
+    const meta = STATUS_CHIP[key];
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-bold ${meta.chip}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+            {t(`workflow.panel.status_${key}`)}
+            {status && !['running', 'success', 'failed', 'pending'].includes(String(status).toLowerCase()) && (
+                <span className="opacity-60 font-medium">{String(status).toLowerCase()}</span>
+            )}
+        </span>
+    );
+};
+
+const DetailSectionTitle = ({ children, isDark, trailing }) => (
+    <div className="flex items-center gap-2">
+        <span className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+            {children}
+        </span>
+        <span className={`h-px flex-1 ${isDark ? 'bg-zinc-800/80' : 'bg-slate-200/70'}`} />
+        {trailing}
     </div>
 );
 
-const DetailBlock = ({ title, value, emptyText, isDark }) => {
+const DetailRow = ({ label, children, isDark }) => (
+    <div className="grid grid-cols-[88px_1fr] items-start gap-3 py-1.5">
+        <span className={`text-[11px] leading-5 font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{label}</span>
+        <span className={`text-[13px] leading-5 font-medium break-words ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>
+            {children || '-'}
+        </span>
+    </div>
+);
+
+const DetailIOBlock = ({ title, value, emptyText, isDark }) => {
+    const [open, setOpen] = useState(false);
     if (!value) return null;
     return (
-        <div className="space-y-2">
-            <div className={`text-[11px] font-bold uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
-                {title}
-            </div>
-            <pre className={`max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg p-3 text-xs leading-relaxed ${isDark ? 'bg-zinc-900 text-zinc-300 border border-zinc-800' : 'bg-slate-50 text-slate-700 border border-slate-100'}`}>
-                {typeof value === 'object' ? JSON.stringify(value, null, 2) : (value || emptyText)}
-            </pre>
+        <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-zinc-800 bg-zinc-900/70' : 'border-slate-200 bg-white'}`}>
+            <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${isDark ? 'hover:bg-zinc-800/60' : 'hover:bg-slate-100/80'}`}
+            >
+                <span className={`text-[11px] font-bold uppercase tracking-wide ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{title}</span>
+                <span className={`ml-auto ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                    {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                </span>
+            </button>
+            {open && (
+                <pre className={`mx-2 mb-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg p-3 text-[11px] leading-relaxed border ${isDark ? 'bg-zinc-950/70 text-zinc-300 border-zinc-800' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                    {typeof value === 'object' ? JSON.stringify(value, null, 2) : (value || emptyText)}
+                </pre>
+            )}
         </div>
     );
 };
 
+const DetailCallout = ({ label, children, isDark }) => (
+    <div className={`relative rounded-xl border p-3 pl-4 overflow-hidden ${isDark ? 'bg-blue-500/[0.08] border-blue-500/30' : 'bg-blue-50/80 border-blue-200'}`}>
+        <span className={`absolute left-0 top-0 bottom-0 w-1 ${isDark ? 'bg-blue-500/80' : 'bg-blue-500'}`} />
+        {label && (
+            <div className={`text-[10px] font-bold uppercase tracking-wide mb-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                {label}
+            </div>
+        )}
+        <div className={`text-[13px] leading-relaxed font-medium break-words whitespace-pre-wrap ${isDark ? 'text-zinc-100' : 'text-slate-800'}`}>
+            {children}
+        </div>
+    </div>
+);
+
 const WorkflowViewDetails = ({ selected, isDark, onClose }) => {
     const { t } = useTranslation();
+    const registry = useAgentRegistryStatus();
     const node = selected?.node;
     if (!node) return null;
 
@@ -89,77 +163,158 @@ const WorkflowViewDetails = ({ selected, isDark, onClose }) => {
     const subtasks = data.subtasks || [];
     const selectedIndex = selected.subtaskIndex;
     const selectedTask = Number.isInteger(selectedIndex) ? subtasks[selectedIndex] : null;
-    const title = selectedTask?.skill || data.label || node.id;
-    const panelTitle = selectedTask ? t('workflow.panel.executeSkill') : t('workflow.panel.nodeConfig');
+    const title = data.label || data.name || node.id;
+    const panelTitle = t('workflow.panel.nodeConfig');
     const selectedSkillMeta = selectedTask?.skillsList?.find(s => s.name === selectedTask.skill)
         || data.skillsList?.find(s => s.name === selectedTask?.skill);
 
     return (
-        <div className={`flex flex-col h-full w-full transition-colors ${isDark ? 'bg-zinc-950 text-zinc-300' : 'bg-white text-slate-800'}`}>
-            <div className={`flex items-center justify-between gap-3 p-4 border-b ${isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-slate-50/80 border-slate-200/70'}`}>
-                <div className="min-w-0">
-                    <div className={`text-[11px] font-bold uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
-                        {panelTitle}
+        <div className={`flex flex-col h-full w-full ${isDark
+            ? 'bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-900/90 text-zinc-200'
+            : 'bg-gradient-to-b from-white to-slate-50/70 text-slate-800'}`}>
+            <div className={`shrink-0 px-4 pt-4 pb-3 border-b ${isDark ? 'border-zinc-800/80 bg-zinc-900/40' : 'border-slate-200/70 bg-white/70'}`}>
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
+                            <Bot size={16} className="text-white" />
+                        </div>
+                        <div className="min-w-0">
+                            <div className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                {panelTitle}
+                            </div>
+                            <h3 className="text-sm font-bold truncate leading-tight mt-0.5">{title}</h3>
+                        </div>
                     </div>
-                    <h3 className="text-sm font-bold truncate">{title}</h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className={`shrink-0 p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
+                        title={t('common.close')}
+                    >
+                        <X size={15} />
+                    </button>
                 </div>
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className={`shrink-0 p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-slate-100 text-slate-500'}`}
-                    title={t('common.close')}
-                >
-                    <X size={16} />
-                </button>
             </div>
 
-            <div className="p-4 space-y-5 flex-1 overflow-y-auto custom-scrollbar">
-                <section>
-                    <DetailRow label={t('workflow.panel.stepName')} isDark={isDark}>{data.label || data.name || node.id}</DetailRow>
-                    <DetailRow label={t('workflow.panel.status')} isDark={isDark}>{data.status || '-'}</DetailRow>
-                    {!selectedTask && data.description && (
-                        <DetailRow label={t('workflow.panel.taskDesc')} isDark={isDark}>{data.description}</DetailRow>
-                    )}
+            <div className="p-4 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
+                {/* Agent first — registry-linked publish/health status */}
+                {selectedTask && (
+                    <section className="space-y-2">
+                        <DetailSectionTitle isDark={isDark}>{t('workflow.panel.agentSection')}</DetailSectionTitle>
+                        <div className={`rounded-xl border p-3 ${isDark ? 'border-zinc-800/80 bg-zinc-900/50' : 'border-slate-200/80 bg-white'}`}>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${agentAvatarClass(selectedTask.agent)}`}>
+                                    <Bot size={16} className="text-white" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className={`text-[10px] font-bold uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                                        {t('workflow.panel.agentName')}
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[13px] font-bold truncate">{selectedTask.agent || '-'}</span>
+                                        <AgentRegistryBadges info={matchAgentInfo(registry, selectedTask.agent)} isDark={isDark} t={t} />
+                                    </div>
+                                </div>
+                            </div>
+                            {(() => {
+                                const info = matchAgentInfo(registry, selectedTask.agent);
+                                return info && info.publishStatus && info.publishStatus !== 'published' ? (
+                                    <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 flex items-start gap-2.5">
+                                        <TriangleAlert size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <div className="text-[11px] font-black uppercase tracking-wide text-amber-600 dark:text-amber-400">{t('workflow.panel.unpublished_title')}</div>
+                                            <div className="text-xs text-zinc-600 dark:text-zinc-300 mt-0.5">{t('workflow.panel.unpublished_hint', { agent: selectedTask.agent || '-', status: t('workflow.panel.pub_' + info.publishStatus) })}</div>
+                                        </div>
+                                    </div>
+                                ) : null;
+                            })()}
+                        </div>
+                    </section>
+                )}
+                <section className="space-y-1.5">
+                    <DetailSectionTitle isDark={isDark}>{t('workflow.panel.basicInfo')}</DetailSectionTitle>
+                    <div className={`rounded-xl border px-3 py-1.5 ${isDark ? 'border-zinc-800/80 bg-zinc-900/50' : 'border-slate-200/80 bg-white'}`}>
+                        <DetailRow label={t('workflow.panel.stepName')} isDark={isDark}>{data.label || data.name || node.id}</DetailRow>
+                        <div className="grid grid-cols-[88px_1fr] items-center gap-3 py-1.5">
+                            <span className={`text-[11px] leading-5 font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{t('workflow.panel.status')}</span>
+                            <span><StatusPill status={data.status} isDark={isDark} t={t} /></span>
+                        </div>
+                        {!selectedTask && data.description && (
+                            <div className="pt-1.5">
+                                <DetailCallout label={t('workflow.panel.taskDesc')} isDark={isDark}>{data.description}</DetailCallout>
+                            </div>
+                        )}
+                    </div>
                 </section>
 
                 {selectedTask ? (
-                    <section className="space-y-4">
-                        <DetailRow label={t('workflow.panel.agentName')} isDark={isDark}>{selectedTask.agent}</DetailRow>
-                        <DetailRow label={t('workflow.panel.executeSkill')} isDark={isDark}>{selectedTask.skill}</DetailRow>
-                        <DetailRow label={t('workflow.panel.status')} isDark={isDark}>{selectedTask.status || '-'}</DetailRow>
-                        <DetailRow label={t('workflow.panel.taskDesc')} isDark={isDark}>
-                            {selectedTask.description || selectedSkillMeta?.description}
-                        </DetailRow>
-                        <DetailBlock title={t('workflow.panel.inputDefine')} value={selectedTask.inputs || selectedSkillMeta?.inputs} isDark={isDark} />
-                        <DetailBlock title={t('workflow.panel.outputDefine')} value={selectedTask.outputs || selectedSkillMeta?.outputs} isDark={isDark} />
+                    <section className="space-y-2">
+                        <DetailSectionTitle isDark={isDark}>{t('workflow.panel.taskSection')}</DetailSectionTitle>
+                        {(selectedTask.description || selectedSkillMeta?.description) && (
+                            <DetailCallout label={t('workflow.panel.taskDesc')} isDark={isDark}>
+                                {selectedTask.description || selectedSkillMeta?.description}
+                            </DetailCallout>
+                        )}
+<div className={`rounded-xl border px-3 py-1.5 ${isDark ? 'border-zinc-800/80 bg-zinc-900/50' : 'border-slate-200/80 bg-white'}`}>
+                                    <div className="grid grid-cols-[88px_1fr] items-center gap-3 py-1">
+                                        <span className={`text-[11px] leading-5 font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{t('workflow.panel.status')}</span>
+                                        <span><StatusPill status={selectedTask.status || data.status} isDark={isDark} t={t} /></span>
+                                    </div>
+                                </div>
+                        <div className={`rounded-xl border px-3 py-1.5 ${isDark ? 'border-zinc-800/80 bg-zinc-900/50' : 'border-slate-200/80 bg-white'}`}>
+                            <DetailRow label={t('workflow.panel.executeSkill')} isDark={isDark}>{selectedTask.skill}</DetailRow>
+                        </div>
+                        <DetailIOBlock title={t('workflow.panel.inputDefine')} value={selectedTask.inputs || selectedSkillMeta?.inputs} emptyText={t('workflow.panel.noInput')} isDark={isDark} />
+                        <DetailIOBlock title={t('workflow.panel.outputDefine')} value={selectedTask.outputs || selectedSkillMeta?.outputs} emptyText={t('workflow.panel.noOutput')} isDark={isDark} />
                     </section>
                 ) : (
-                    <section className="space-y-3">
-                        <div className={`text-[11px] font-bold uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
-                            {t('workflow.panel.subtasks')} ({subtasks.length})
-                        </div>
+                    <section className="space-y-2">
+                        <DetailSectionTitle isDark={isDark} trailing={
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-slate-100 text-slate-500'}`}>
+                                {subtasks.length}
+                            </span>
+                        }>
+                            {t('workflow.panel.subtasks')}
+                        </DetailSectionTitle>
                         <div className="flex flex-col gap-2">
-                            {subtasks.map((task, idx) => (
-                                <button
-                                    key={`${task.skill || 'skill'}-${idx}`}
-                                    type="button"
-                                    onClick={() => selected.onSelectSubtask?.(idx)}
-                                    className={`text-left rounded-xl border p-3 transition-all ${isDark ? 'bg-zinc-900/60 border-zinc-800 hover:bg-zinc-900' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}
-                                >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="text-[10px] font-bold uppercase text-blue-500 truncate">{task.agent || '-'}</span>
-                                        <span className={`text-[10px] uppercase ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>{task.status || '-'}</span>
-                                    </div>
-                                    <div className={`mt-1 text-sm font-semibold break-words ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>
-                                        {task.skill || t('node_label.no_skill')}
-                                    </div>
-                                    {task.description && (
-                                        <p className={`mt-1 text-xs leading-relaxed line-clamp-3 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
-                                            {task.description}
-                                        </p>
-                                    )}
-                                </button>
-                            ))}
+                            {subtasks.map((task, idx) => {
+                                const statusKey = normalizeStatusKey(task.status || data.status);
+                                const chip = STATUS_CHIP[statusKey];
+                                return (
+                                    <button
+                                        key={`${task.skill || 'skill'}-${idx}`}
+                                        type="button"
+                                        onClick={() => selected.onSelectSubtask?.(idx)}
+                                        className={`text-left rounded-xl border p-3 transition-all group ${isDark
+                                            ? 'bg-zinc-900/60 border-zinc-800 hover:bg-zinc-800/80 hover:border-zinc-700'
+                                            : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-white px-2 py-0.5 rounded-md ${agentAvatarClass(task.agent)}`}>
+                                                {task.agent || '-'}
+                                            </span>
+                                            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${chip.chip.split(' ').slice(2).join(' ')}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${chip.dot}`} />
+                                                {t(`workflow.panel.status_${statusKey}`)}
+                                            </span>
+                                        </div>
+                                        <div className="mt-1"><AgentRegistryBadges info={matchAgentInfo(registry, task.agent)} isDark={isDark} t={t} /></div>
+                                        {task.description && (
+                                            <p className={`mt-1 text-[11px] leading-relaxed line-clamp-3 font-medium ${isDark ? 'text-zinc-300' : 'text-slate-600'}`}>
+                                                {task.description}
+                                            </p>
+                                        )}
+                                        <div className={`mt-1.5 text-[13px] font-semibold break-words ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>
+                                            {task.skill || t('node_label.no_skill')}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                            {subtasks.length === 0 && (
+                                <div className={`rounded-xl border border-dashed p-4 text-center text-xs ${isDark ? 'border-zinc-800 text-zinc-500' : 'border-slate-200 text-slate-400'}`}>
+                                    {t('node_label.no_subtasks')}
+                                </div>
+                            )}
                         </div>
                     </section>
                 )}
@@ -205,6 +360,7 @@ const FlowInner = ({
     onDirtyChange
 }) => {
     const { t } = useTranslation();
+    const registryMap = useAgentRegistryStatus();
     const { screenToFlowPosition, fitView, setCenter, getNode } = useReactFlow();
     const [rfInstance, setRfInstance] = useState(null);
 
@@ -221,6 +377,50 @@ const FlowInner = ({
     const [viewSelectedNodeId, setViewSelectedNodeId] = useState(null);
     const [viewSelectedElement, setViewSelectedElement] = useState(null);
 
+    // Adjustable width for the view-mode step-details panel (drag the left
+    // edge; double-click the handle to reset). Persisted per browser.
+    const containerRef = useRef(null);
+    const panelResizeRef = useRef(null);
+    const DEFAULT_VIEW_PANEL_WIDTH = 320;
+    const VIEW_PANEL_MIN_WIDTH = 280;
+    const [viewPanelWidth, setViewPanelWidth] = useState(() => {
+        try {
+            const saved = Number(localStorage.getItem('workflow-view-panel-width'));
+            return saved >= VIEW_PANEL_MIN_WIDTH ? saved : DEFAULT_VIEW_PANEL_WIDTH;
+        } catch {
+            return DEFAULT_VIEW_PANEL_WIDTH;
+        }
+    });
+    const [panelResizing, setPanelResizing] = useState(false);
+
+    useEffect(() => {
+        try { localStorage.setItem('workflow-view-panel-width', String(viewPanelWidth)); } catch { /* ignore */ }
+    }, [viewPanelWidth]);
+
+    const handlePanelPointerDown = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        panelResizeRef.current = e.pointerId;
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+        setPanelResizing(true);
+    }, []);
+
+    const handlePanelPointerMove = useCallback((e) => {
+        if (panelResizeRef.current === null) return;
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const raw = Math.round(rect.right - e.clientX - 16);
+        const max = Math.max(VIEW_PANEL_MIN_WIDTH, Math.floor(rect.width * 0.75));
+        setViewPanelWidth(Math.min(Math.max(raw, VIEW_PANEL_MIN_WIDTH), max));
+    }, []);
+
+    const handlePanelPointerUp = useCallback((e) => {
+        if (panelResizeRef.current === null) return;
+        panelResizeRef.current = null;
+        setPanelResizing(false);
+        try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    }, []);
+
     const [viewPositionNodes, setViewPositionNodes, onViewNodesChange] = useNodesState([]);
     const [viewPositionEdges, setViewPositionEdges, onViewEdgesChange] = useEdgesState([]);
 
@@ -232,18 +432,28 @@ const FlowInner = ({
 
     const processedNodes = useMemo(() => {
         if (mode !== 'view') return [];
-        return viewNodes.map(node => ({
+        return viewNodes.map(node => {
+            const agents = (node.data?.subtasks?.length
+                ? node.data.subtasks.map(s => s.agent).filter(Boolean)
+                : [node.data?.agent].filter(Boolean));
+            const agentUnpublished = agents.some(a => {
+                const info = matchAgentInfo(registryMap, a);
+                return info && info.publishStatus && info.publishStatus !== 'published';
+            });
+            return {
             ...node,
             data: {
                 ...node.data,
                 isDark,
+                agentUnpublished,
                 selectedSubtaskIndex: node.id === viewSelectedElement?.node?.id ? viewSelectedElement.subtaskIndex : null,
                 onSubtaskClick: (subtaskIndex) => selectViewNode(node, subtaskIndex),
             },
             selected: node.id === viewSelectedNodeId,
             zIndex: 100,
-        }));
-    }, [viewNodes, viewSelectedNodeId, viewSelectedElement, selectViewNode, isDark, mode]);
+        };
+        });
+    }, [viewNodes, viewSelectedNodeId, viewSelectedElement, selectViewNode, isDark, mode, registryMap]);
 
     const processedEdges = useMemo(() => {
         if (mode !== 'view') return [];
@@ -695,7 +905,7 @@ const FlowInner = ({
     const displayEdges = mode === 'view' ? viewPositionEdges : editEdges;
 
     return (
-        <div className={`h-full w-full relative overflow-hidden select-none transition-colors duration-300 ${themeClasses.container}`}>
+        <div ref={containerRef} className={`h-full w-full relative overflow-hidden select-none transition-colors duration-300 ${themeClasses.container}`}>
             <ReactFlow
                 nodes={displayNodes}
                 edges={displayEdges}
@@ -751,8 +961,23 @@ const FlowInner = ({
             )}
 
             {mode === 'view' && (
-                <div className={`absolute justify-center right-4 top-4 bottom-4 w-80 z-40 pointer-events-none flex flex-col min-h-0 transition-all duration-300 transform ${viewSelectedElement ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0'}`}>
-                    <div className={`pointer-events-auto flex flex-col backdrop-blur-md border rounded-2xl overflow-hidden ${themeClasses.panel}`}>
+                <div
+                    className={`absolute right-4 top-4 bottom-4 z-40 pointer-events-none flex flex-col min-h-0 transform ${viewSelectedElement ? 'opacity-100' : 'translate-x-10 opacity-0'} ${panelResizing ? '' : 'transition-all duration-300'}`}
+                    style={{ width: viewPanelWidth }}
+                >
+                    {viewSelectedElement && (
+                        <div
+                            className="pointer-events-auto absolute -left-3 top-0 bottom-0 w-6 flex items-center justify-center cursor-col-resize group/resize"
+                            onPointerDown={handlePanelPointerDown}
+                            onPointerMove={handlePanelPointerMove}
+                            onPointerUp={handlePanelPointerUp}
+                            onDoubleClick={() => setViewPanelWidth(DEFAULT_VIEW_PANEL_WIDTH)}
+                            title={t('workflow.panel.resizeHint')}
+                        >
+                            <span className={`h-14 w-1 rounded-full transition-all duration-150 group-hover/resize:scale-y-125 group-active/resize:scale-y-150 ${isDark ? 'bg-zinc-600/70 group-hover/resize:bg-blue-400' : 'bg-slate-300 group-hover/resize:bg-blue-500'}`} />
+                        </div>
+                    )}
+                    <div className={`pointer-events-auto flex-1 flex flex-col backdrop-blur-md border rounded-2xl overflow-hidden ${themeClasses.panel}`}>
                         {viewSelectedElement && (
                             <WorkflowViewDetails
                                 isDark={isDark}

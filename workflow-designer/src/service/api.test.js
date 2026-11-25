@@ -25,6 +25,7 @@ import {
   getAgentCards,
   getWorkflow,
   getWorkflowById,
+  getWorkflowBpmn,
   createWorkflow,
   delWorkflowById,
   getTemplates,
@@ -195,7 +196,11 @@ describe('api service', () => {
       mockApi.get.mockResolvedValue({ data: 'workflows' });
 
       await getWorkflow();
-      expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/rest/v1/orchestrate/workflows'));
+      // The management table needs the full list: limit=100 is the backend cap.
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('/rest/v1/orchestrate/workflows'),
+        { params: { limit: 100 } }
+      );
     });
 
     it('getWorkflowById should call api.get with correct URL', async () => {
@@ -205,6 +210,29 @@ describe('api service', () => {
 
       await getWorkflowById(testId);
       expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining(`/rest/v1/orchestrate/workflows/${testId}`));
+    });
+
+    it('getWorkflowBpmn should request the bpmn endpoint as text', async () => {
+      const mockApi = axios.create();
+      const xml = '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions/>';
+      mockApi.get.mockResolvedValue(xml);
+      const testId = 'wf-9';
+
+      const result = await getWorkflowBpmn(testId);
+      expect(result).toBe(xml);
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining(`/rest/v1/orchestrate/workflows/${testId}/bpmn`),
+        { responseType: 'text' }
+      );
+    });
+
+    it('getWorkflowBpmn should unwrap an object payload from clients that ignore responseType', async () => {
+      const mockApi = axios.create();
+      const xml = '<bpmn:definitions/>';
+      mockApi.get.mockResolvedValue({ data: xml });
+
+      const result = await getWorkflowBpmn('wf-9');
+      expect(result).toBe(xml);
     });
 
     it('createWorkflow should call api.post with correct URL and data', async () => {

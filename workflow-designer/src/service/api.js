@@ -124,11 +124,24 @@ export async function deleteAgentCard(name, organization) {
 // ──── Workflow CRUD ────
 
 export async function getWorkflow() {
-    return api.get(`${ORCHESTRATE_BASE()}/workflows`);
+    // 管理表格需要全量列表：后端默认 limit=10，这里显式取 100（后端上限）
+    return api.get(`${ORCHESTRATE_BASE()}/workflows`, { params: { limit: 100 } });
 }
 
 export async function getWorkflowById(id) {
     return api.get(`${ORCHESTRATE_BASE()}/workflows/${id}`);
+}
+
+// BPMN export: the backend answers with an application/xml body (PSOP
+// converted on the fly, no JSON envelope). responseType 'text' stops axios
+// from JSON-parsing the document; the local response interceptor already
+// unwraps response.data, so this returns the XML string. A client that
+// ignores responseType hands back an object instead -- dig the payload out
+// so callers always receive a string.
+export async function getWorkflowBpmn(id) {
+    const body = await api.get(`${ORCHESTRATE_BASE()}/workflows/${id}/bpmn`, { responseType: 'text' });
+    if (typeof body === 'string') return body;
+    return body?.data ?? String(body);
 }
 
 export async function delWorkflowById(id) {

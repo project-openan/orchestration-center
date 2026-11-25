@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Huawei Technologies Co., Ltd.
+﻿// Copyright (c) 2026 Huawei Technologies Co., Ltd.
 // All Rights Reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -50,16 +50,14 @@ function buildManifestJson() {
         name: pick('name', 'Orchestration Center'),
         version: pick('version', '0.0.0'),
         backend: src.includes('gateway:') ? { gateway: pick('gateway', '') } : undefined,
-        menu: [{
-            id: pick("id: '", 'orchestration'),
-            labelKey: src.match(/labelKey:\s*'([^']+)'/)?.[1],
-            order: Number(src.match(/order:\s*(\d+)/)?.[1] || 99),
-            route: src.match(/route:\s*'([^']+)'/)?.[1],
-        }],
-        routes: [{
-            path: src.match(/path:\s*'([^']+)'/)?.[1] || '/orchestration',
-            menuId: src.match(/menuId:\s*'([^']+)'/)?.[1],
-        }],
+        menu: [
+            { id: 'orchestration', labelKey: 'orchestration-center:orchestration.title_manage', label: 'Workflow Management', order: 2, route: '/orchestration', iconName: 'LayoutList', group: 'Orchestration Center' },
+            { id: 'orchestration-builder', labelKey: 'orchestration-center:orchestration.title_builder', label: 'Workflow Builder', order: 3, route: '/orchestration-builder', iconName: 'Workflow', group: 'Orchestration Center' },
+        ],
+        routes: [
+            { path: '/orchestration', menuId: 'orchestration' },
+            { path: '/orchestration-builder', menuId: 'orchestration-builder' },
+        ],
         entry: 'index.js',
         css: 'index.css',
     }, null, 2);

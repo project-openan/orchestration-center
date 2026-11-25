@@ -15,16 +15,19 @@
 //    License for the specific language governing permissions and limitations
 //    under the License.
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { dump } from 'js-yaml';
 import {
     Search, Loader2, Layout, Hash,
     Plus, Upload, MessageSquare,
-    ChevronRight, Sparkles, ChevronLeft, Code2, Trash2, Download, Eye, ArrowLeft, TriangleAlert
+    ChevronRight, Sparkles, ChevronLeft, Code2, Trash2, Download, Eye, ArrowLeft, TriangleAlert,
+    FlaskConical, FileJson, Network
 } from 'lucide-react';
-import { getAgentCards, getWorkflow, getWorkflowById, handlePlan, parsePdf, generateWorkflowFromIntent, delWorkflowById, getTemplates, importTemplate } from "@/service/api.js";
+import { getAgentCards, getWorkflow, getWorkflowById, getWorkflowBpmn, handlePlan, parsePdf, generateWorkflowFromIntent, delWorkflowById, getTemplates, importTemplate } from "@/service/api.js";
 import { transformWorkflowToReactFlow } from "./workflow/utils/index.jsx";
 import UnifiedWorkflow from "../orchestration_center/workflow/index.jsx";
 import SolutionPackages from "./packages/index.jsx";
+import SandboxDialog from "@/components/sandbox/SandboxDialog.jsx";
 import { useTranslation } from 'react-i18next';
 
 
@@ -86,13 +89,14 @@ const LOADING_STAGES = {
     FINALIZING: 'orchestration.stage_finalizing',
     DELETING: 'orchestration.stage_deleting',
 };
-const OrchestrationCenter = ({ isDark }) => {
+const OrchestrationCenter = ({ isDark, mode }) => {
     const { t, i18n } = useTranslation();
     const [workflows, setWorkflows] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
     const [currentWf, setCurrentWf] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeView, setActiveView] = useState('welcome'); // 'welcome' | 'detail' | 'ai' | 'editor'
+    const homeView = mode === 'manage' ? 'browse' : 'welcome';
+    const [activeView, setActiveView] = useState(homeView); // 'welcome' | 'browse' | 'detail' | 'ai' | 'editor' | 'packages'
     const [aiPrompt, setAiPrompt] = useState("");
     const [showConfig, setShowConfig] = useState(false);
     const [browseMode, setBrowseMode] = useState('view');
@@ -110,6 +114,10 @@ const OrchestrationCenter = ({ isDark }) => {
     // Delete confirmation related status
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [wfToDelete, setWfToDelete] = useState(null);
+    // Sandbox verification opened from the workflow view (detail) page. No
+    // psop snapshot is passed on purpose: the backend loads the saved
+    // workflow by id, which is exactly what the preview is showing.
+    const [showSandbox, setShowSandbox] = useState(false);
     // Workflow id returned by the first save of a brand-new design, so that
     // subsequent saves update the same workflow instead of creating duplicates
     const [savedWorkflowId, setSavedWorkflowId] = useState(null);
@@ -121,6 +129,64 @@ const OrchestrationCenter = ({ isDark }) => {
     useEffect(() => {
         if (activeView !== 'editor') setEditorDirty(false);
     }, [activeView]);
+
+    // Workflow-table export (manage view): PSOP JSON / BPMN XML, driven by the
+    // per-row download button. exportMenuId is the workflow whose format menu
+    // is open, exportingId the one whose download is in flight.
+    const [exportMenuId, setExportMenuId] = useState(null);
+    const [exportMenuPos, setExportMenuPos] = useState({ top: 0, left: 0 });
+    const [exportingId, setExportingId] = useState(null);
+    const [exportToast, setExportToast] = useState(null); // { type: 'success'|'error', msg }
+
+    useEffect(() => {
+        if (!exportToast) return undefined;
+        const timer = setTimeout(() => setExportToast(null), 3000);
+        return () => clearTimeout(timer);
+    }, [exportToast]);
+
+    const sanitizeExportFilename = (name) => (
+        (name || 'workflow').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 128) || 'workflow'
+    );
+
+    const downloadExportFile = (filename, content, mime) => {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    // Table-row export: PSOP keeps the exact stored JSON; BPMN asks the
+    // backend to convert the retrieved PSOP on the fly.
+    const handleExportWorkflow = async (wf, format) => {
+        setExportMenuId(null);
+        setExportingId(wf.id);
+        try {
+            if (format === 'bpmn') {
+                const xml = await getWorkflowBpmn(wf.id);
+                downloadExportFile(`${sanitizeExportFilename(wf.name)}.bpmn`, xml, 'application/xml');
+            } else {
+                const res = await getWorkflowById(wf.id);
+                if (res?.status !== 'success') throw new Error(res?.message || 'export failed');
+                downloadExportFile(
+                    `${sanitizeExportFilename(wf.name)}.psop.json`,
+                    JSON.stringify(res.data, null, 2),
+                    'application/json'
+                );
+            }
+            setExportToast({ type: 'success', msg: t('orchestration.export_success') });
+        } catch (e) {
+            console.error('Workflow export failed:', e);
+            setExportToast({ type: 'error', msg: t('orchestration.export_failed') });
+        } finally {
+            setExportingId(null);
+        }
+    };
+
     useEffect(() => {
         let timer;
         if (loading) {
@@ -214,7 +280,9 @@ const OrchestrationCenter = ({ isDark }) => {
                     id: item.workflow_id,
                     name: item.name || 'Untitled',
                     tags: item.tags || [],
-                    description: item.description
+                    description: item.description,
+                    source: item.source || 'unknown',
+                    created_at: item.created_at || null
                 }));
                 setWorkflows(data);
             }
@@ -378,6 +446,7 @@ const OrchestrationCenter = ({ isDark }) => {
                                 status={loadingStatus}
                                 t={t}
                             />
+                            {mode !== 'build' && (
                             <MethodCard
                                 icon={Eye} title={t('orchestration.manage_workflow')} color="text-emerald-500"
                                 onClick={() => {
@@ -385,6 +454,7 @@ const OrchestrationCenter = ({ isDark }) => {
                                     setActiveView('browse');
                                 }}
                             />
+                            )}
                         </div>
 
                         {templates.length > 0 && (
@@ -454,200 +524,143 @@ const OrchestrationCenter = ({ isDark }) => {
 
             case 'browse':
                 return (
-                    <div className="h-full flex animate-in fade-in duration-300">
-                        <div className="w-[300px] shrink-0 border-r border-zinc-100 dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-zinc-900/50">
-                            <div className="p-5 border-b border-zinc-100 dark:border-zinc-800">
-                                <button
-                                    onClick={() => {
-                                        setSelectedId(null);
-                                        setActiveView('welcome');
-                                    }}
-                                    className="group flex items-center gap-2 text-xs font-black text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all uppercase tracking-[0.2em] mb-4"
-                                >
-                                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                                    {t('orchestration.back_to_options')}
-                                </button>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder={t('orchestration.search')}
-                                        className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                    />
-                                    <Search className="absolute left-3 top-3 text-zinc-400" size={13} />
-                                </div>
+                    <div className="h-full flex flex-col animate-in fade-in duration-300">
+                        <div className="shrink-0 px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3 flex-wrap">
+                            <div className="relative ml-auto">
+                                <input
+                                    type="text"
+                                    placeholder={t('orchestration.search')}
+                                    className="w-56 pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                                <Search className="absolute left-3 text-zinc-400" size={13} style={{ top: "50%", transform: "translateY(-50%)" }} />
                             </div>
-                            <div className="flex-1 overflow-y-auto space-y-2 p-4 custom-scrollbar">
-                                {(() => {
-                                    const filtered = workflows.filter(wf => wf.name.toLowerCase().includes(searchTerm.toLowerCase()));
-                                    const grouped = {};
-                                    filtered.forEach(wf => {
-                                        const src = wf.source || 'unknown';
-                                        if (!grouped[src]) grouped[src] = [];
-                                        grouped[src].push(wf);
-                                    });
-                                    const sourceOrder = ['graph_editor', 'ai_intent', 'solution_package', 'template', 'unknown'];
-                                    const sourceIcons = {
-                                        graph_editor: Layout,
-                                        ai_intent: MessageSquare,
-                                        solution_package: Upload,
-                                        template: Sparkles,
-                                        unknown: Hash
-                                    };
-                                    const sourceColors = {
-                                        graph_editor: 'text-blue-500',
-                                        ai_intent: 'text-purple-500',
-                                        solution_package: 'text-amber-500',
-                                        template: 'text-emerald-500',
-                                        unknown: 'text-zinc-400'
-                                    };
-                                    return sourceOrder.filter(src => grouped[src]?.length > 0).map(src => {
-                                        const Icon = sourceIcons[src] || Hash;
-                                        const color = sourceColors[src] || 'text-zinc-400';
-                                        return (
-                                            <div key={src} className="mb-4">
-                                                <div className="flex items-center gap-2 px-2 py-2 mb-2">
-                                                    <Icon size={12} className={color} />
-                                                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${color}`}>
-                                                        {t(`orchestration.source_${src}`)}
-                                                    </span>
-                                                    <span className="text-[10px] font-bold text-zinc-300 dark:text-zinc-600">
-                                                        ({grouped[src].length})
-                                                    </span>
-                                                </div>
-                                                {grouped[src].map(wf => {
-                                                    const isSelected = selectedId === wf.id;
-                                                    return (
-                                                        <div
-                                                            key={wf.id}
-                                                            onClick={() => {
-                                                setSelectedId(wf.id);
-                                                setBrowseMode('view');
-                                            }}
-                                                            className={`group p-4 rounded-xl border transition-all duration-300 cursor-pointer relative overflow-hidden mb-2
-                                                                ${isSelected
-                                                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 shadow-sm'
-                                                                    : 'border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-blue-200 dark:hover:border-blue-700'
-                                                                }`}
-                                                        >
-                                                            {isSelected && (
-                                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r" />
-                                                            )}
-                                                            <div className="flex items-center justify-between mb-1.5 pl-2">
-                                                                <div className={`flex items-center gap-2 ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                                                                    <Hash size={14} />
-                                                                    <h3 className="font-black text-sm uppercase leading-none truncate max-w-[180px]">
-                                                                        {wf.name}
-                                                                    </h3>
-                                                                </div>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setWfToDelete(wf);
-                                                                        setShowDeleteConfirm(true);
-                                                                    }}
-                                                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-all"
-                                                                >
-                                                                    <Trash2 size={12} />
-                                                                </button>
-                                                            </div>
-                                                            <div className={`pl-6 text-[10px] font-black uppercase truncate max-w-[200px] ${isSelected ? 'text-blue-500 dark:text-blue-400' : 'text-zinc-400'}`}>
-                                                                {wf.tags?.length > 0 ? wf.tags.join(', ') : t('orchestration.no_tags')}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        );
-                                    });
-                                })()}
-                                {workflows.length === 0 && (
-                                    <div className="flex flex-col items-center justify-center py-16 text-zinc-400 dark:text-zinc-600">
-                                        <Hash size={32} className="mb-3 opacity-30" />
-                                        <p className="text-xs font-bold uppercase tracking-widest">{t('orchestration.no_workflows')}</p>
-                                    </div>
-                                )}
-                            </div>
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                                {workflows.length}
+                            </span>
                         </div>
-                        <div className="flex-1 flex flex-col overflow-hidden">
-                            {selectedId ? (
-                                <>
-                                    <div className="shrink-0 px-4 py-2 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2 bg-white dark:bg-zinc-900 z-10">
-                                        <button
-                                            onClick={() => setShowConfig(!showConfig)}
-                                            className="p-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full shadow-sm hover:scale-110 transition-all"
-                                        >
-                                            {showConfig ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-                                        </button>
-                                        <button
-                                            onClick={() => setBrowseMode(browseMode === 'view' ? 'edit' : 'view')}
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md uppercase text-[11px] font-bold shadow-sm active:scale-95 transition-all
-                                                ${isDark
-                                                    ? 'bg-zinc-100 hover:bg-slate-500 text-black'
-                                                    : 'bg-slate-900 hover:bg-slate-800 text-white'
-                                                }`}
-                                        >
-                                            <Code2 size={13} />
-                                            <span>{browseMode === 'view' ? t('orchestration.edit') : t('orchestration.preview_mode')}</span>
-                                        </button>
-                                    </div>
-                                    <div className="flex-1 flex overflow-hidden">
-                                        {showConfig && (
-                                            <div className="w-1/3 shrink-0 border-r border-zinc-100 dark:border-zinc-900 flex flex-col bg-zinc-50/30 dark:bg-zinc-900 p-6 overflow-hidden">
-                                                <div className="text-[10px] font-black text-zinc-400 uppercase mb-3">workflow</div>
-                                                <textarea
-                                                    readOnly={true}
-                                                    value={dump(currentWf?.rawText || {})}
-                                                    className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 font-mono text-xs shadow-inner outline-none min-h-0"
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-0 h-full relative">
-                                            <UnifiedWorkflow
-                                                mode={browseMode}
-                                                isDark={isDark}
-                                                nodes={nodes}
-                                                edges={edges}
-                                                importedNodes={nodes}
-                                                importedEdges={edges}
-                                                workflowId={selectedId}
-                                                workflowName={currentWf?.name}
-                                                workflowDescription={currentWf?.rawText?.description}
-                                                onCancel={() => setBrowseMode('view')}
-                                                onSaveSuccess={(savedId) => {
-                                                    if (savedId && savedId === selectedId) refreshWorkflowMeta(savedId);
-                                                    fetchWorkflows();
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-zinc-300 dark:text-zinc-700">
-                                    <Eye size={48} className="mb-4 opacity-30" />
-                                    <p className="text-sm font-black uppercase tracking-widest">{t('orchestration.select_workflow_hint')}</p>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-4">
+                            <table className="w-full table-fixed border-separate border-spacing-y-2">
+                                <colgroup>
+                                    <col className="w-[28%]" />
+                                    <col className="w-[12%]" />
+                                    <col className="w-[12%]" />
+                                    <col className="w-[16%]" />
+                                    <col className="w-[16%]" />
+                                    <col className="w-[16%]" />
+                                </colgroup>
+                                <thead>
+                                    <tr className="text-left">
+                                        {[t('orchestration.th_name'), t('orchestration.th_category'), t('orchestration.th_creator'), t('orchestration.th_tags'), t('orchestration.th_created'), t('orchestration.th_actions')].map(h => (
+                                            <th key={h} className="px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 bg-zinc-50 dark:bg-zinc-800/60 first:rounded-l-xl last:rounded-r-xl">
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {workflows
+                                        .filter(wf => wf.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                        .map(wf => {
+                                            const src = wf.source || 'unknown';
+                                            const SourceIcon = { graph_editor: Layout, ai_intent: MessageSquare, solution_package: Upload, template: Sparkles, unknown: Hash }[src] || Hash;
+                                            const srcColor = { graph_editor: 'text-blue-500', ai_intent: 'text-purple-500', solution_package: 'text-amber-500', template: 'text-emerald-500', unknown: 'text-zinc-400' }[src] || 'text-zinc-400';
+                                            const catMeta = {
+                                                solution_package: { key: 'cat_spg', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+                                                template: { key: 'cat_spg', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+                                                graph_editor: { key: 'cat_manual', cls: 'border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+                                                ai_intent: { key: 'cat_intent', cls: 'border-purple-500/40 bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+                                                spg: { key: 'cat_spg', cls: 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+                                            };
+                                            // SPG 规则：名称以 Solution_Package(s) 结尾的工作流一律视为 SPG导入
+                                            const isSpgName = /solution[_-]?packages?$/i.test(wf.name || '');
+                                            const cat = isSpgName ? catMeta.solution_package : (catMeta[src] || (src === 'spg' ? catMeta.solution_package : null));
+                                            return (
+                                                <tr key={wf.id} className="group bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors">
+                                                    <td className="px-4 py-3 rounded-l-xl border-y border-l border-zinc-100 dark:border-zinc-800">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <SourceIcon size={14} className={srcColor} />
+                                                            <span className="font-black text-sm text-zinc-900 dark:text-white break-words" title={wf.name}>{wf.name}</span>
+                                                        </div>
+                                                        {wf.description && <div className="pl-6 text-[10px] text-zinc-400 line-clamp-2" title={wf.description}>{wf.description}</div>}
+                                                    </td>
+                                                    <td className="px-4 py-3 border-y border-zinc-100 dark:border-zinc-800">
+                                                        {cat ? (
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${cat.cls}`}>{t(`orchestration.${cat.key}`)}</span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-zinc-400">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 border-y border-zinc-100 dark:border-zinc-800">
+                                                        <span className="text-xs text-zinc-500">{wf.creator || (cat?.key === 'cat_spg' ? '系统' : '—')}</span>
+                                                    </td>
+                                                    <td className="px-4 py-3 border-y border-zinc-100 dark:border-zinc-800">
+                                                        <div className="flex flex-wrap gap-1 max-w-[220px]">
+                                                            {wf.tags?.length > 0 ? wf.tags.map(tag => (
+                                                                <span key={tag} className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">{tag}</span>
+                                                            )) : <span className="text-[10px] text-zinc-400">{t('orchestration.no_tags')}</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 border-y border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500 font-mono">
+                                                        {wf.created_at ? new Date(wf.created_at).toLocaleString(i18n.language) : '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3 rounded-r-xl border-y border-r border-zinc-100 dark:border-zinc-800">
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => { setSelectedId(wf.id); setBrowseMode('view'); setActiveView('detail'); }}
+                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors"
+                                                            >
+                                                                <Eye size={12} />
+                                                                {t('orchestration.view_action')}
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                                    setExportMenuPos({
+                                                                        top: rect.bottom + 6,
+                                                                        left: Math.max(8, Math.min(rect.left, window.innerWidth - 200)),
+                                                                    });
+                                                                    setExportMenuId(exportMenuId === wf.id ? null : wf.id);
+                                                                }}
+                                                                title={t('orchestration.export_title')}
+                                                                className="p-1.5 hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 text-zinc-400 rounded-lg transition-all"
+                                                            >
+                                                                {exportingId === wf.id
+                                                                    ? <Loader2 size={13} className="animate-spin" />
+                                                                    : <Download size={13} />}
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setWfToDelete(wf); setShowDeleteConfirm(true); }}
+                                                                className="p-1.5 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-zinc-400 rounded-lg transition-all"
+                                                                title={t('common.confirm_delete')}
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                </tbody>
+                            </table>
+                            {workflows.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-16 text-zinc-400 dark:text-zinc-600">
+                                    <Hash size={32} className="mb-3 opacity-30" />
+                                    <p className="text-xs font-bold uppercase tracking-widest">{t('orchestration.no_workflows')}</p>
+                                </div>
+                            )}
+                            {workflows.length > 0 && workflows.filter(wf => wf.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-16 text-zinc-400 dark:text-zinc-600">
+                                    <Search size={28} className="mb-3 opacity-30" />
+                                    <p className="text-xs font-bold uppercase tracking-widest">{t('orchestration.no_match_yet')}</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 );
 
-            case 'packages':
-                return (
-                    <SolutionPackages
-                        onBack={() => setActiveView('welcome')}
-                        onImportPdf={handleImportPdfFromPackage}
-                        onViewWorkflow={(wfId) => {
-                            setSelectedId(wfId);
-                        }}
-                        loading={loading && loadingStatus !== LOADING_STAGES.IDLE}
-                        loadingStatus={loadingStatus}
-                        progress={progress}
-                        t={t}
-                    />
-                );
-
-            case 'ai':
+case 'ai':
                 return (
                     <div
                         className="h-full w-full relative flex flex-col items-center justify-center p-10 overflow-hidden bg-zinc-50/20 dark:bg-zinc-950/20">
@@ -728,7 +741,7 @@ const OrchestrationCenter = ({ isDark }) => {
 
                         <button
                             onClick={() => {
-                                setActiveView('welcome');
+                                setActiveView(homeView);
                                 setAiPrompt("");
                             }}
                             className="mt-12 group flex items-center gap-2 text-[11px] font-black text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all uppercase tracking-[0.2em]"
@@ -767,6 +780,16 @@ const OrchestrationCenter = ({ isDark }) => {
                             >
                                 {showConfig ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                             </button>
+                            {activeView === 'detail' && (
+                                <button
+                                    onClick={() => setShowSandbox(true)}
+                                    title={t('workflow.toolbar.sandbox')}
+                                    className="absolute right-4 top-8 -translate-y-1/2 z-[70] flex items-center gap-2 px-3 py-1.5 rounded-lg uppercase text-[11px] font-bold shadow-sm active:scale-95 transition-all bg-violet-600 hover:bg-violet-500 text-white"
+                                >
+                                    <FlaskConical size={13} />
+                                    <span>{t('workflow.toolbar.sandbox')}</span>
+                                </button>
+                            )}
                             <UnifiedWorkflow
                                 mode={activeView === 'detail' ? 'view' : 'edit'}
                                 isDark={isDark}
@@ -780,12 +803,15 @@ const OrchestrationCenter = ({ isDark }) => {
                                 workflowName={currentWf?.name}
                                 workflowDescription={currentWf?.rawText?.description}
                                 onCancel={() => {
-                                    if (selectedId) {
+                                    if (mode === 'manage') {
+                                        // 工作流管理菜单：编辑器退出直接回管理表格
+                                        setActiveView('browse');
+                                    } else if (selectedId) {
                                         setActiveView('detail');
                                     } else {
                                         setCurrentWf(null);
                                         setSavedWorkflowId(null);
-                                        setActiveView('welcome');
+                                        setActiveView(homeView);
                                     }
                                 }}
                                 onSaveSuccess={(savedId) => {
@@ -808,17 +834,18 @@ const OrchestrationCenter = ({ isDark }) => {
             className="h-full p-8 flex items-stretch w-full bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans">
             <div
                 className="flex-1 bg-white dark:bg-zinc-900 rounded-[3.5rem] border border-zinc-200 dark:border-zinc-800 shadow-2xl relative overflow-hidden flex flex-col">
+                {(activeView === 'ai' || activeView === 'detail') && (
                 <div
                     className="px-10 py-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center  bg-white dark:bg-zinc-900 backdrop-blur-md shrink-0">
                     <div className="flex items-center gap-4">
-                        {(activeView === 'editor' || activeView === 'ai') && (
+                        {(activeView === 'ai') && (
                             <button
                                 onClick={() => {
                                     if (activeView === 'editor' && editorDirty) {
                                         setShowLeaveEditorConfirm(true);
                                         return;
                                     }
-                                    setActiveView('welcome');
+                                    setActiveView(homeView);
                                     setSelectedId(null);
                                     setCurrentWf(null);
                                     setAiPrompt('');
@@ -829,10 +856,16 @@ const OrchestrationCenter = ({ isDark }) => {
                                 {t('orchestration.back_to_options')}
                             </button>
                         )}
-                        <h2 className="text-lg font-black text-zinc-900 dark:text-white uppercase">
-                            {activeView === 'welcome' ? t('orchestration.start') : (activeView === 'ai' ? t('orchestration.ai_orchestrator') : (activeView === 'packages' ? t('orchestration.packages_title') : (activeView === 'browse' ? t('orchestration.browse_workflow') : (currentWf?.name || t('orchestration.new_design')))))}
-                        </h2>
 
+                            {activeView === 'detail' && (
+                                <button
+                                    onClick={() => setActiveView(homeView)}
+                                    className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all uppercase tracking-widest"
+                                >
+                                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                    {t('orchestration.back_to_list')}
+                                </button>
+                            )}
                         {activeView === 'detail' && (
 
                             <button
@@ -851,6 +884,7 @@ const OrchestrationCenter = ({ isDark }) => {
                         )}
                     </div>
                 </div>
+                )}
 
                 <div className="flex-1 relative overflow-hidden">
                     {renderContent()}
@@ -925,7 +959,7 @@ const OrchestrationCenter = ({ isDark }) => {
                                     onClick={() => {
                                         setShowLeaveEditorConfirm(false);
                                         setEditorDirty(false);
-                                        setActiveView('welcome');
+                                        setActiveView(homeView);
                                         setSelectedId(null);
                                         setCurrentWf(null);
                                         setSavedWorkflowId(null);
@@ -938,6 +972,59 @@ const OrchestrationCenter = ({ isDark }) => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Sandbox verification opened from the workflow view (detail)
+                page. Without a psop snapshot the backend verifies the saved
+                workflow by id, which is what the preview shows. */}
+            {showSandbox && (selectedId || currentWf?.id || savedWorkflowId) && (
+                <SandboxDialog
+                    workflowId={selectedId || currentWf?.id || savedWorkflowId}
+                    isDark={isDark}
+                    onClose={() => setShowSandbox(false)}
+                />
+            )}
+
+            {/* Export format dropdown (manage-view table, portaled to body so
+                the scrollable table container can't clip it) */}
+            {exportMenuId && createPortal(
+                <>
+                    <div
+                        className="fixed inset-0 z-[9998]"
+                        onClick={() => setExportMenuId(null)}
+                    />
+                    <div
+                        className="fixed z-[9999] w-48 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1.5 animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: exportMenuPos.top, left: exportMenuPos.left }}
+                    >
+                        <div className="px-3 pt-1 pb-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                            {t('orchestration.export_title')}
+                        </div>
+                        <button
+                            onClick={() => handleExportWorkflow(workflows.find(wf => wf.id === exportMenuId), 'psop')}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                            <FileJson size={13} />
+                            <span>{t('orchestration.export_psop')}</span>
+                        </button>
+                        <button
+                            onClick={() => handleExportWorkflow(workflows.find(wf => wf.id === exportMenuId), 'bpmn')}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                            <Network size={13} />
+                            <span>{t('orchestration.export_bpmn')}</span>
+                        </button>
+                    </div>
+                </>,
+                document.body
+            )}
+
+            {/* Export result toast (manage-view PSOP/BPMN download) */}
+            {exportToast && createPortal(
+                <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] px-5 py-2.5 rounded-xl text-xs font-bold shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200 ${exportToast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+                    {exportToast.msg}
+                </div>,
+                document.body
             )}
         </div>
     );

@@ -15,7 +15,7 @@
 //    License for the specific language governing permissions and limitations
 //    under the License.
 
-import { Share2 } from 'lucide-react';
+import { Layout, Share2 } from 'lucide-react';
 
 /**
  * OpenAN Portal plugin manifest for the Orchestration Center website.
@@ -28,18 +28,28 @@ import { Share2 } from 'lucide-react';
 export default {
     id: 'orchestration-center',
     name: 'Orchestration Center',
-    version: '0.2.0',
+    version: '0.4.1',
     menu: [{
         id: 'orchestration',
-        labelKey: 'orchestration-center:orchestration.title',
+        labelKey: 'orchestration-center:orchestration.title_manage',
         icon: Share2,
         order: 2,
         route: '/orchestration',
+    }, {
+        id: 'orchestration-builder',
+        labelKey: 'orchestration-center:orchestration.title_builder',
+        icon: Layout,
+        order: 3,
+        route: '/orchestration-builder',
     }],
     routes: [{
         path: '/orchestration',
         component: () => import('./src/index.jsx'),
         menuId: 'orchestration',
+    }, {
+        path: '/orchestration-builder',
+        component: () => import('./src/index.jsx'),
+        menuId: 'orchestration-builder',
     }],
     i18n: {
         namespace: 'orchestration-center',
