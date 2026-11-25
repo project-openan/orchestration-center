@@ -1,0 +1,61 @@
+{
+  "id": "gold-tc-brh-002",
+  "name": "KQI劣化处置",
+  "description": "条件分支参考答案：KQI劣化触发保障策略生成与网络方案规划",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "kqi_monitor",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "持续监控直播保障KQI指标并记录劣化情况",
+          "agent": "Live Streaming Agent",
+          "skill": "kqi-monitoring"
+        }
+      ],
+      "next": [
+        {"step": "generate_strategy", "condition": "KQI指标劣化"},
+        {"step": "end", "condition": "KQI正常"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "generate_strategy",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "根据劣化情况生成网络保障策略",
+          "agent": "Assurance Agent",
+          "skill": "strategy-generation"
+        }
+      ],
+      "next": [
+        {"step": "design_plan", "condition": "策略生成成功"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "design_plan",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "根据保障策略规划网络方案",
+          "agent": "RAN Agent",
+          "skill": "plan-design"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "规划完成"}
+      ],
+      "layer": 1,
+      "context_from": ["generate_strategy"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "对直播保障任务持续监控KQI：若指标劣化则生成保障策略并规划网络方案；若正常则结束并输出监控结论。",
+  "tags": ["eval-gold", "conditional_branch"],
+  "source": "eval_gold"
+}

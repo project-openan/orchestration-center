@@ -1,0 +1,60 @@
+{
+  "id": "gold-tc-par-002",
+  "name": "赛事信息与KQI并行采集",
+  "description": "并行扇出参考答案：同智能体双技能并行 + 宿主汇聚",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "parse_event",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "解析直播赛事路线与业务保障需求",
+          "agent": "Live Streaming Agent",
+          "skill": "info-parsing"
+        }
+      ],
+      "next": [
+        {"step": "merge_evaluation", "condition": "解析完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "kqi_monitor",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "持续监控直播保障任务KQI指标",
+          "agent": "Live Streaming Agent",
+          "skill": "kqi-monitoring"
+        }
+      ],
+      "next": [
+        {"step": "merge_evaluation", "condition": "监控完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "merge_evaluation",
+      "type": "SelfLoop",
+      "subtasks": [
+        {
+          "description": "汇总赛事需求与KQI监控结果，形成保障评估结论",
+          "agent": "Host Agent",
+          "skill": "result-aggregation"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "汇总完成"}
+      ],
+      "layer": 1,
+      "context_from": ["parse_event", "kqi_monitor"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "为直播业务保障并行开展两项采集：解析赛事路线与业务需求，同时持续监控保障任务KQI指标；两项完成后由宿主汇总形成保障评估结论。",
+  "tags": ["eval-gold", "parallel_fanout"],
+  "source": "eval_gold"
+}

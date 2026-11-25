@@ -1,0 +1,200 @@
+{
+  "pool": "telecom",
+  "description": "电信运维 AgentCard 池，忠实对齐 samples/agentcard 下的样例智能体（skills 的 id 与 name 双字段同时保留，评分时两者均可匹配）",
+  "agents": [
+    {
+      "name": "Host Agent",
+      "description": "宿主智能体：内嵌工作流引擎，接收编排中心下发任务，加载 PSOP 并按编排计划将节点任务派发给被调度智能体。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26330/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "workflow-orchestration",
+          "name": "工作流编排",
+          "description": "接收自然语言任务意图，检索并加载匹配的工作流定义，按编排计划将各节点任务派发给被调度智能体（支持并行扇出与条件路由），跟踪执行进度并回传事件流。"
+        },
+        {
+          "id": "result-aggregation",
+          "name": "结果汇聚",
+          "description": "汇集各被调度智能体返回的执行结果，进行本地综合分析与归纳，生成最终业务结论或报告；该节点由宿主本地处理，不向外部智能体发送消息。"
+        }
+      ]
+    },
+    {
+      "name": "SPN Domain Agent City1",
+      "description": "SPN Domain Agent City1 - 粤东OMC，SPN专线业务投诉诊断（Bearer 认证）。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26335/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "SPN-private-line-service-complain-diagnosis",
+          "name": "SPN专线业务投诉诊断",
+          "description": "提供SPN领域专线业务网络侧故障根因诊断能力。"
+        }
+      ]
+    },
+    {
+      "name": "SPN Domain Agent City2",
+      "description": "SPN Domain Agent City2 - 粤西OMC，City2地市SPN专线投诉诊断（Bearer 认证）。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26336/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "SPN-private-line-service-complain-diagnosis-city2",
+          "name": "SPN专线业务投诉诊断-City2",
+          "description": "City2地市SPN网络专线故障根因诊断能力。"
+        }
+      ]
+    },
+    {
+      "name": "Assurance Agent",
+      "description": "负责保障策略及其恢复策略的生成。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26340/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "strategy-generation",
+          "name": "保障策略生成",
+          "description": "将赛事保障需求转换为网络需求，包含带宽上下行要求等。"
+        },
+        {
+          "id": "recovery-delivery",
+          "name": "网络配置恢复",
+          "description": "保障结束后恢复保障前的网络配置。"
+        }
+      ]
+    },
+    {
+      "name": "Energy Saving Intent Agent",
+      "description": "负责设置节能意图，与RAN能效优化智能体交互，进行意图预评估、意图生成与交付，并对节能效果进行评估与调整。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26345/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "intent-exploration-request",
+          "name": "意图探索请求",
+          "description": "发起RAN ES意图探索请求，并获取指定意图目标的最佳可能值。"
+        },
+        {
+          "id": "intent-generation",
+          "name": "意图生成",
+          "description": "根据探索报告和业务需求生成RAN节能意图内容，包括不同时段、不同RAT的吞吐量和节能目标。"
+        },
+        {
+          "id": "intent-delivery",
+          "name": "意图交付",
+          "description": "将生成的节能意图交付给RAN能效优化智能体，并管理意图生命周期（调用意图生命周期管理接口）。"
+        },
+        {
+          "id": "effect-evaluation",
+          "name": "效果评估",
+          "description": "评估不同RAN域的节能效果，根据效果调整意图。"
+        }
+      ]
+    },
+    {
+      "name": "Live Streaming Agent",
+      "description": "负责赛事需求的解析与监控。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26350/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "info-parsing",
+          "name": "赛事信息解析",
+          "description": "提取赛事的路线与业务需求。"
+        },
+        {
+          "id": "kqi-monitoring",
+          "name": "KQI监控",
+          "description": "实时反馈保障任务关键质量指标及任务状态。"
+        }
+      ]
+    },
+    {
+      "name": "RAN Agent",
+      "description": "负责无线网络的分析、规划与策略执行。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26355/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "analysis-eval",
+          "name": "分析与评估",
+          "description": "分析网络负载现状。"
+        },
+        {
+          "id": "plan-design",
+          "name": "方案规划",
+          "description": "根据网络负载现状及网络保障需求规划网络策略方案。"
+        },
+        {
+          "id": "net-exec",
+          "name": "网络策略执行",
+          "description": "执行或恢复网络策略。"
+        }
+      ]
+    },
+    {
+      "name": "RAN Energy Saving Agent",
+      "description": "负责RAN能效优化的自主闭环运行，包括意图探索、意图实现、效果评估与报告。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26360/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {
+          "id": "ran-es-intent-exploration",
+          "name": "RAN节能意图探索",
+          "description": "评估并确定指定RAN ES意图目标的最佳可能性，考虑当前资源状况和系统能力。"
+        },
+        {
+          "id": "ran-es-intent-lifecycle-management",
+          "name": "RAN节能意图生命周期管理",
+          "description": "管理RAN节能意图的生命周期，包括创建、修改、删除、激活、去激活意图，并执行数据采集、分析、解决方案制定与配置。"
+        },
+        {
+          "id": "ran-es-intent-reporting",
+          "name": "RAN节能意图报告",
+          "description": "提供意图报告查询、订阅、通知功能，报告意图实现状态、达成值、推荐值及配置修改信息。"
+        }
+      ]
+    }
+  ]
+}

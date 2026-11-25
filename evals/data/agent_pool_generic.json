@@ -1,0 +1,65 @@
+{
+  "pool": "generic",
+  "description": "通用办公自动化合成 AgentCard 池（非电信域，用于少量通用场景用例；虚构能力，仅用于评测规划行为，不对应真实智能体）",
+  "agents": [
+    {
+      "name": "Doc Agent",
+      "description": "文档处理智能体：摘要、翻译与文案整理。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26410/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {"id": "doc-summarize", "name": "文档摘要", "description": "对给定文档或周报内容生成要点摘要。"},
+        {"id": "doc-translate", "name": "文档翻译", "description": "将文档在指定语言之间互译。"}
+      ]
+    },
+    {
+      "name": "Data Agent",
+      "description": "数据处理智能体：业务数据查询与报表生成。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26420/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {"id": "data-query", "name": "业务数据查询", "description": "按条件查询业务数据库并返回结果集。"},
+        {"id": "data-report", "name": "报表生成", "description": "基于查询结果生成结构化报表。"}
+      ]
+    },
+    {
+      "name": "Ticket Agent",
+      "description": "工单智能体：跟踪工单的创建与关闭。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26430/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {"id": "ticket-create", "name": "工单创建", "description": "根据事项描述创建跟踪工单。"},
+        {"id": "ticket-close", "name": "工单关闭", "description": "核验处理结果并关闭跟踪工单。"}
+      ]
+    },
+    {
+      "name": "Notify Agent",
+      "description": "通知智能体：向指定群组或个人发送消息通知。",
+      "version": "1.0.0",
+      "capabilities": {"streaming": true},
+      "defaultInputModes": ["application/json", "text/plain"],
+      "defaultOutputModes": ["application/json", "text/plain"],
+      "supportedInterfaces": [
+        {"protocolBinding": "HTTP+JSON", "protocolVersion": "1.0", "url": "https://127.0.0.1:26440/a2a/json", "tenant": ""}
+      ],
+      "skills": [
+        {"id": "notify-send", "name": "消息通知", "description": "向指定群组或个人发送消息通知。"}
+      ]
+    }
+  ]
+}

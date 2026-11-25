@@ -1,0 +1,28 @@
+{
+  "id": "gold-tc-oos-004",
+  "name": "行政事务（越界拒答，通用池）",
+  "description": "越界拒答参考答案：零能力使用，转人工处理说明（skill=none）",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "manual_handling",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "该需求（会议室预订与团建安排）超出当前智能体能力范围，需转人工处理",
+          "agent": "Doc Agent",
+          "skill": "none"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "转人工说明完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "帮我预订下周三下午的会议室，并安排团建聚餐的餐厅。",
+  "tags": ["eval-gold", "out_of_scope_refusal"],
+  "source": "eval_gold"
+}

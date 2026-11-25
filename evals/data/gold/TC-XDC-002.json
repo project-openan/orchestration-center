@@ -1,0 +1,92 @@
+{
+  "id": "gold-tc-xdc-002",
+  "name": "节能意图跨智能体交付",
+  "description": "跨域协同参考答案：双智能体五技能接力",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "es_intent_exploration",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "发起RAN节能意图探索请求",
+          "agent": "Energy Saving Intent Agent",
+          "skill": "intent-exploration-request"
+        }
+      ],
+      "next": [
+        {"step": "generate_es_intent", "condition": "探索报告返回"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "generate_es_intent",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "根据探索报告生成节能意图内容",
+          "agent": "Energy Saving Intent Agent",
+          "skill": "intent-generation"
+        }
+      ],
+      "next": [
+        {"step": "deliver_es_intent", "condition": "意图生成完成"}
+      ],
+      "layer": 1,
+      "context_from": ["es_intent_exploration"]
+    },
+    {
+      "name": "deliver_es_intent",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "将节能意图交付RAN能效智能体",
+          "agent": "Energy Saving Intent Agent",
+          "skill": "intent-delivery"
+        }
+      ],
+      "next": [
+        {"step": "es_lifecycle", "condition": "交付完成"}
+      ],
+      "layer": 1,
+      "context_from": ["generate_es_intent"]
+    },
+    {
+      "name": "es_lifecycle",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "RAN能效智能体执行节能意图生命周期管理",
+          "agent": "RAN Energy Saving Agent",
+          "skill": "ran-es-intent-lifecycle-management"
+        }
+      ],
+      "next": [
+        {"step": "effect_eval", "condition": "生命周期执行完成"}
+      ],
+      "layer": 1,
+      "context_from": ["deliver_es_intent"]
+    },
+    {
+      "name": "effect_eval",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "评估本轮节能意图执行效果",
+          "agent": "Energy Saving Intent Agent",
+          "skill": "effect-evaluation"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "效果评估完成"}
+      ],
+      "layer": 1,
+      "context_from": ["es_lifecycle"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "设置RAN节能意图：先发起意图探索，根据探索结果生成意图内容，交付给RAN能效智能体做生命周期管理，最后评估节能效果。",
+  "tags": ["eval-gold", "cross_domain_collab"],
+  "source": "eval_gold"
+}

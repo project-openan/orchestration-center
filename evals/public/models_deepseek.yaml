@@ -1,0 +1,12 @@
+models:
+  chat:
+    provider: openai_compatible
+    description: DeepSeek Flash direct (OpenAN eval, no proxy)
+    model: deepseek-flash
+    url: https://api.deepseek.com/v1/chat/completions
+    api_key_env: DEEPSEEK_API_KEY
+    timeout: 120
+    stream: false
+    extra_body:
+      effort: low
+      max_tokens: 8192

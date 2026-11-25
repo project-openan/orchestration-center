@@ -1,0 +1,60 @@
+{
+  "id": "gold-tc-agg-001",
+  "name": "双片区节能探索汇总生成意图",
+  "description": "汇聚分层参考答案：两路探索扇入生成步（layer=1 + context_from）",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "explore_zone_a",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "探索A片区RAN节能意图最佳可达值",
+          "agent": "RAN Energy Saving Agent",
+          "skill": "ran-es-intent-exploration"
+        }
+      ],
+      "next": [
+        {"step": "generate_intent", "condition": "A片区探索完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "explore_zone_b",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "探索B片区RAN节能意图最佳可达值",
+          "agent": "RAN Energy Saving Agent",
+          "skill": "ran-es-intent-exploration"
+        }
+      ],
+      "next": [
+        {"step": "generate_intent", "condition": "B片区探索完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "generate_intent",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "汇总两片区节能探索结果，生成节能意图内容",
+          "agent": "Energy Saving Intent Agent",
+          "skill": "intent-generation"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "意图生成完成"}
+      ],
+      "layer": 1,
+      "context_from": ["explore_zone_a", "explore_zone_b"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "汇总A、B两片区的RAN节能探索结果，作为上下文统一生成节能意图内容。",
+  "tags": ["eval-gold", "aggregation_layer"],
+  "source": "eval_gold"
+}

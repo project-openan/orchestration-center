@@ -1,0 +1,60 @@
+{
+  "id": "gold-tc-xdc-003",
+  "name": "双城串行诊断比对",
+  "description": "跨域协同参考答案：串行两城诊断 + 宿主交叉比对",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "diagnosis_city1",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "诊断粤东SPN专线投诉故障，输出诊断结论",
+          "agent": "SPN Domain Agent City1",
+          "skill": "SPN-private-line-service-complain-diagnosis"
+        }
+      ],
+      "next": [
+        {"step": "diagnosis_city2", "condition": "粤东诊断完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "diagnosis_city2",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "诊断粤西SPN专线投诉故障，输出诊断结论",
+          "agent": "SPN Domain Agent City2",
+          "skill": "SPN-private-line-service-complain-diagnosis-city2"
+        }
+      ],
+      "next": [
+        {"step": "merge_compare", "condition": "粤西诊断完成"}
+      ],
+      "layer": 1,
+      "context_from": ["diagnosis_city1"]
+    },
+    {
+      "name": "merge_compare",
+      "type": "SelfLoop",
+      "subtasks": [
+        {
+          "description": "交叉比对两地诊断结论，定位故障归属地",
+          "agent": "Host Agent",
+          "skill": "result-aggregation"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "比对完成"}
+      ],
+      "layer": 1,
+      "context_from": ["diagnosis_city2"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "先诊断粤东SPN专线投诉故障，再诊断粤西专线故障，最后由宿主交叉比对两地结论，定位故障归属地。",
+  "tags": ["eval-gold", "cross_domain_collab"],
+  "source": "eval_gold"
+}

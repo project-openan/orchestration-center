@@ -1,0 +1,28 @@
+{
+  "id": "gold-tc-sgl-001",
+  "name": "负载现状分析",
+  "description": "单步规划参考答案：RAN Agent 分析无线网络负载现状",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "load_analysis",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "分析当前无线网络负载现状并输出分析结论",
+          "agent": "RAN Agent",
+          "skill": "analysis-eval"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "负载分析完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "分析当前无线网络的负载现状，输出分析结论。",
+  "tags": ["eval-gold", "single_step"],
+  "source": "eval_gold"
+}

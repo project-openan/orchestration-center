@@ -1,0 +1,11 @@
+models:
+  chat:
+    provider: openai_compatible
+    description: Blue-Zone unified gateway GLM-5.3-Flash (OpenAN public-bench eval)
+    model: glm-5.3-flash
+    url: https://st8tp3ajl0df3n8b8l8qu.apigateway-cn-beijing.volceapi.com/v1/chat/completions
+    api_key_env: LANQU_GATEWAY_API_KEY
+    timeout: 240
+    stream: false
+    extra_body:
+      max_tokens: 16384
