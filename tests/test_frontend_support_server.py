@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -262,6 +262,60 @@ class TestPsopsEndpoints:
 
         response = client.delete('/psops/nonexistent')
         assert response.status_code == 404
+
+
+class TestWorkflowBpmnEndpoint:
+    """GET /workflows/{id}/bpmn -- PSOP retrieved via the normal query path,
+    converted to BPMN 2.0 XML for the frontend export button."""
+
+    BASE_URL = f'{BASE}/workflows'
+
+    @staticmethod
+    def _real_psop():
+        from orchestrate.core.model.psop import PSOP, Step, Task, JumpCondition
+        return PSOP(
+            id="wf-bpmn-internal",
+            name="内部导出流程",
+            steps=[
+                Step(name="step1", subtasks=[Task(description="t1", agent="a1", skill="s1")],
+                     next=[JumpCondition(step="step2", condition="")]),
+                Step(name="step2", subtasks=[Task(description="t2", agent="a2", skill="s2")]),
+            ],
+        )
+
+    def test_get_workflow_bpmn_success(self, client, mock_retrieval):
+        mock_retrieval.get_psop_by_id.return_value = self._real_psop()
+
+        response = client.get(f'{self.BASE_URL}/wf-bpmn-internal/bpmn')
+        assert response.status_code == 200
+        assert response.headers['content-type'].startswith('application/xml')
+        disposition = response.headers.get('content-disposition', '')
+        assert '.bpmn' in disposition
+        # Chinese workflow names cannot travel in a latin-1 header: they ride
+        # the RFC 5987 filename* parameter, with an ASCII fallback alongside.
+        assert "filename*=UTF-8''" in disposition
+        assert response.text.startswith('<?xml version="1.0"')
+        assert '<bpmn:process' in response.text
+        assert '<bpmn:task' in response.text
+
+    def test_get_workflow_bpmn_not_found(self, client, mock_retrieval):
+        mock_retrieval.get_psop_by_id.return_value = None
+
+        response = client.get(f'{self.BASE_URL}/nonexistent/bpmn')
+        assert response.status_code == 404
+
+    def test_get_workflow_bpmn_conversion_error(self, client, mock_retrieval):
+        """A PSOP without steps cannot be converted -> 500."""
+        mock_retrieval.get_psop_by_id.return_value = self._real_psop().model_copy(update={"steps": []})
+
+        response = client.get(f'{self.BASE_URL}/wf-empty/bpmn')
+        assert response.status_code == 500
+
+    def test_get_workflow_bpmn_retrieval_error(self, client, mock_retrieval):
+        mock_retrieval.get_psop_by_id.side_effect = RuntimeError('db down')
+
+        response = client.get(f'{self.BASE_URL}/err-id/bpmn')
+        assert response.status_code == 500
 
 
 class TestAgentCardsEndpoint:

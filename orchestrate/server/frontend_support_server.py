@@ -62,6 +62,7 @@ from orchestrate.server.storage_error_response import storage_http_exception
 from common.util.password_hash import FILE_HASH_PREFIX, hash_password
 from orchestrate.core.model.preflow import PreFlow
 from orchestrate.core.model.psop import PSOP
+from orchestrate.core.bpmn_converter import psop_to_bpmn, bpmn_content_disposition
 from orchestrate.core.persistence import WorkflowStorageError
 from orchestrate.server.external_api import router as external_router
 from orchestrate.server.account_api import router as account_router
@@ -488,6 +489,14 @@ async def list_workflows(
 
 one_psop_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_ONE_PSOP, 10)))
 
+def _bpmn_response(psop) -> Response:
+    """Convert a retrieved PSOP to BPMN 2.0 XML and wrap it in an XML response."""
+    return Response(
+        content=psop_to_bpmn(psop),
+        media_type="application/xml",
+        headers={"Content-Disposition": bpmn_content_disposition(psop)},
+    )
+
 @router.get("/workflows/{workflow_id}")
 async def get_workflow(
     workflow_id: str,
@@ -510,6 +519,40 @@ async def get_workflow(
         raise storage_http_exception(e) from e
     except Exception as e:
         logger.error(f"Failed to get workflow {workflow_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if acquired:
+            one_psop_semaphore.release()
+
+@router.get("/workflows/{workflow_id}/bpmn")
+async def get_workflow_bpmn(
+    workflow_id: str,
+    _: Any = Depends(RateLimiter(config, "get_workflow"))
+):
+    """
+    Get a workflow as BPMN 2.0 XML for the frontend export button.
+
+    The PSOP is loaded through the normal workflow query path and converted
+    to BPMN on the fly (see orchestrate.core.bpmn_converter); no separate
+    BPMN storage exists.
+    """
+    acquired = False
+    try:
+        one_psop_semaphore.acquire_nowait()
+        acquired = True
+        logger.info(f"Getting workflow as BPMN: {workflow_id}")
+        psop = SharedHandlers.retrieval().get_psop_by_id(workflow_id)
+        if not psop:
+            raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+        return _bpmn_response(psop)
+    except anyio.WouldBlock:
+        raise HTTPException(status_code=503, detail="Server is busy")
+    except HTTPException:
+        raise
+    except StorageError as e:
+        raise storage_http_exception(e) from e
+    except Exception as e:
+        logger.error(f"Failed to convert workflow {workflow_id} to BPMN: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if acquired:

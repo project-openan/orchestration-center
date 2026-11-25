@@ -486,6 +486,54 @@ integrations are described in [transport configuration](../transport-runtime.md)
 
 ---
 
+## 3.6 Get Workflow in BPMN Format
+
+- Typical Scenario
+
+   When an existing workflow in the orchestration center must be imported into standard BPMN tooling (Camunda Modeler, bpmn.io, ...) for viewing or further modeling, fetch its BPMN 2.0 representation by ID.
+
+- Description
+
+   Queries the workflow by PSOP ID. Internally the PSOP is first retrieved through the same query path as section 3.5, then converted server-side into BPMN 2.0 XML (`orchestrate.core.bpmn_converter`); BPMN has no storage of its own. Mapping rules: each PSOP step becomes a `bpmn:task` (subtask agent/skill recorded in `documentation`), `next` jumps become `sequenceFlow` elements, multi-branch jumps get an exclusive gateway, and jump conditions become `conditionExpression` elements. The document includes a `BPMNDiagram` DI section so viewers can render it directly.
+
+- Interface Constraints
+
+   - Rate limit identifier: `get_workflow`. Rate is determined by the `FLOW_CTL_ONE_PSOP` configuration.
+   - The response is `application/xml` (a BPMN 2.0 document), not the JSON envelope of section 1.3.
+
+- Method
+
+   GET
+
+- URI
+
+   `/api/v1/orchestrate/psop/{psop_id}/bpmn`
+
+- Request Parameters
+
+   | Parameter | Type   | Required | Location | Description                |
+   |-----------|--------|----------|----------|----------------------------|
+   | psop_id   | string | Yes      | path     | PSOP workflow unique identifier |
+
+- Request Example
+
+   ```
+   GET /api/v1/orchestrate/psop/06cb53d9-de27-4adf-9898-2eae5afcf888/bpmn
+   ```
+
+- Response Parameters
+
+   The response body is the BPMN 2.0 XML document itself (`bpmn:definitions` root with `bpmn:process` and `bpmndi:BPMNDiagram`); `Content-Disposition` carries a suggested file name (ASCII fallback plus RFC 5987 `filename*=UTF-8''`, supporting Chinese workflow names).
+
+- Error Codes
+
+   | Status Code | Description                     |
+   |-------------|---------------------------------|
+   | 404         | Workflow with the specified ID not found |
+   | 500         | Conversion or internal server error |
+
+---
+
 ### SSE Event Contract
 
 Execution endpoints return `text/event-stream`. Parse JSON from `data:` frames; ignore blank lines and heartbeat comments such as `: heartbeat`. The relay preserves SDK payloads rather than normalizing every frame to one schema. Most frames use `type`/`data`/`timestamp`; early errors can carry a top-level `message`. Fields are event-specific and optional unless defined by the producing SDK.

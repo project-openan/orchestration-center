@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -25,6 +25,7 @@ Endpoints:
   POST /api/v1/orchestrate/sop           — SOP-based orchestration (JSON text or PDF/TXT/MD file upload)
   POST /api/v1/orchestrate/intent        — Intent-based orchestration
   GET  /api/v1/orchestrate/psop/{id}     — Get PSOP workflow by ID
+  GET  /api/v1/orchestrate/psop/{id}/bpmn — Get PSOP workflow by ID, converted to BPMN 2.0 XML
   POST /api/v1/orchestrate/search        — Search/retrieve workflows by natural language intent
   POST /api/v1/orchestrate/execute       — Auto-orchestrate + execute (SSE)
   GET  /api/v1/orchestrate/execute/{id}  — Execute a known PSOP (SSE)
@@ -39,10 +40,12 @@ from typing import Any, Optional
 
 import anyio
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, Depends
+from fastapi.responses import Response
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from common.config import FLOW_CTL_START_PROCESS_STREAM, FLOW_CTL_PLAN, FLOW_CTL_GENERATE_PSOP, MAX_FILE_SIZE_BYTES
+from orchestrate.core.bpmn_converter import psop_to_bpmn, bpmn_content_disposition
 from orchestrate.handlers.dispatch import get_storage_handler
 from orchestrate.persistence.errors import StorageError
 from orchestrate.server.storage_error_response import storage_http_exception
@@ -270,6 +273,40 @@ async def get_psop(
     except Exception as e:
         logger.error(f"Failed to get PSOP: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get PSOP: {e}") from e
+
+
+@router.get("/orchestrate/psop/{psop_id}/bpmn")
+async def get_psop_bpmn(
+    psop_id: str,
+    _: Any = Depends(RateLimiter(config, "get_workflow"))
+):
+    """
+    Get a single PSOP workflow by ID, converted to BPMN 2.0 XML.
+
+    Implementation: the PSOP is retrieved through the normal PSOP query path
+    (same storage/handlers as ``GET /orchestrate/psop/{psop_id}``) and then
+    converted to BPMN on the fly, so BPMN needs no separate storage.
+
+    Returns the BPMN 2.0 XML document (``application/xml``) including the
+    BPMNDiagram DI section, ready to be opened in standard BPMN tooling.
+    """
+    try:
+        retrieval = SharedHandlers.retrieval()
+        psop = retrieval.get_psop_by_id(psop_id)
+        if not psop:
+            raise HTTPException(status_code=404, detail=f"PSOP {psop_id} not found")
+        return Response(
+            content=psop_to_bpmn(psop),
+            media_type="application/xml",
+            headers={"Content-Disposition": bpmn_content_disposition(psop)},
+        )
+    except HTTPException:
+        raise
+    except StorageError as e:
+        raise storage_http_exception(e) from e
+    except Exception as e:
+        logger.error(f"Failed to convert PSOP {psop_id} to BPMN: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to convert PSOP to BPMN: {e}") from e
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 4. Search/retrieve workflows

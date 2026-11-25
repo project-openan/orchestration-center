@@ -478,6 +478,54 @@ HTTP/HTTPS 采用相同的账号认证；`verify_client=true` 额外要求 TLS �
 
 ---
 
+## 3.6 获取工作流 BPMN 格式
+
+- 典型场景
+
+  需要将编排中心的已有工作流导入标准 BPMN 工具（Camunda Modeler、bpmn.io 等）进行查看或二次建模时，按 ID 获取该工作流的 BPMN 2.0 表示。
+
+- 功能描述
+
+  按 PSOP ID 查询工作流。实现上先通过与 3.5 相同的查询路径取出 PSOP，再在服务端将 PSOP 转换为 BPMN 2.0 XML（`orchestrate.core.bpmn_converter`），BPMN 不单独存储。转换规则：每个 PSOP step 映射为一个 `bpmn:task`（子任务的 Agent/技能写入 `documentation`），`next` 跳转映射为 `sequenceFlow`，多分支跳转生成排他网关，跳转条件生成 `conditionExpression`；文档附带 `BPMNDiagram` 图形信息，可直接渲染。
+
+- 接口约束
+
+  - 限流标识：`get_workflow`，速率由 `FLOW_CTL_ONE_PSOP` 配置决定。
+  - 响应为 `application/xml`（BPMN 2.0 文档），不是第 1.3 节的 JSON 信封。
+
+- 调用方法
+
+  GET
+
+- URI
+
+  `/api/v1/orchestrate/psop/{psop_id}/bpmn`
+
+- 请求参数
+
+  | 参数名  | 类型   | 必填 | 位置 | 描述                |
+  |--------|--------|------|------|---------------------|
+  | psop_id | string | 是   | path | PSOP 工作流唯一标识  |
+
+- 请求示例
+
+  ```
+  GET /api/v1/orchestrate/psop/06cb53d9-de27-4adf-9898-2eae5afcf888/bpmn
+  ```
+
+- 返回参数
+
+  响应体即 BPMN 2.0 XML 文档（`bpmn:definitions` 根元素，含 `bpmn:process` 与 `bpmndi:BPMNDiagram`）；`Content-Disposition` 携带建议文件名（ASCII 回退 + RFC 5987 `filename*=UTF-8''`，支持中文工作流名）。
+
+- 错误码
+
+  | 状态码 | 说明                        |
+  |--------|-----------------------------|
+  | 404    | 指定 ID 的工作流不存在       |
+  | 500    | 转换或服务器内部错误         |
+
+---
+
 ### SSE 事件契约
 
 执行接口返回 `text/event-stream`。从 `data:` 帧解析 JSON，忽略空行和 `: heartbeat` 等心跳注释。转发层保留 SDK 原始载荷，不把所有帧统一成固定字段结构。多数事件使用 `type`/`data`/`timestamp`，早期错误也可能仅带顶层 `message`；字段取决于事件生产方，不能假定总有 agent、request 或 execution_history。

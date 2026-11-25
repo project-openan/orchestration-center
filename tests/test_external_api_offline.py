@@ -242,6 +242,69 @@ class TestGetPsop:
 
 
 # ===========================================================================
+# 3b. GET /api/v1/orchestrate/psop/{psop_id}/bpmn
+# ===========================================================================
+
+class TestGetPsopBpmn:
+    """The BPMN endpoint retrieves the PSOP through the same query path as
+    GET /psop/{id} and converts it to BPMN 2.0 XML on the fly."""
+
+    @staticmethod
+    def _real_psop():
+        from orchestrate.core.model.psop import PSOP, Step, Task, JumpCondition
+        return PSOP(
+            id="psop-bpmn-001",
+            name="BPMN Export <Demo>",
+            description="desc",
+            steps=[
+                Step(name="step1", subtasks=[Task(description="t1", agent="agent_a", skill="skill_a")],
+                     next=[JumpCondition(step="step2", condition="")]),
+                Step(name="step2", subtasks=[Task(description="t2", agent="agent_b", skill="skill_b")]),
+            ],
+        )
+
+    def test_get_psop_bpmn_success(self, client):
+        with patch("orchestrate.server.external_api.SharedHandlers") as mock_shared:
+            mock_retrieval = MagicMock()
+            mock_retrieval.get_psop_by_id.return_value = self._real_psop()
+            mock_shared.retrieval.return_value = mock_retrieval
+            resp = client.get("/api/v1/orchestrate/psop/psop-bpmn-001/bpmn")
+            assert resp.status_code == 200
+            assert resp.headers["content-type"].startswith("application/xml")
+            assert "attachment" not in resp.headers.get("content-disposition", "")
+            assert ".bpmn" in resp.headers.get("content-disposition", "")
+            # body is a BPMN document, not a JSON envelope
+            assert resp.text.startswith('<?xml version="1.0"')
+            assert "<bpmn:process" in resp.text
+            assert "<bpmn:task" in resp.text
+
+    def test_get_psop_bpmn_not_found(self, client):
+        with patch("orchestrate.server.external_api.SharedHandlers") as mock_shared:
+            mock_retrieval = MagicMock()
+            mock_retrieval.get_psop_by_id.return_value = None
+            mock_shared.retrieval.return_value = mock_retrieval
+            resp = client.get("/api/v1/orchestrate/psop/nonexistent/bpmn")
+            assert resp.status_code == 404
+
+    def test_get_psop_bpmn_retrieval_error(self, client):
+        with patch("orchestrate.server.external_api.SharedHandlers") as mock_shared:
+            mock_retrieval = MagicMock()
+            mock_retrieval.get_psop_by_id.side_effect = RuntimeError("db down")
+            mock_shared.retrieval.return_value = mock_retrieval
+            resp = client.get("/api/v1/orchestrate/psop/err-id/bpmn")
+            assert resp.status_code == 500
+
+    def test_get_psop_bpmn_conversion_error(self, client):
+        """A stored PSOP without steps cannot be converted -> 500."""
+        with patch("orchestrate.server.external_api.SharedHandlers") as mock_shared:
+            mock_retrieval = MagicMock()
+            mock_retrieval.get_psop_by_id.return_value = self._real_psop().model_copy(update={"steps": []})
+            mock_shared.retrieval.return_value = mock_retrieval
+            resp = client.get("/api/v1/orchestrate/psop/empty/bpmn")
+            assert resp.status_code == 500
+
+
+# ===========================================================================
 # 4. POST /api/v1/orchestrate/search
 # ===========================================================================
 
