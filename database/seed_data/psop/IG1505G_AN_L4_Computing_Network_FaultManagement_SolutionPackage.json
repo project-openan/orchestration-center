@@ -9,32 +9,34 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "4adc3779-870e-48dd-955d-e687d3e65fcb",
-          "description": "Receive proactive data and fault events from Computing Domain Fault Management Agent",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Fault Incident Receiving and Distribution",
-          "status": "pending"
+          "task_id": "t3a",
+          "description": "Identify and report computing node fault from the computing domain to the Cross-domain Fault Agent",
+          "agent": "Computing Network Fault Management Agent",
+          "skill": "Computing Network Fault Identification",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         },
         {
-          "task_id": "a62b4b93-4f03-43be-8aa4-541faeca15f9",
-          "description": "Receive proactive data and fault events from Network Domain Fault Management Agent",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Fault Incident Receiving and Distribution",
-          "status": "pending"
+          "task_id": "t3b",
+          "description": "Identify and report network link/port failure from the network domain to the Cross-domain Fault Agent",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Identification",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         },
         {
-          "task_id": "ca6315be-036e-432d-9a1f-d2db0088cb92",
-          "description": "Ingest service-layer data/events",
+          "task_id": "t3c",
+          "description": "Receive and register service-layer business data and fault events for cross-domain context",
           "agent": "AN L4 Cross-Domain Fault Management Agent",
           "skill": "Fault Incident Receiving and Distribution",
-          "status": "pending"
-        },
-        {
-          "task_id": "05b33560-16e6-465b-944b-aa111a5f1900",
-          "description": "Ingest requirements for proactive O&M",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "General Orchestration Support",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -51,18 +53,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "b13baf2c-8599-46f0-92d7-288ebc74fd70",
-          "description": "Perform cross-domain correlation analysis to identify fault locations and return links",
+          "task_id": "t4",
+          "description": "Perform cross-domain correlation analysis on ingested events and business context to determine fault locations and return links",
           "agent": "AN L4 Cross-Domain Fault Management Agent",
           "skill": "Cross-Domain Fault Correlation Analysis",
-          "status": "pending"
-        },
-        {
-          "task_id": "9bc7024c-d4bc-4b86-b5a6-af88494966f0",
-          "description": "Proactively perform identification and analysis",
-          "agent": "Computing Network Fault Management Agent",
-          "skill": "Computing Network Fault Identification",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -71,32 +69,44 @@
           "condition": ""
         }
       ],
-      "layer": 0,
-      "context_from": null
+      "layer": 1,
+      "context_from": [
+        "step1"
+      ]
     },
     {
       "name": "step3",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "8e91bb38-f7a7-4522-a557-3ad34d989f55",
-          "description": "Automatically extract fault characteristics",
+          "task_id": "t5a",
+          "description": "Self-diagnose computing domain fault and return diagnosis results and handling suggestions to the Cross-domain Agent",
           "agent": "Computing Network Fault Management Agent",
           "skill": "Computing Network Fault Diagnosis",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         },
         {
-          "task_id": "cfc0b46d-4a5e-4385-ad71-e9ecaa15d8b6",
-          "description": "Perform fault demarcation",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Demarcation and Location",
-          "status": "pending"
+          "task_id": "t5b",
+          "description": "Self-diagnose network domain fault and return diagnosis results and handling suggestions to the Cross-domain Agent",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step4",
-          "condition": ""
+          "condition": "automated remediation feasible"
+        },
+        {
+          "step": "step5",
+          "condition": "automated remediation not feasible, manual intervention required"
         }
       ],
       "layer": 0,
@@ -107,26 +117,17 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "653631e2-876a-4166-a94d-d78329e05434",
-          "description": "Dispatch diagnosis requests and remediation suggestions to corresponding single-domain Fault Management Agent",
+          "task_id": "t5c",
+          "description": "Coordinate domain Agents to execute precise localization and automated remediation, and track repair progress",
           "agent": "AN L4 Cross-Domain Fault Management Agent",
           "skill": "Cross-Domain Fault Coordination and Repair",
-          "status": "pending"
-        },
-        {
-          "task_id": "83ace264-e0a1-4fcf-82f0-5ea17aa93858",
-          "description": "Drive single-domain agents to execute precise fault localization and remediation",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Coordination and Repair",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step5",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
       "context_from": null
     },
@@ -135,187 +136,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "9b48fc43-3ecd-43ff-a8f2-383c3319e084",
-          "description": "Execute self-diagnosis and return results and handling suggestions to cross-domain agent",
-          "agent": "Computing Network Fault Management Agent",
-          "skill": "Computing Network Fault Diagnosis",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step6",
-          "condition": "Automated remediation feasible"
-        },
-        {
-          "step": "step7",
-          "condition": "Automated remediation unfeasible"
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step6",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "744c62bc-dffb-4530-a56c-1c4ce52d2412",
-          "description": "Complete repair and return result",
-          "agent": "Computing Network Fault Management Agent",
-          "skill": "Computing Network Fault Handling",
-          "status": "pending"
-        },
-        {
-          "task_id": "020a4a7e-946d-452f-be81-78f37ec8627e",
-          "description": "Automatically identify, diagnose, and remediate faults within own domain",
-          "agent": "Computing Network Fault Management Agent",
-          "skill": "Computing Network Fault Handling",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step11",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step7",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "58a94975-e066-4ca3-8779-8b0178855221",
-          "description": "Evaluate diagnosis and remediation plan",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Coordination and Repair",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step8",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step8",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "944a1a12-ad97-4344-a6b9-94e1da8c1a3b",
-          "description": "Confirm automation is impossible",
-          "agent": "Computing Network Fault Management Agent",
-          "skill": "Computing Network Fault Handling",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step9",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step9",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "1ec7292f-0e50-451e-aadb-8db3b825ba1e",
-          "description": "Dispatch task to FME via Work Order System",
+          "task_id": "t6",
+          "description": "Create and dispatch a work order to the FME via the Work Order System based on the confirmed diagnosis and remediation plan",
           "agent": "Work Order Management Agent",
           "skill": "Work Order Dispatch",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step10",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
       "context_from": null
-    },
-    {
-      "name": "step10",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "66c32e5b-b6f5-48f3-a601-d76e31a81747",
-          "description": "Interact with service-layer FME Copilot to query equipment info",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Device Information Query",
-          "status": "pending"
-        },
-        {
-          "task_id": "8b6906b1-420a-4815-a7d8-5d44a971be95",
-          "description": "Coordinate with resource-layer FME Copilot",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Copilot Collaboration",
-          "status": "pending"
-        },
-        {
-          "task_id": "09074dad-0e21-41f7-baf0-3e2601d28ff8",
-          "description": "Provide natural language-based operational guidance to assist FME in completing fault repair",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Natural Language Operational Guidance",
-          "status": "pending"
-        },
-        {
-          "task_id": "19174591-3695-4c7a-abbc-127737b53480",
-          "description": "Provide intelligent assistances for manual troubleshooting",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Fault Knowledge Retrieval",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step11",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step11",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "83b1fe8d-3da5-4366-bec4-cd5fc4b8fc59",
-          "description": "Report execution results",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Fault Management Summary Report",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 1,
-      "context_from": [
-        "*"
-      ]
     }
   ],
-  "related_preflow": "3539c9ef-cf8f-4fa6-93de-326072759ef1",
-  "user_intent": "# 5. Interaction Flow\n\n## 5.1. AN L4 Computing Network Fault Management Workflow\n\nThe AN L4 fault management framework for computing networks adheres to the I-AADE (Intent-Awareness-Analysis-Decision-",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

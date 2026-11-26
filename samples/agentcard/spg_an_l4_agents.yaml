@@ -28,7 +28,7 @@
 
 agents:
   - name: "AN L4 Cross-Domain Fault Management Agent"
-    description: "负责跨域故障管理的自治闭环：接收单域Agent上报的事件，执行跨域关联分析、故障定界定位、协同修复与结果汇总。"
+    description: "业务域：跨网域故障管理。服务层，接收单域 Agent 上报事件，执行跨域关联分析、故障定界、修复协调和结果汇总。"
     provider:
       organization: "Huawei"
       url: ""
@@ -70,7 +70,7 @@ agents:
         url: "http://127.0.0.1:9101"
 
   - name: "Mobile Network Fault Management Agent"
-    description: "负责移动网络（无线接入网）域内故障的自动识别、诊断与处理，支持与跨域故障管理Agent协同。"
+    description: "业务域：移动网络（无线接入网）。网络层，负责域内故障识别、诊断和处理，与跨域故障管理 Agent 协同。"
     provider:
       organization: "Huawei"
       url: ""
@@ -104,7 +104,7 @@ agents:
         url: "http://127.0.0.1:9102"
 
   - name: "Core Network Fault Management Agent"
-    description: "负责核心网域内故障的自动识别、诊断与处理，支持变更期间的故障监控与跨域协同。"
+    description: "业务域：核心网故障管理。网络层，负责核心网域内故障识别、诊断和处置，以及变更期间的故障监控和跨域协同。"
     provider:
       organization: "Huawei"
       url: ""
@@ -134,7 +134,7 @@ agents:
         url: "http://127.0.0.1:9103"
 
   - name: "IP Network Fault Management Agent"
-    description: "负责IP网络（数据通信网）域内故障的自动识别、诊断与处理。"
+    description: "业务域：IP 网络（数据通信网）。网络层，负责域内故障识别、诊断和处理。"
     provider:
       organization: "Huawei"
       url: ""
@@ -164,7 +164,7 @@ agents:
         url: "http://127.0.0.1:9104"
 
   - name: "Transport Network Fault Management Agent"
-    description: "负责承载网（SPN/OTN/传输网）域内故障的自动识别、诊断与处理。"
+    description: "业务域：承载网（SPN/OTN/传输网）。网络层，负责域内故障识别、诊断和处理。"
     provider:
       organization: "Huawei"
       url: ""
@@ -194,7 +194,7 @@ agents:
         url: "http://127.0.0.1:9105"
 
   - name: "Fixed Access Network Fault Management Agent"
-    description: "负责固网接入（FTTH/xDSL）域内故障的自动识别、诊断与处理。"
+    description: "业务域：固网接入（FTTH/xDSL）。网络层，负责接入域内故障识别、诊断和处理，可回应家宽投诉场景的接入域定界请求。"
     provider:
       organization: "Huawei"
       url: ""
@@ -224,7 +224,7 @@ agents:
         url: "http://127.0.0.1:9106"
 
   - name: "Computing Network Fault Management Agent"
-    description: "负责算力网络域内故障的自动识别、诊断与处理，覆盖云化网元与算力基础设施。"
+    description: "业务域：算力网络故障管理。资源层，负责云化网元与算力基础设施的故障识别、诊断和处理。"
     provider:
       organization: "Huawei"
       url: ""
@@ -254,7 +254,7 @@ agents:
         url: "http://127.0.0.1:9107"
 
   - name: "Service Assurance Agent"
-    description: "面向个人/家庭/政企服务的端到端质量保障：质差感知、根因分析、保障策略执行与报告。"
+    description: "业务域：跨域服务保障（个人、家宽、政企专线）。服务层，负责端到端质差协调、影响评估、向专业域派发修复请求及接收结果。家宽接入域的方案制定与实施由家宽保障 Agent 承担。"
     provider:
       organization: "Huawei"
       url: ""
@@ -281,6 +281,10 @@ agents:
         name: "Enterprise Private Line Assurance"
         description: "政企专线业务保障：专线SLA监控、故障发现与保障处理。"
         tags: [ "service-assurance", "private-line", "enterprise" ]
+      - id: "hbb-assurance-coordination"
+        name: "Cross-Domain HBB Assurance Coordination"
+        description: "接收网络层家宽保障 Agent 上报的质差原因和方案，评估影响；向域内派发远程修复请求，或协调现场处置。"
+        tags: [ "home-broadband", "service-layer", "service-assurance" ]
     capabilities:
       pushNotifications: false
       streaming: false
@@ -292,7 +296,7 @@ agents:
         url: "http://127.0.0.1:9108"
 
   - name: "Service Delivery Agent"
-    description: "面向个人移动业务的自动开通与交付：业务订单受理、开通编排、交付验证与激活。"
+    description: "业务域：个人移动业务交付。服务层，负责业务订单受理、开通编排、交付验证与激活。"
     provider:
       organization: "Huawei"
       url: ""
@@ -322,7 +326,7 @@ agents:
         url: "http://127.0.0.1:9109"
 
   - name: "Complaint Handling Agent"
-    description: "面向个人/家庭宽带投诉的端到端处理：投诉受理、智能定界、根因分析、处理闭环与回访。"
+    description: "业务域：个人与家宽投诉。服务层，负责受理分类、通用或非网络问题的处理建议、跨域定位协调和结果反馈。接入域故障诊断、域内网络优化和现场维修分别由对应专业方处理。"
     provider:
       organization: "Huawei"
       url: ""
@@ -341,6 +345,22 @@ agents:
         name: "Complaint Resolution and Closure"
         description: "执行投诉处理方案并验证恢复效果，完成投诉闭环与回复。"
         tags: [ "complaint-handling", "resolution" ]
+      - id: "hbb-complaint-triage"
+        name: "HBB Complaint Triage"
+        description: "受理家宽投诉，区分常见问题、非网络问题和网络问题；网络问题进一步标注业务中断或质量劣化及已知目标网域。"
+        tags: [ "home-broadband", "service-layer", "complaint-handling" ]
+      - id: "hbb-complaint-guidance"
+        name: "HBB Complaint Resolution Guidance"
+        description: "对已识别的常见或非网络问题提供处理建议，并采集用户验证或体验反馈；未恢复的投诉保留为未闭环。"
+        tags: [ "home-broadband", "service-layer", "complaint-handling" ]
+      - id: "hbb-complaint-coordination"
+        name: "Cross-Domain HBB Complaint Coordination"
+        description: "协调对应网域的诊断或优化 Agent，核对定位及处理结果，按结果转远程处理、现场工单或继续调查。"
+        tags: [ "home-broadband", "service-layer", "complaint-handling" ]
+      - id: "hbb-complaint-feedback"
+        name: "HBB Complaint Verification and Feedback"
+        description: "汇总网络层或现场处理结果，复核用户侧是否恢复，回告用户并记录后续体验评价；缺少恢复证据时继续跟踪。"
+        tags: [ "home-broadband", "service-layer", "complaint-handling" ]
     capabilities:
       pushNotifications: false
       streaming: false
@@ -352,7 +372,7 @@ agents:
         url: "http://127.0.0.1:9110"
 
   - name: "Network Change Management Agent"
-    description: "负责核心网等网域的变更管理：变更评估、变更方案执行、变更验证与回退。"
+    description: "业务域：网络变更协调，覆盖核心网等专业域。服务层由变更管理中心受理需求、核验审批结论、协调回退和回报工单；历史方案中的通用实施与验证技能仍可解析，新增核心网变更方案由独立的网络层 Agent 承担。"
     provider:
       organization: "Huawei"
       url: ""
@@ -371,6 +391,22 @@ agents:
         name: "Change Verification and Rollback"
         description: "变更后业务验证与KPI观察，异常时执行变更回退。"
         tags: [ "change-management", "verification" ]
+      - id: "core-change-intent-forwarding"
+        name: "Core Network Change Intent Forwarding"
+        description: "服务层受理核心网变更工单，解析需求并转交核心网变更 Agent。"
+        tags: [ "core-network", "service-layer", "change-management" ]
+      - id: "core-change-approval-verification"
+        name: "Core Network Change Approval Verification"
+        description: "根据方案和评估结果核验工程师确认或已授权自主决策的明确审批结果；仅转发可验证的批准，审批拒绝、待定或证据缺失均不放行。"
+        tags: [ "core-network", "service-layer", "change-management", "approval" ]
+      - id: "core-change-exception-coordination"
+        name: "Core Network Change Exception Coordination"
+        description: "接收实时运行状态和验收结果；异常时按照授权协调核心网 Agent 回退或灾备，并保留命令与上下文。"
+        tags: [ "core-network", "service-layer", "change-management" ]
+      - id: "core-change-ticket-reporting"
+        name: "Core Network Change Ticket Result Reporting"
+        description: "向工单系统反馈核心网变更、回退或灾备结果，区分完成、待确认和失败。"
+        tags: [ "core-network", "service-layer", "change-management" ]
     capabilities:
       pushNotifications: false
       streaming: false
@@ -382,7 +418,7 @@ agents:
         url: "http://127.0.0.1:9111"
 
   - name: "Network Planning and Design Agent"
-    description: "负责固网接入等网络的规划与设计：需求分析、覆盖与容量规划、方案设计与评审。"
+    description: "业务域：固网接入规划设计及跨域容量规划需求受理。服务层，负责规划需求、固网 HLD/LLD 和设计校验，依据勘测及施工反馈调整设计。竣工验收与资源台账写入由独立职责承担。"
     provider:
       organization: "Huawei"
       url: ""
@@ -401,6 +437,10 @@ agents:
         name: "Network Design Review and Evaluation"
         description: "对网络设计方案进行评审与投资效益评估。"
         tags: [ "planning-design", "review" ]
+      - id: "fixed-access-survey-design"
+        name: "Fixed Access Survey-Based Design"
+        description: "根据现网台账、规划需求和现场勘测结果形成固网 HLD/LLD，依据施工反馈检查并调整设计。"
+        tags: [ "fixed-access", "service-layer", "planning-design" ]
     capabilities:
       pushNotifications: false
       streaming: false
@@ -412,7 +452,7 @@ agents:
         url: "http://127.0.0.1:9112"
 
   - name: "Network Optimization Agent"
-    description: "负责网络质量优化与节能优化：IP网络质量优化、无线网络节能与效能评估。"
+    description: "业务域：IP 网络质量优化及无线节能历史能力。网络层，处理 IP 网元数据分析、质差定界、路径调整和资源不足时的扩容建议。家宽接入保障的优化方案由家宽保障 Agent 制定。"
     provider:
       organization: "Huawei"
       url: ""
@@ -421,8 +461,20 @@ agents:
     skills:
       - id: "ip-network-quality-optimization"
         name: "IP Network Quality Optimization"
-        description: "执行IP网络质量分析、优化策略生成与下发及效果验证。"
+        description: "基于网络层 IP 质差定界生成并执行路径调整方案，形成调整效果供服务层验证。"
         tags: [ "optimization", "ip-network", "quality" ]
+      - id: "ip-network-quality-degradation-detection"
+        name: "IP Network Quality Degradation Detection"
+        description: "采集 IP 网元的网络状态、可用性、时延、丢包和配置数据，识别并定界质差。"
+        tags: [ "ip-network", "network-layer", "quality" ]
+      - id: "ip-capacity-expansion-proposal"
+        name: "IP Capacity Expansion Proposal"
+        description: "当现有 IP 资源不足以通过路径调整达成目标时，生成扩容建议和支持建议的仿真结果。"
+        tags: [ "ip-network", "network-layer", "capacity-planning" ]
+      - id: "ip-network-quality-result-reporting"
+        name: "IP Network Quality Result Reporting"
+        description: "由网络层 IP 优化 Agent 向服务层意图管理方上报路径调整结果或扩容建议及仿真依据。"
+        tags: [ "ip-network", "network-layer", "quality" ]
       - id: "wireless-energy-efficiency-optimization"
         name: "Wireless Energy Efficiency Optimization"
         description: "执行无线网络节能策略生成与下发，平衡能耗与KPI。"
@@ -442,7 +494,7 @@ agents:
         url: "http://127.0.0.1:9113"
 
   - name: "Work Order Management Agent"
-    description: "负责工单全生命周期管理：工单创建、派发、跟踪与关闭，支撑无法自动修复场景的人工处置。"
+    description: "业务域：跨域运维工单。服务层，负责创建、派发、跟踪和关闭现场处置工单，现场维修由维护人员承担。"
     provider:
       organization: "Huawei"
       url: ""
@@ -472,7 +524,7 @@ agents:
         url: "http://127.0.0.1:9114"
 
   - name: "Field Maintenance Copilot Agent"
-    description: "面向现场维护（FME）的Copilot能力：设备信息查询、故障知识检索与自然语言作业指导。"
+    description: "业务域：跨网域现场维护。为服务层现场维护人员提供设备查询、知识检索与作业问答，可转派到域内维护 Copilot。"
     provider:
       organization: "Huawei"
       url: ""
@@ -491,6 +543,10 @@ agents:
         name: "Copilot Collaboration"
         description: "作为服务层或资源层FME Copilot与其他层Copilot协同工作，转发上下文、交换查询结果并汇总双方输出。"
         tags: [ "copilot", "fme", "collaboration" ]
+      - id: "hbb-field-query-routing"
+        name: "HBB Field Repair Query Routing"
+        description: "服务层现场维护 Copilot 接收家宽现场人员的维修建议与指标查询，转交给网络层家宽 FME Copilot。"
+        tags: [ "home-broadband", "service-layer", "fme" ]
       - id: "operational-guidance"
         name: "Natural Language Operational Guidance"
         description: "以自然语言为现场维护人员提供故障修复作业指导。"
@@ -506,7 +562,7 @@ agents:
         url: "http://127.0.0.1:9115"
 
   - name: "Mobile Service Intent Agent"
-    description: "规划能力：个体移动业务订购意图的生成和可行性请求，不是节能意图。需外部实现。"
+    description: "业务域：个人移动业务订购。服务层，负责生成移动业务交付意图并发起订购可行性评估。"
     version: "1.0.0"
     skills:
       - { id: "mobile-service-intent-generation", name: "Mobile Service Intent Generation", description: "生成移动业务交付意图。", tags: ["service-delivery"] }
@@ -517,7 +573,7 @@ agents:
     supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9116" }]
 
   - name: "Radio Service Delivery Agent"
-    description: "规划能力：无线业务SLA模板、容量与订购可行性管理，不是无线节能控制。需外部实现。"
+    description: "业务域：无线接入业务交付。网络层，负责无线业务 SLA 模板、可订购容量和接入可行性。"
     version: "1.0.0"
     skills:
       - { id: "radio-service-intent-lifecycle", name: "Radio Service Intent Lifecycle Management", description: "配置无线业务意图模板与SLA。", tags: ["service-delivery"] }
@@ -530,18 +586,20 @@ agents:
     supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9117" }]
 
   - name: "IP Quality Intent Agent"
-    description: "规划能力：IP网络质量优化意图投递与达成验证，不是无线节能意图。需外部实现。"
+    description: "业务域：面向 IP 域的跨域业务质量优化。服务层，负责优化意图投递，接收网络层结果并验证意图达成，必要时向规划系统提交扩容意图。"
     version: "1.0.0"
     skills:
       - { id: "ip-quality-intent-delivery", name: "IP Quality Intent Delivery", description: "投递IP网络质量优化意图。", tags: ["ip-network", "quality"] }
       - { id: "ip-quality-intent-report", name: "IP Quality Intent Fulfillment Reporting", description: "报告并验证IP质量优化意图达成情况。", tags: ["ip-network", "quality"] }
+      - { id: "ip-quality-intent-verification", name: "IP Quality Intent Fulfillment Verification", description: "接收网络层优化结果，验证服务意图达成情况，并审核扩容建议及仿真依据。", tags: ["ip-network", "service-layer", "quality"] }
+      - { id: "ip-capacity-intent-submission", name: "IP Capacity Expansion Intent Submission", description: "在验证需要扩容后向网络规划系统提交扩容意图，记录受理结果。", tags: ["ip-network", "service-layer", "capacity-planning"] }
     capabilities: { streaming: false }
     defaultInputModes: ["text"]
     defaultOutputModes: ["text"]
     supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9118" }]
 
   - name: "Core Network Analytics Agent"
-    description: "规划能力：核心网数字孪生、信令风暴与网元负载分析、流控优化。需外部实现。"
+    description: "业务域：核心网运行分析。网络层，负责核心网数字孪生分析、信令风暴与网元负载分析、流控建议。"
     version: "1.0.0"
     skills:
       - { id: "core-network-digital-twin", name: "Core Network Digital Twin Analysis", description: "对核心网拓扑、负载与信令风暴进行仿真分析。", tags: ["core-network", "analytics"] }
@@ -550,3 +608,101 @@ agents:
     defaultInputModes: ["text"]
     defaultOutputModes: ["text"]
     supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9119" }]
+
+  - name: "Home Broadband Service Assurance Agent"
+    description: "业务域：家宽接入保障。网络层，负责家宽 QoE 识别、接入域优化方案制定和修复验证，向服务层上报处置结果。"
+    version: "1.0.0"
+    skills:
+      - { id: "hbb-quality-detection", name: "HBB Quality Detection and Scoring", description: "采集家宽业务、接入网络及网元指标，识别质差并评分。", tags: ["home-broadband", "network-layer"] }
+      - { id: "hbb-remediation-planning", name: "HBB Remediation Planning", description: "在家宽接入域定界定位，形成解决方案并判断自愈、远程协调或现场处置路径。", tags: ["home-broadband", "network-layer"] }
+      - { id: "hbb-network-remediation", name: "HBB Network Remediation and Verification", description: "执行本域可自动或已授权的远程修复和优化，验证恢复效果并记录无法修复的原因。", tags: ["home-broadband", "network-layer"] }
+      - { id: "hbb-assurance-result-reporting", name: "HBB Assurance Result Reporting", description: "向服务层保障方上报家宽自愈结果、远程建议或需现场处理的清单。", tags: ["home-broadband", "network-layer"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9120" }]
+
+  - name: "Home Broadband Field Maintenance Copilot"
+    description: "业务域：家宽接入现场维护。网络层，接收服务层 FME 转派的家宽查询并提供域内维修依据，现场实施由维护人员承担。"
+    version: "1.0.0"
+    skills:
+      - { id: "hbb-domain-field-repair-guidance", name: "HBB Domain Field Repair Guidance", description: "返回家宽接入设备的指标、维修建议与验证依据，供现场人员和服务层 FME 使用。", tags: ["home-broadband", "network-layer", "fme"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9121" }]
+
+  - name: "Fixed Access Survey Copilot"
+    description: "业务域：固网接入建设勘测。网络层，为现场工程师提供勘测辅助，向规划设计提供勘测结果。"
+    version: "1.0.0"
+    skills:
+      - { id: "fixed-access-field-survey", name: "Fixed Access Field Survey Assistance", description: "协助现场勘测与设计核验，向服务层设计 Agent 提交勘测记录。", tags: ["fixed-access", "network-layer", "survey"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9122" }]
+
+  - name: "Fixed Access Construction Copilot"
+    description: "业务域：固网接入施工。网络层，面向现场工程师提供施工指导、设计偏差反馈和竣工资料采集辅助。"
+    version: "1.0.0"
+    skills:
+      - { id: "fixed-access-construction-assistance", name: "Fixed Access Construction Assistance", description: "按设计辅助 ODN 施工，记录偏差并反馈服务层设计方。", tags: ["fixed-access", "network-layer", "construction"] }
+      - { id: "fixed-access-as-built-capture", name: "Fixed Access As-Built Capture Assistance", description: "协助现场工程师采集竣工影像及三维记录，向验收方提交证据。", tags: ["fixed-access", "network-layer", "construction"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9123" }]
+
+  - name: "Fixed Access Acceptance Agent"
+    description: "业务域：固网接入工程验收。服务层，核对竣工证据和验收结果，向资源同步方移交已验收数据。"
+    version: "1.0.0"
+    skills:
+      - { id: "fixed-access-construction-acceptance", name: "Fixed Access Construction Acceptance", description: "依据工程设计、现场影像、三维及测试资料实施验收，记录结论，提交通过验收的竣工数据。", tags: ["fixed-access", "service-layer", "acceptance"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9124" }]
+
+  - name: "Fixed Access Inventory Synchronization Agent"
+    description: "业务域：固网接入资源台账。服务层，负责已验收竣工数据同步与校核，并记录写入结果。"
+    version: "1.0.0"
+    skills:
+      - { id: "fixed-access-inventory-synchronization", name: "Fixed Access Inventory Synchronization", description: "将已验收的固网竣工数据同步到综合资源管理系统，校核资源台账和同步结果。", tags: ["fixed-access", "service-layer", "inventory"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9125" }]
+
+  - name: "Core Network Change Management Agent"
+    description: "业务域：核心网变更执行。网络层，负责方案生成、变更前核查、获批后实施、状态上报、业务验证和授权回退。"
+    version: "1.0.0"
+    skills:
+      - { id: "core-change-plan-evaluation", name: "Core Network Change Plan and Evaluation", description: "采集核心网配置并生成变更方案，评估风险和影响，将方案及依据上报服务层。", tags: ["core-network", "network-layer", "change-management"] }
+      - { id: "core-change-precheck", name: "Core Network Pre-Change Verification", description: "在取得明确变更批准后核查网络正常性及前置条件，包括备份、拨测和巡检结果。", tags: ["core-network", "network-layer", "change-management"] }
+      - { id: "core-change-monitored-implementation", name: "Core Network Monitored Change Implementation", description: "按批准的方案实施变更，持续采集性能、告警等状态并向管理中心上报。", tags: ["core-network", "network-layer", "change-management"] }
+      - { id: "core-change-authorized-recovery", name: "Core Network Authorized Change Recovery", description: "在获得相应回退或灾备命令后停止相关变更并执行批准的恢复方案，报告结果。", tags: ["core-network", "network-layer", "change-management"] }
+      - { id: "core-change-service-verification", name: "Core Network Change Service Verification", description: "在变更、回退或灾备后核对业务是否正常，向管理中心报告异常与验证证据。", tags: ["core-network", "network-layer", "change-management"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9126" }]
+
+  - name: "Service Layer NOE Copilot"
+    description: "业务域：跨域网络优化辅助。服务层，接收现场工程师查询并将 IP 相关问题转派给网络层 NOE Copilot。"
+    version: "1.0.0"
+    skills:
+      - { id: "service-noe-ip-query-routing", name: "Service NOE IP Query Routing", description: "受理现场工程师提出的网优或扩容查询，把 IP 相关查询和任务送至 IP 域 NOE Copilot。", tags: ["ip-network", "service-layer", "noe"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9127" }]
+
+  - name: "IP Network NOE Copilot"
+    description: "业务域：IP 网络优化辅助。网络层，接收服务层 NOE 转派查询，提供 IP 质差、路径优化及扩容仿真依据。"
+    version: "1.0.0"
+    skills:
+      - { id: "ip-noe-domain-query-assistance", name: "IP NOE Domain Query Assistance", description: "处理已转派的 IP 查询，返回相关指标、质差报告、扩容建议或仿真结果。", tags: ["ip-network", "network-layer", "noe"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9128" }]

@@ -5,6 +5,8 @@
 from pathlib import Path
 
 import pytest
+from workflow_engine.core.models import Workflow
+from workflow_engine.core.workflow_validator import find_workflow_errors
 
 from orchestrate.agentcard_loader import AgentCardLoader
 from orchestrate.core.model.psop import PSOP
@@ -25,6 +27,9 @@ def test_all_seed_links_and_skills_resolve_in_planning_catalog():
     assert len(workflows) == len(packages) == 19
     assert {package['workflow_id'] for package in packages} == workflows.keys()
     for workflow in workflows.values():
+        assert workflow.source == 'solution_package'
+        assert workflow.user_intent is None
+        assert not find_workflow_errors(Workflow.from_dict(workflow.model_dump(mode='json'))), workflow.name
         for step in workflow.steps:
             for task in step.subtasks:
                 assert task.agent in cards, (workflow.name, task.agent)
@@ -38,7 +43,7 @@ def test_all_seed_links_and_skills_resolve_in_planning_catalog():
     ('IG1505G_', ['Mobile Network Fault', 'Wireless Network Fault'], ['Computing Network Fault']),
     ('IG1502A_', ['Energy Saving', 'RAN ES'], ['Radio Service', 'Mobile Service']),
     ('IG1525E_', ['Energy Saving', 'RAN ES'], ['IP Quality Intent']),
-    ('IG1523B_', ['RAN Agent', 'IP Network Quality'], ['Core Network Analytics']),
+    ('IG1523B_', ['RAN Agent', 'IP Network Quality'], ['Core Network Fault Diagnosis']),
 ])
 def test_domain_actions_do_not_use_unrelated_sample_capabilities(prefix, forbidden, required):
     psop = PSOP.model_validate_json(next(SEEDS.glob(prefix+'*.json')).read_text(encoding='utf-8'))

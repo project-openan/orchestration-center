@@ -6,31 +6,23 @@
   "steps": [
     {
       "name": "step1",
-      "type": "AnySuccess",
+      "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task1a",
-          "description": "Automatically report core network faults (with diagnosis)",
-          "agent": "Core Network Fault Management Agent",
-          "skill": "Core Network Fault Diagnosis",
-          "status": "pending"
-        },
-        {
-          "task_id": "task1b",
-          "description": "Automatically report core network faults (no diagnosis)",
+          "task_id": "t1",
+          "description": "Automatically identify the core network link fault based on alarm, performance and resource data",
           "agent": "Core Network Fault Management Agent",
           "skill": "Core Network Fault Identification",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step2",
-          "condition": "Root cause diagnosis provided"
-        },
-        {
-          "step": "step3",
-          "condition": "No diagnosis provided"
+          "condition": ""
         }
       ],
       "layer": 0,
@@ -41,48 +33,77 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task2",
-          "description": "Upon approval, the fault rectification is triggered.",
+          "task_id": "t2",
+          "description": "Perform intelligent root cause diagnosis of the link fault and produce a diagnosis conclusion with a recommended rectification solution if possible",
           "agent": "Core Network Fault Management Agent",
-          "skill": "Core Network Fault Handling",
-          "status": "pending"
+          "skill": "Core Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "end",
-          "condition": ""
+          "step": "step3a",
+          "condition": "diagnosis and rectification solution available"
+        },
+        {
+          "step": "step3b",
+          "condition": "no diagnosis or rectification solution available"
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step1"
+      ]
     },
     {
-      "name": "step3",
+      "name": "step3a",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task3",
-          "description": "Copilot Smart Q&A",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Natural Language Operational Guidance",
-          "status": "pending"
+          "task_id": "t3a",
+          "description": "Report the link fault with fault ID, root cause and recommended solution to the fault management center via Resource-Fault Agent-API-01; register and distribute the incident",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Fault Incident Receiving and Distribution",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step2"
+      ]
+    },
+    {
+      "name": "step3b",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "t3b",
+          "description": "Report the link fault without diagnosis (fault ID and description) to the fault management center via Resource-Fault Agent-API-01",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Fault Incident Receiving and Distribution",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [],
+      "layer": 0,
+      "context_from": [
+        "step2"
+      ]
     }
   ],
-  "related_preflow": "646fa6e9-2134-423e-bc3a-58d9a50a4440",
-  "user_intent": "# 5. Interaction Flow\n\nBased on the above functional architecture and the integration model of Agent/Copilot, this chapter focuses on how to achieve end-to-end processing of the Core Network single-do",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

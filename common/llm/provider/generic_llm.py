@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
 import copy
 import json
 import time as _time
@@ -36,6 +37,7 @@ class GenericLLM:
         auth_cfg = config.get('auth')
         self._extra_headers = config.get('headers', {})
         self._description = config.get('description', '')
+        self._input_modalities = tuple(config.get('input_modalities', ('text',)))
 
         if auth_cfg is None or auth_cfg == {}:
             self._auth_type = None
@@ -68,9 +70,21 @@ class GenericLLM:
     # -- public API --
 
     def ask_llm(self, prompt: str) -> Tuple[str, str]:
+        return self._ask_chat(prompt)
+
+    def ask_with_images(self, prompt: str, images: List[bytes]) -> Tuple[str, str]:
+        if "image" not in self._input_modalities or not images:
+            raise ValueError("Chat model requires configured image input and at least one image")
+        blocks = [{"type": "text", "text": prompt}]
+        for image in images:
+            encoded = base64.b64encode(image).decode("ascii")
+            blocks.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded}"}})
+        return self._ask_chat(blocks)
+
+    def _ask_chat(self, content: str | list[dict]) -> Tuple[str, str]:
         start = _time.time()
         try:
-            body = self._render_body(prompt=prompt)
+            body = self._render_body(prompt=content)
             data = self._do_request(body)
             answer = cast(str, self._extract(data, 'answer') or '')
             reasoning = cast(str, self._extract(data, 'reasoning') or '')

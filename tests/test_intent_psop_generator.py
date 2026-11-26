@@ -114,7 +114,7 @@ class TestGeneratePsopFromIntent:
         gen = IntentPsopGenerator()
         mock_psop = _make_psop_mock("GeneratedWF")
         with patch.object(gen, "_llm") as mock_llm, \
-             patch("orchestrate.core.intent_psop_generator.get_intent_to_psop_prompt") as mock_prompt, \
+             patch("orchestrate.core.intent_psop_generator.build_psop_generation_prompt") as mock_prompt, \
              patch("orchestrate.core.intent_psop_generator.parse_llm_json_response") as mock_parse:
             mock_llm.ask_llm.return_value = (None, "response")
             mock_prompt.return_value = "prompt"
@@ -122,6 +122,8 @@ class TestGeneratePsopFromIntent:
             result = gen.generate_psop_from_intent("do something", [_make_agent_card()])
             assert result is mock_psop
             assert result.user_intent == "do something"
+            assert mock_prompt.call_args.args[0] == "do something"
+            assert mock_prompt.call_args.kwargs["input_heading"] == "User Intent"
 
     def test_empty_intent_raises(self):
         gen = IntentPsopGenerator()
@@ -141,7 +143,7 @@ class TestGeneratePsopFromIntent:
     def test_llm_error_raises(self):
         gen = IntentPsopGenerator()
         with patch.object(gen, "_llm") as mock_llm, \
-             patch("orchestrate.core.intent_psop_generator.get_intent_to_psop_prompt") as mock_prompt:
+             patch("orchestrate.core.intent_psop_generator.build_psop_generation_prompt") as mock_prompt:
             mock_llm.ask_llm.side_effect = RuntimeError("LLM down")
             mock_prompt.return_value = "prompt"
             with pytest.raises(IntentWorkflowGeneratorError, match="Failed to generate PSOP"):
@@ -151,7 +153,7 @@ class TestGeneratePsopFromIntent:
         gen = IntentPsopGenerator()
         mock_psop = _make_psop_mock("")
         with patch.object(gen, "_llm") as mock_llm, \
-             patch("orchestrate.core.intent_psop_generator.get_intent_to_psop_prompt") as mock_prompt, \
+             patch("orchestrate.core.intent_psop_generator.build_psop_generation_prompt") as mock_prompt, \
              patch("orchestrate.core.intent_psop_generator.parse_llm_json_response") as mock_parse:
             mock_llm.ask_llm.return_value = (None, "response")
             mock_prompt.return_value = "prompt"
@@ -163,7 +165,7 @@ class TestGeneratePsopFromIntent:
         gen = IntentPsopGenerator()
         mock_psop = _make_psop_mock("")
         with patch.object(gen, "_llm") as mock_llm, \
-             patch("orchestrate.core.intent_psop_generator.get_intent_to_psop_prompt") as mock_prompt, \
+             patch("orchestrate.core.intent_psop_generator.build_psop_generation_prompt") as mock_prompt, \
              patch("orchestrate.core.intent_psop_generator.parse_llm_json_response") as mock_parse:
             mock_llm.ask_llm.return_value = (None, "response")
             mock_prompt.return_value = "prompt"
@@ -176,7 +178,7 @@ class TestGeneratePsopFromIntent:
         mock_psop = _make_psop_mock("")
         long_intent = "a" * 100
         with patch.object(gen, "_llm") as mock_llm, \
-             patch("orchestrate.core.intent_psop_generator.get_intent_to_psop_prompt") as mock_prompt, \
+             patch("orchestrate.core.intent_psop_generator.build_psop_generation_prompt") as mock_prompt, \
              patch("orchestrate.core.intent_psop_generator.parse_llm_json_response") as mock_parse:
             mock_llm.ask_llm.return_value = (None, "response")
             mock_prompt.return_value = "prompt"
@@ -187,7 +189,7 @@ class TestGeneratePsopFromIntent:
     def test_non_psop_response_raises(self):
         gen = IntentPsopGenerator()
         with patch.object(gen, "_llm") as mock_llm, \
-             patch("orchestrate.core.intent_psop_generator.get_intent_to_psop_prompt") as mock_prompt, \
+             patch("orchestrate.core.intent_psop_generator.build_psop_generation_prompt") as mock_prompt, \
              patch("orchestrate.core.intent_psop_generator.parse_llm_json_response") as mock_parse:
             mock_llm.ask_llm.return_value = (None, "response")
             mock_prompt.return_value = "prompt"

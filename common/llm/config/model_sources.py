@@ -41,7 +41,7 @@ CAPABILITY_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 MODEL_FIELDS = {
     "provider", "description", "model", "url", "api_key_env",
     "enable_thinking", "verify_ssl", "timeout", "auth",
-    "stream", "proxy", "stream_total_timeout", "extra_body",
+    "stream", "proxy", "stream_total_timeout", "extra_body", "input_modalities",
 }
 AUTH_PUBLIC_FIELDS = {
     "api_code", "api_version", "scenario_code", "scenario_version",
@@ -213,6 +213,17 @@ def load_model_configs(
             accessed_auth.add(field)
             return auth.get(field)
         config = build_profile(provider, capability, get_auth)
+        modalities = raw.get("input_modalities", ["text"])
+        if (not isinstance(modalities, list) or "text" not in modalities
+                or any(not isinstance(value, str) or value not in ("text", "image") for value in modalities)
+                or len(set(modalities)) != len(modalities)):
+            raise ValueError(f"{selected}: {capability}.input_modalities must be [text] or [text, image]")
+        if "image" in modalities and (
+                capability != "chat" or config.get("body", {}).get("messages")
+                != [{"role": "user", "content": "$PROMPT"}]):
+            raise ValueError(f"{selected}: {capability} profile does not support image input")
+        if "input_modalities" in raw:
+            config["input_modalities"] = modalities
         # Profiles may apply auth to headers rather than return an auth block.
         # Reject settings the selected profile never even reads.
         if auth and not accessed_auth:

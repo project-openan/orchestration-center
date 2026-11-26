@@ -274,12 +274,16 @@ Output the result in our custom PSOP workflow format.
 """
 
 
-def get_intent_to_psop_prompt(user_intent: str, agent_cards_json: str, psop_schema: str, rag: str = "") -> str:
+def build_psop_generation_prompt(
+        business_input: str, agent_cards_json: str, psop_schema: str, rag: str = "",
+        *, input_heading: str = "Business Input", input_name: str = "business input",
+        additional_rules: str = "",
+) -> str:
     return f"""As a senior IT operations expert, generate a PSOP (Parallel-Standard Operation Process) workflow
-directly from the user's intent.
+from the supplied {input_name}.
 
-## User Intent
-{user_intent}
+## {input_heading}
+{business_input}
 
 ## Available Agents and Skills
 {agent_cards_json}
@@ -291,7 +295,7 @@ directly from the user's intent.
 {psop_schema}
 
 ## Generation Rules
-1. **Step Decomposition**: Decompose the user intent into concrete, executable steps.
+1. **Step Decomposition**: Decompose the {input_name} into concrete, executable steps.
 2. **Skill Matching**: Select an appropriate Agent and Skill for each step.
    Ensure both the Agent and Skill exist in the available catalog.
 3. **Dependency Analysis**: Analyze inter-step dependencies to determine
@@ -318,7 +322,7 @@ directly from the user's intent.
      use context_from: ["*"] to include ALL predecessors transitively (direct + indirect ancestors).
      Use null to let the engine auto-derive direct predecessors at runtime.
    - Execution layer steps do NOT need context_from.
-8. **Typical Patterns**: When the user intent includes terms like "summarize", "synthesize",
+8. **Typical Patterns**: When the {input_name} includes terms like "summarize", "synthesize",
    "root cause analysis", "generate final recommendations", etc., the final step should
    be an aggregation layer step.
 
@@ -326,7 +330,7 @@ directly from the user's intent.
 Output the complete PSOP JSON wrapped in ```json``` markers.
 
 ## Example 1: Standard Linear/Branching Workflow
-User Intent: Diagnose a server outage across the data center.
+Example Input: Diagnose a server outage across the data center.
 
 Available Agents and Skills: [Fault Agent with various diagnostic skills]
 
@@ -426,7 +430,7 @@ Output:
 ```
 
 ## Example 2: Cross-Layer Workflow with Aggregation
-User Intent: Investigate server failure and produce a comprehensive fault analysis report.
+Example Input: Investigate server failure and produce a comprehensive fault analysis report.
 
 Available Agents and Skills: [Diagnostic Agent, Network Agent, Analysis Agent]
 
@@ -499,9 +503,9 @@ Output:
 2. Use professional IT operations terminology and rigorous logic.
 3. Ensure the generated PSOP conforms to the format specification.
 4. Output only the JSON; do not include any explanatory text.
-5. Evaluate whether cross-layer orchestration is needed based on the user intent.
+5. Evaluate whether cross-layer orchestration is needed based on the {input_name}.
    If needed, the last step should be an aggregation step with appropriate context_from.
-"""
+{additional_rules}"""
 
 
 def get_retrieve_psop_prompt(

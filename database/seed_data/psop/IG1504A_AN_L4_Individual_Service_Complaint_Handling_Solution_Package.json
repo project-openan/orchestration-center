@@ -9,11 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "22ac7451-5bb6-47a4-9012-176933501a91",
-          "description": "Receive customer complaint",
+          "task_id": "05cfac2a-e7cd-46ff-8053-4c11a3fec540",
+          "description": "Receive the customer complaint call, classify and categorize it, and create a prioritized ticket (TMF639 trigger, TMF939 analysis input)",
           "agent": "Complaint Handling Agent",
           "skill": "Complaint Intake and Classification",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -30,17 +33,20 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "a5ec084d-0f3f-4d81-a4de-32578d139760",
-          "description": "Create complaint ticket",
+          "task_id": "cd5a2647-64f3-41d0-bf66-2d6583c76a77",
+          "description": "Perform complaint root cause analysis and cross-domain demarcation; classify as known/common issue, non-network problem, or network-related problem",
           "agent": "Complaint Handling Agent",
-          "skill": "Complaint Intake and Classification",
-          "status": "pending"
+          "skill": "Complaint Root Cause Analysis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step3",
-          "condition": ""
+          "condition": "known or common issue, or non-network problem"
         }
       ],
       "layer": 0,
@@ -51,237 +57,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "93a95d02-b35b-49e6-8cae-ea5caf53d72b",
-          "description": "Identify complaint as a wireless single-domain issue",
+          "task_id": "c5f40c09-2da0-419a-bc66-776781bca539",
+          "description": "Provide resolution guidance for the known/common or non-network issue and collect user confirmation of recovery",
           "agent": "Complaint Handling Agent",
-          "skill": "Complaint Root Cause Analysis",
-          "status": "pending"
+          "skill": "HBB Complaint Resolution Guidance",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step4",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step4",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "772239d2-de65-4b3e-a33f-c580238f8004",
-          "description": "Send diagnostic information to the corresponding resource",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Fault Incident Receiving and Distribution",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step5",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step5",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "dbe61e85-fbb6-4479-ad48-a2d233ff0a65",
-          "description": "Send repair suggestions from the resource layer agent",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step6",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step6",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "3cca1751-7de1-4f3c-9b83-cc21ad0ea116",
-          "description": "Determine that automatic repair is not possible",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step7",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step7",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "6f0d6ae2-d55f-445d-aec2-e875c8858841",
-          "description": "Prompt initiation of an onsite ticket",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step8",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step8",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "fccf55ca-dafa-45f2-8c10-d4c44a77f8af",
-          "description": "Receive the base station aging root cause",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step9",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step9",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "bfcf330a-140f-472d-b68b-304ac0c8fd39",
-          "description": "Feed back the base station aging root cause into the Ticket system",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Tracking and Closure",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step10",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step10",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "309aca59-51e3-4f3b-99d2-beb414e47c2b",
-          "description": "Create a task to request onsite operation",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Creation",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step11",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step11",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "6943fbbf-6993-4f01-9e08-4cb6ba06a1af",
-          "description": "Interact with the service layer's FME Copilot via a dedicated Mobile application to retrieve relevant fault information about the affected base station",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Device Information Query",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step12",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step12",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "7b00bb3e-b7a1-4361-96e0-52f62257f500",
-          "description": "Coordinate with the resource layer FME Copilot",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Copilot Collaboration",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step13",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step13",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "d5965f72-0861-49ea-8828-cb5e9f7cd0d4",
-          "description": "Supply the FME with natural language-based operational guidance to facilitate efficient fault resolution",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Natural Language Operational Guidance",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
       "context_from": null
     }
   ],
-  "related_preflow": "eb268b6d-c4ca-405d-bbe4-940e62833556",
-  "user_intent": "# 5. Interaction Flow\n\n## 5.1. Complaint Handling Overall Flow\n\nThe Complaint Handling Agent leverages DPI (Deep Packet Inspection) and single-domain reported data to automatically analyze subscriber ",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

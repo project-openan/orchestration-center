@@ -9,11 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "4ccada81-ac6b-4184-95e5-d12f1fa27572",
-          "description": "Collect service, network, and network element metrics",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
+          "task_id": "d0570c42-cb5d-4930-8f47-40743cb35844",
+          "description": "Collect periodic Service/Network/NE KPI reports from the access network, identify poor QoE users and score experience",
+          "agent": "Home Broadband Service Assurance Agent",
+          "skill": "HBB Quality Detection and Scoring",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -30,53 +33,69 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "31d7f7d8-3daa-4db6-8e35-63814b3745e0",
-          "description": "Identify poor service quality",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
+          "task_id": "90f789b3-2c83-46de-8f0e-b4d2d0bd9b88",
+          "description": "Delimit and diagnose the located issue in the access domain, generate an optimization plan and classify remediation path: self-remediable, remote-resolvable, or on-site",
+          "agent": "Home Broadband Service Assurance Agent",
+          "skill": "HBB Remediation Planning",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step3",
-          "condition": ""
+          "condition": "self-remediable"
+        },
+        {
+          "step": "step4",
+          "condition": "remote-resolvable"
+        },
+        {
+          "step": "step6",
+          "condition": "on-site"
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step1"
+      ]
     },
     {
       "name": "step3",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "cf6508fd-eed3-4d3e-96a2-0e0761e66a53",
-          "description": "Conduct experience scoring",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
+          "task_id": "ec4f2917-325b-42dd-87cd-dcfc31ffce4e",
+          "description": "Execute the self-remediation plan automatically within the HBB access domain and verify recovery effect",
+          "agent": "Home Broadband Service Assurance Agent",
+          "skill": "HBB Network Remediation and Verification",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step4",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step2"
+      ]
     },
     {
       "name": "step4",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "b56ea89d-7241-4284-8e07-89cb8a0eab0a",
-          "description": "Identify users requiring optimization and assurance using low scores",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
+          "task_id": "01c75c9f-b844-4e97-9900-9a2d621ecab0",
+          "description": "Report the located issue and remote optimization solution to the service layer assurance agent (intent report)",
+          "agent": "Home Broadband Service Assurance Agent",
+          "skill": "HBB Assurance Result Reporting",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -86,39 +105,70 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step2"
+      ]
     },
     {
       "name": "step5",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "cbde3dda-64c3-48da-ada2-167e918af860",
-          "description": "Automatically identify and locate the issue",
+          "task_id": "569ef8dc-b426-4e58-a4e3-da876939d332",
+          "description": "Evaluate service impact and issue the remote remediation/optimization request back to the HBB access domain",
           "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Root Cause Analysis",
-          "status": "pending"
+          "skill": "Cross-Domain HBB Assurance Coordination",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step6",
+          "step": "step3b",
           "condition": ""
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step4"
+      ]
+    },
+    {
+      "name": "step3b",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "eb8b349e-01da-4349-96f2-f1cf8ca52031",
+          "description": "Execute the authorized remote remediation plan and verify recovery effect",
+          "agent": "Home Broadband Service Assurance Agent",
+          "skill": "HBB Network Remediation and Verification",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [],
+      "layer": 0,
+      "context_from": [
+        "step5"
+      ]
     },
     {
       "name": "step6",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "5a4be907-e073-4a9b-89cb-cd0fdc064995",
-          "description": "Generate remediation or optimization solutions after further analysis",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Remediation",
-          "status": "pending"
+          "task_id": "4518eb5f-160d-4b41-8b20-b0ff8d12d8ca",
+          "description": "Report the user list requiring on-site handling with recommendations to the service layer assurance agent",
+          "agent": "Home Broadband Service Assurance Agent",
+          "skill": "HBB Assurance Result Reporting",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -128,210 +178,61 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step2"
+      ]
     },
     {
       "name": "step7",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "9ab4ced7-ad9b-4777-aac8-94676d10aa62",
-          "description": "Formulate an optimization plan",
-          "agent": "Network Optimization Agent",
-          "skill": "IP Network Quality Optimization",
-          "status": "pending"
+          "task_id": "40abdbf1-a2f5-4183-ba69-881aee483fab",
+          "description": "Evaluate impact and create the rectification work order for on-site handling",
+          "agent": "Work Order Management Agent",
+          "skill": "Work Order Creation",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step8",
-          "condition": "Self-remediation issue"
-        },
-        {
-          "step": "step10",
-          "condition": "Remote-resolvable issue"
-        },
-        {
-          "step": "step12",
-          "condition": "On-site closed-loop issue"
+          "condition": ""
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step6"
+      ]
     },
     {
       "name": "step8",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "933f16d0-ac8b-4780-90a4-e6dbc6b589b0",
-          "description": "Automatically execute self-remediation issues",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Remediation",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step9",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step9",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "ad75bb81-dbd1-4bce-94ea-627a31e36596",
-          "description": "Notify a report for track to service assurance agent",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Reporting",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step10",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "e0f727fa-6f6a-4546-865c-1ebdb5b4c90f",
-          "description": "Report remote-resolvable issues and optimization solutions to service assurance agent",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Reporting",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step11",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step11",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "529ec4db-cc09-41dc-a537-7b87b2bf6a41",
-          "description": "Deliver remediation operations to Home Broadband Service Assurance Agent after impact evaluation",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Remediation",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step12",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "75734e01-ace8-4a94-80eb-619382874bea",
-          "description": "Generate a list of users requiring on-site visits",
+          "task_id": "42e8c2e0-75bb-464c-9059-f0de3a145054",
+          "description": "Dispatch the rectification work order to the field technician via Mobile APP and track acceptance",
           "agent": "Work Order Management Agent",
-          "skill": "Work Order Creation",
-          "status": "pending"
+          "skill": "Work Order Dispatch",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step13",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step13",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "45a9628b-5e70-4227-8aed-ebd4d0ebf6bf",
-          "description": "Report to create a rectification work order",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Creation",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step14",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step14",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "507b7340-0320-4fdd-85e7-4dabf08485b0",
-          "description": "Use Copilot to query repair suggestions and relevant metrics",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Fault Knowledge Retrieval",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step15",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step15",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "47dbbe13-22e2-4ae3-9a5c-57ad53850f42",
-          "description": "Precisely fix the issue according to the instructions",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Natural Language Operational Guidance",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step7"
+      ]
     }
   ],
-  "related_preflow": "6c2b1c59-8b52-4913-bb19-48b5bac375d6",
-  "user_intent": "# 5. Interaction Flow\n\n## 5.1. Overall Flow\n\nFor L4, the typical integrated model for home broadband service assurance is depicted in the following figure. Which involves the network autonomous domain",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

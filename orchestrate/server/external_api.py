@@ -64,6 +64,7 @@ from orchestrate.server.sse_executor import dispatch_intent_sse
 from orchestrate.server.response_utils import ok, created, get_agent_cards
 from orchestrate.server.middleware import RateLimiter
 from orchestrate.solution_package.parse_flow import SolutionPackageParser
+from orchestrate.solution_package.vision_generation import FLOW_CHAPTER, parse_visual_chapter, vision_profile
 from common.util.config_util import get_conf
 
 router = APIRouter(prefix="/api/v1")
@@ -141,6 +142,8 @@ async def orchestrate_sop(
         acquired = True
 
         sop_text = ""
+        visual = False
+        pdf_source = False
         workflow_name = name
         body = None
 
@@ -175,6 +178,7 @@ async def orchestrate_sop(
             ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
 
             if ext == 'pdf':
+                pdf_source = True
                 if not content.startswith(b'%PDF-'):
                     raise HTTPException(status_code=400, detail="Not a valid PDF file")
                 tmp_file_path = None
@@ -182,8 +186,11 @@ async def orchestrate_sop(
                     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
                         tmp_file_path = tmp.name
                         tmp.write(content)
-                    parser = SolutionPackageParser()
-                    pre_md = parser.parse_pdf_chapter(tmp_file_path, "5. Interaction Flow")
+                    visual = vision_profile() is not None
+                    if visual:
+                        _, pre_md = await anyio.to_thread.run_sync(parse_visual_chapter, tmp_file_path)
+                    else:
+                        pre_md = SolutionPackageParser().parse_pdf_chapter(tmp_file_path, FLOW_CHAPTER)
                     if not pre_md:
                         raise HTTPException(
                             status_code=400,
@@ -216,11 +223,14 @@ async def orchestrate_sop(
         agent_cards = [] if context else await get_agent_cards()
         preflow = PreFlow(name=workflow_name or "SOP Workflow", steps_md=sop_text)
         generator = PsopGenerator()
+        generation_options = role_arguments(context)
+        if visual:
+            generation_options["visual_spg"] = True
         # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         psop = await anyio.to_thread.run_sync(
-            partial(generator.generate_psop_workflow, preflow, agent_cards, **role_arguments(context)), abandon_on_cancel=False,
+            partial(generator.generate_psop_workflow, preflow, agent_cards, **generation_options), abandon_on_cancel=False,
         )
-        psop.user_intent = sop_text[:200]
+        psop.user_intent = None if pdf_source else sop_text[:200]
         psop.related_preflow = preflow.id
 
         await anyio.to_thread.run_sync(validate_before_save, psop, context)

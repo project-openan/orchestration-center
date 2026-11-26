@@ -21,6 +21,12 @@
 `.env` 引用。存储通过 `persistence_mode` 选择 file、postgresql 或 mysql，数据库连接
 使用 `etc/conf/db/` 对应配置或环境别名；不要在命令或 PDF 中夹带凭据。
 
+支持图片输入的 chat 模型可配置 `input_modalities: [text, image]`。设计器、外部
+PDF API 和批量导入会用视觉模型结合流程图、相关架构页和全文生成 PreFlow，再按
+现有 PSOP 格式输出英文任务与跳转条件。能力目录无法承接的动作及其下游步骤
+会被省略，其余路径可继续生成。纯文本模型、文本上传和手工修改的 PreFlow
+沿用原有生成行为。
+
 ```powershell
 python -m scripts.batch_spg_to_psop --pdf-dir D:/spgs --export-dir data/spg_import --dry-run
 python -m scripts.batch_spg_to_psop --pdf-dir D:/spgs --export-dir data/spg_import
@@ -41,8 +47,9 @@ success 跳过。dry-run 或保存失败后可复用导出结果，不重新调�
 三种存储模式都会幂等补充缺失的默认流程；启动播种不覆盖已存在的 ID。
 方案包能跳转到流程，仅表示示例关联存在，不代表外部 Agent 已就绪。
 
-修正了七套预置流程的错域技能，补充了无线业务交付、IP 质量意图、核心网分析等
-独立规划能力。新安装直接获得修正版；已有安装不自动覆盖用户编辑，可先预览：
+新安装会获得使用视觉模型重新生成的 19 套 SPG 默认 PSOP。方案包沿用原有工作流 ID。
+当前示例的范围取决于可匹配的技能，例如 IG1523B 保留核心网故障诊断。
+已有安装可使用以下命令预览迁移。该工具只识别七套预置流程的已知旧版指纹。
 
 ```powershell
 python -m scripts.migrate_default_psops

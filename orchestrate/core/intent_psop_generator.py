@@ -39,7 +39,7 @@ from a2a.types import AgentCard
 from loguru import logger
 
 from orchestrate.core.model.psop import PSOP
-from orchestrate.core.prompts import get_intent_to_psop_prompt, get_role_generation_prompt
+from orchestrate.core.prompts import build_psop_generation_prompt, get_role_generation_prompt
 from orchestrate.core.role_generation import ask_role_json, assemble_role_workflow, generation_context, generation_stage
 from orchestrate.core.psop_generator import PsopGenerator, WorkflowGeneratorError
 from common.util.json_utils import parse_llm_json_response
@@ -132,7 +132,10 @@ class IntentPsopGenerator(PsopGenerator):
             psop_schema = json.dumps(PSOP.model_json_schema(), ensure_ascii=False, indent=2)
 
             # Generate PSOP using LLM
-            prompt = get_intent_to_psop_prompt(user_intent, agent_cards_json, psop_schema)
+            prompt = build_psop_generation_prompt(
+                user_intent, agent_cards_json, psop_schema,
+                input_heading="User Intent", input_name="user intent",
+            )
             _, llm_res = self._llm.ask_llm(prompt)
 
             # Parse LLM response into PSOP object

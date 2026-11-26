@@ -9,11 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task1",
-          "description": "Generate radio service intent template based on individual mobile service delivery intent",
+          "task_id": "05b69370-78ad-4b19-a0ca-eebb7ee415cb",
+          "description": "Receive the individual mobile service delivery intent and generate the radio service intent template",
           "agent": "Mobile Service Intent Agent",
           "skill": "Mobile Service Intent Generation",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -30,11 +33,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task2",
-          "description": "Configure radio service intent templates (including supported scene, supported service SLA targets, assurance time)",
+          "task_id": "21c9a8fc-1ffd-4841-b18c-3a7d306b24ae",
+          "description": "Configure the radio service intent template with scene, SLA targets and assurance time",
           "agent": "Radio Service Delivery Agent",
           "skill": "Radio Service Intent Lifecycle Management",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -51,11 +57,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task3",
-          "description": "Perform radio service intent exploration to evaluate and determine the maximum number of UEs possible to subscribe and access the individual mobile service with expected SLAs",
+          "task_id": "ebb33714-5ddb-459b-8d91-d45998ccb9de",
+          "description": "Perform radio service intent exploration for the target region to determine best-possible service capacity, including network optimization such as load balancing",
           "agent": "Radio Service Delivery Agent",
           "skill": "Radio Service Feasibility Exploration",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -72,11 +81,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task4",
-          "description": "Obtain the radio service intent exploration report, including the maximum number of UEs possible to subscribe and access with expected SLAs",
+          "task_id": "18f6ccfc-ca26-4f3c-a578-d9013fcbb0d3",
+          "description": "Report the radio service intent exploration results periodically (e.g., every 15 min / 1 hour) to the service delivery agent",
           "agent": "Radio Service Delivery Agent",
           "skill": "Radio Service Feasibility Reporting",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -93,132 +105,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task5",
-          "description": "Query service capacity information usable for user subscription",
+          "task_id": "3d0ba3dc-13a9-4385-acdc-802a640024a1",
+          "description": "Query the available service capacity eligible for user subscription",
           "agent": "Radio Service Delivery Agent",
           "skill": "Radio Service Capacity Query",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step6",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step6",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task6",
-          "description": "Request to subscribe to the individual mobile service package",
-          "agent": "Service Delivery Agent",
-          "skill": "Service Order Intake",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step7",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step7",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task7",
-          "description": "Request to check the feasibility of the user's subscription for the individual mobile service",
-          "agent": "Mobile Service Intent Agent",
-          "skill": "Mobile Service Feasibility Request",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step8",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step8",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task8",
-          "description": "Perform radio service intent feasibility check to determine whether the radio service at the specified geo coordinate is feasible for subscription and access",
-          "agent": "Radio Service Delivery Agent",
-          "skill": "Radio Service Feasibility Exploration",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step9",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step9",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task9",
-          "description": "Obtain the radio service intent feasibility check report",
-          "agent": "Radio Service Delivery Agent",
-          "skill": "Radio Service Feasibility Reporting",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step10",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step10",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task10",
-          "description": "Configure the user's subscription information to enable the user to successfully access the subscribed mobile service",
-          "agent": "Service Delivery Agent",
-          "skill": "Service Provisioning Orchestration",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
       "context_from": null
     }
   ],
-  "related_preflow": "58a22044-5fcf-44b5-96b6-f101192bec51",
-  "user_intent": "# 5. Interaction Flow\n\nBased on the above functional architecture and the integration model of Agent/Copilot, this chapter focuses on how to achieve end-to-end processing of the Individual Mobile Serv",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

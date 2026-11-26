@@ -9,17 +9,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task1",
-          "description": "Fault or risk detection",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
+          "task_id": "e3d3f618-6688-47fe-abe9-4bacde2668b2",
+          "description": "Detect transport network risk and fault conditions (fiber flapping, attenuation, trench risk) from telemetry, alarms, KPIs and logs",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Identification",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step2",
           "condition": ""
+        },
+        {
+          "step": "step_noc",
+          "condition": "NOC proactive query"
         }
       ],
       "layer": 0,
@@ -30,184 +37,195 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task2",
-          "description": "Automated diagnostics",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Root Cause Analysis",
-          "status": "pending"
+          "task_id": "a5d045c7-667a-4252-b956-5956366d2803",
+          "description": "Perform automatic root cause diagnosis of the transport network risk scenario and produce a diagnostic result with handling recommendation",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step3_self",
-          "condition": "Self-remediable issue detected"
-        },
-        {
-          "step": "step3_workorder",
-          "condition": "Requires remote or on-site resolution"
+          "step": "step3",
+          "condition": ""
         }
       ],
       "layer": 0,
       "context_from": null
     },
     {
-      "name": "step3_self",
+      "name": "step3",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task3",
-          "description": "Automatic reporting of closed-loop enterprise PL faults/risks (Issue description, Auto-handling result)",
+          "task_id": "d35e2ece-3058-4a90-9354-9cfe8a513a76",
+          "description": "Attempt closed-loop self-resolution of the risk scenario within the network layer domain (automatic switchover and repair)",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Handling",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [
+        {
+          "step": "step_report_a",
+          "condition": "Self-healing achieved, fault resolved"
+        },
+        {
+          "step": "step_report_b",
+          "condition": "Fault not resolved locally, upper-layer interaction required"
+        }
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "step_report_a",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "054a738e-9608-4769-a8f9-eab2305026be",
+          "description": "Record the automated closed-loop result (issue description and auto-handling result) to the Quality Assurance Center for traceability and explainability",
           "agent": "Service Assurance Agent",
           "skill": "Service Assurance Reporting",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step8_noc",
+          "step": "end",
           "condition": ""
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step3"
+      ]
     },
     {
-      "name": "step3_workorder",
+      "name": "step_report_b",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task4",
-          "description": "Enterprise PL faults/risks requiring on-site repair or remote operation (Issue description, Diagnostic result, Issue resolution recommendation)",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Creation",
-          "status": "pending"
+          "task_id": "6c3e6905-3084-4f63-9b07-99c0ed5823e0",
+          "description": "Report issue description, diagnostic result and resolution recommendation (remote or on-site) to the Quality Assurance Center",
+          "agent": "Service Assurance Agent",
+          "skill": "Enterprise Private Line Assurance",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step4_remote",
-          "condition": "Remote operation required"
+          "step": "step_remote",
+          "condition": "Remote repair recommended"
         },
         {
-          "step": "step5_expansion",
-          "condition": "On-site repair with network expansion required"
+          "step": "step_expand",
+          "condition": "On-site repair required and network expansion needed"
         },
         {
-          "step": "step6_direct",
-          "condition": "On-site repair without network expansion required"
+          "step": "step_wo",
+          "condition": "On-site repair required without network expansion"
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step2",
+        "step3"
+      ]
     },
     {
-      "name": "step4_remote",
+      "name": "step_remote",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task5",
-          "description": "Remotely instruct Enterprise PL Service Assurance Agent in Network Layer to execute all or part of the risk or fault resolution plan",
+          "task_id": "962d5e28-ee59-41ba-a429-83db0b38f416",
+          "description": "Remotely instruct the transport network agent to execute all or part of the resolution plan (replace faulty software module, restart stalled microservice)",
           "agent": "Service Assurance Agent",
           "skill": "Service Assurance Remediation",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step8_noc",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step_report_b"
+      ]
     },
     {
-      "name": "step5_expansion",
+      "name": "step_expand",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task7",
-          "description": "Invoke network planning system to create expansion plan and issue work order to FME",
+          "task_id": "3c4338e8-0ad7-414a-ba66-2c7f3ac70072",
+          "description": "Invoke the network planning system to create the network expansion plan",
           "agent": "Network Planning and Design Agent",
-          "skill": "Fixed Access Network Planning and Design",
-          "status": "pending"
+          "skill": "Network Planning Requirements Analysis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step7_fme_guidance",
+          "step": "step_wo",
           "condition": ""
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step_report_b"
+      ]
     },
     {
-      "name": "step6_direct",
+      "name": "step_wo",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task6",
-          "description": "Assign work order directly to FME for on-site repair operations",
+          "task_id": "28e86ef9-7086-4106-bb4b-ffc1e4692714",
+          "description": "Create and dispatch the on-site work order to the FME via Mobile App and track order acceptance",
           "agent": "Work Order Management Agent",
           "skill": "Work Order Dispatch",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step7_fme_guidance",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step_report_b"
+      ]
     },
     {
-      "name": "step7_fme_guidance",
+      "name": "step_noc",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task8",
-          "description": "FME uses Copilot to receive guided instructions for on-site operations",
+          "task_id": "a25d88ae-ab68-4684-ab6f-b53af2d51ab1",
+          "description": "Answer NOC engineer's natural-language query on service fault and risk information (device status, alarms, optical power) via the NOC Copilot interface",
           "agent": "Field Maintenance Copilot Agent",
-          "skill": "Natural Language Operational Guidance",
-          "status": "pending"
-        },
-        {
-          "task_id": "task9",
-          "description": "Copilot Q&A interaction (FME, Intelligent Q&A messages)",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Fault Knowledge Retrieval",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step8_noc",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step8_noc",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task10",
-          "description": "Proactively query specific service fault or risk information via natural language interaction",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Fault Knowledge Retrieval",
-          "status": "pending"
-        },
-        {
-          "task_id": "task11",
-          "description": "Copilot Q&A interaction (NOC, Intelligent Q&A messages)",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Fault Knowledge Retrieval",
-          "status": "pending"
+          "skill": "Device Information Query",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -220,10 +238,9 @@
       "context_from": null
     }
   ],
-  "related_preflow": "1fcc9f9a-b3b3-4216-9eed-b92155771fd5",
-  "user_intent": "# 5. Interaction Flow\n\nBased on the above functional architecture and the integration model of Agent/Copilot, this section focuses on how to enable end-to-end handling of service assurance scenarios, ",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

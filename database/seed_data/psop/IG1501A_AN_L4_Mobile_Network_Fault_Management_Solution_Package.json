@@ -9,11 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "93b3946f-c638-4075-897a-ab07d4b21654",
-          "description": "Perform fault identification",
+          "task_id": "9ae1edf4-e4fa-4427-9462-83ff6d01dbe6",
+          "description": "Sense wireless network status via alarms, KPIs, logs and MML, and identify the fault in the mobile network domain",
           "agent": "Mobile Network Fault Management Agent",
           "skill": "Mobile Network Fault Identification",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -30,21 +33,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "11e52251-13e8-4361-85de-33073e32f1ce",
-          "description": "Perform automatic diagnosis",
+          "task_id": "28dfa48b-a9cd-4042-b069-a7fff7e19fad",
+          "description": "Perform root-cause analysis and self-diagnosis on the identified fault, output demarcation, location and handling suggestions",
           "agent": "Mobile Network Fault Management Agent",
           "skill": "Mobile Network Fault Diagnosis",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step3",
-          "condition": "Fault can be automatically repaired"
+          "condition": "Fault is remotely or automatically repairable (e.g., software configuration issue)"
         },
         {
-          "step": "step6",
-          "condition": "Fault requires on-site repair"
+          "step": "step5",
+          "condition": "Fault requires on-site repair (e.g., hardware component fault)"
         }
       ],
       "layer": 0,
@@ -55,11 +61,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "7a5fc5d2-1ef4-48cf-8fd2-575bd3024352",
-          "description": "Perform automatic repair",
+          "task_id": "bd571d85-2afd-4b04-b402-5258f7ef0616",
+          "description": "Execute autonomous closed-loop repair of the fault, such as software configuration recovery",
           "agent": "Mobile Network Fault Management Agent",
           "skill": "Mobile Network Fault Handling",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -76,32 +85,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "cdd6e84b-bd2b-4f7b-828d-67a2e7e5159d",
-          "description": "Report fault and handling results to service layer's fault management center",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step5",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step5",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "fab102da-0a3d-4c13-b502-154315f9137a",
-          "description": "Archive information",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Tracking and Closure",
-          "status": "pending"
+          "task_id": "f689a0c0-d3b2-476c-9086-5811c0ca2788",
+          "description": "Verify repair effectiveness, report fault and handling result to the service-layer Fault Management Center, and archive the closed-loop result",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Fault Management Summary Report",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -114,15 +105,42 @@
       "context_from": null
     },
     {
+      "name": "step5",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "61d177c1-9df1-4297-9823-b1fc23b9e709",
+          "description": "Report the fault with self-diagnosis result and handling suggestions to the service-layer Fault Management Center via the intelligent fault interface",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Fault Incident Receiving and Distribution",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [
+        {
+          "step": "step6",
+          "condition": ""
+        }
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
       "name": "step6",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "8a34024f-72bb-41de-aca5-64d973531f97",
-          "description": "Generate repair solution",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
-          "status": "pending"
+          "task_id": "56d0246f-3895-4814-81ee-3681df5b004f",
+          "description": "Create a trouble ticket and dispatch it to frontline maintenance personnel (FME) through the work-order system, tracking ticket acceptance",
+          "agent": "Work Order Management Agent",
+          "skill": "Work Order Dispatch",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -139,11 +157,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "32951a97-fa8c-4df6-bd1b-6c5cb2e67576",
-          "description": "Send fault and automatically generated handling recommendations to service layer fault center",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
-          "status": "pending"
+          "task_id": "b27d1aa4-008d-4d8f-9e88-dad23c3dbb9c",
+          "description": "FME queries the service-layer FME Copilot for device power status, fault status and remote test results via the mobile app",
+          "agent": "Field Maintenance Copilot Agent",
+          "skill": "Device Information Query",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -160,69 +181,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "d2cbd311-f358-4453-9324-5dd3347ffd59",
-          "description": "Initiate trouble ticket system",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Creation",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step9",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step9",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "cac42bd4-459a-43e7-aeae-9e71f5850421",
-          "description": "Dispatch trouble ticket to FME",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Dispatch",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step10",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step10",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "9b053edc-a61a-4957-b9c1-e890ad99d41e",
-          "description": "Interact with service layer Copilot and resource layer Copilot via app to obtain natural language-based repair guidance",
+          "task_id": "d4166f90-6b24-4a6f-a29b-023fd8d24224",
+          "description": "Service-layer FME Copilot invokes the resource-layer wireless network FME Copilot via the natural-language interface and provides repair guidance to the FME",
           "agent": "Field Maintenance Copilot Agent",
-          "skill": "Copilot Collaboration",
-          "status": "pending"
+          "skill": "Natural Language Operational Guidance",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
       "context_from": null
     }
   ],
-  "related_preflow": "da59cbf8-b09f-4311-bb08-d0e9639d0e69",
-  "user_intent": "# 5. Interaction Flow\n\nBased on the above functional architecture and the integration model of Agent/Copilot, this chapter focuses on how to achieve end-to-end processing of the mobile network single-",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

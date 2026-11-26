@@ -73,6 +73,7 @@ from orchestrate.solution_package.parse_flow import (  # noqa: E402
     PDFParsingError,
     SolutionPackageParser,
 )
+from orchestrate.solution_package.vision_generation import parse_visual_chapter, vision_profile  # noqa: E402
 
 DEFAULT_PDF_DIR = Path(r"D:\OpenAN\solution_package_pdfs\solution_package_pdfs")
 DEFAULT_CHAPTER = "5. Interaction Flow"
@@ -132,6 +133,8 @@ def input_fingerprint(pdf: Path, chapter: str, cards_dir: Path) -> str:
     digest = hashlib.sha256()
     for value in (str(pdf.resolve()), chapter, hashlib.sha256(pdf.read_bytes()).hexdigest()):
         digest.update(value.encode('utf-8') + b'\0')
+    if profile := vision_profile():
+        digest.update(f'visual-spg:{profile}'.encode('ascii') + b'\0')
     for path in sorted(cards_dir.rglob('*')):
         if path.is_file() and path.suffix.lower() in {'.json', '.yaml', '.yml'}:
             digest.update(str(path.relative_to(cards_dir)).encode('utf-8') + b'\0')
@@ -194,8 +197,13 @@ def convert_one_pdf(
         result.attempts = attempt
         try:
             # 1. SPG PDF -> PreFlow markdown (orchestration center's SPG parsing)
-            parser = SolutionPackageParser() if generated is None else None
-            pre_md = parser.parse_pdf_chapter(str(pdf_path), chapter) if parser is not None else generated[1]
+            visual = vision_profile() is not None
+            if generated is not None:
+                pre_md = generated[1]
+            elif visual:
+                _, pre_md = parse_visual_chapter(pdf_path, chapter)
+            else:
+                pre_md = SolutionPackageParser().parse_pdf_chapter(str(pdf_path), chapter)
             if not pre_md or not pre_md.strip():
                 raise PDFParsingError(
                     f"chapter '{chapter}' produced empty markdown (LLM call failed?)"
@@ -210,8 +218,9 @@ def convert_one_pdf(
 
             # 2. PreFlow -> PSOP (orchestration center's orchestration capability)
             if generated is None:
-                psop: PSOP = PsopGenerator().generate_psop_workflow(preflow, agent_cards)
-                psop.user_intent = pre_md[:200]
+                options = {"visual_spg": True} if visual else {}
+                psop: PSOP = PsopGenerator().generate_psop_workflow(preflow, agent_cards, **options)
+                psop.user_intent = None
                 psop.description = f"Auto-generated from SPG {pdf_path.name}, chapter '{chapter}'"
                 psop.tags = ["spg", "solution-package"]
                 psop.related_preflow = preflow.id
