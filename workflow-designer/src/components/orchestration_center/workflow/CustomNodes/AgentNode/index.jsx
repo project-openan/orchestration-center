@@ -159,6 +159,11 @@ const AgentNode = ({ data, selected }) => {
                         )}
                         <span className={`relative inline-flex rounded-full h-2.5 w-2.5 transition-colors duration-300 ${getStatusColor(status)}`}></span>
                     </div>
+                    {data.agentUnpublished && (
+                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>
+                            ⚠ {t('workflow.panel.warn_unpublished')}
+                        </span>
+                    )}
                 </div>
 
                 {/* Subtasks List */}

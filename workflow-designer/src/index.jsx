@@ -22,18 +22,28 @@
  *
  * Loaded by the OpenAN Portal as a UMD bundle (local or remote mode).
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { usePortalContext } from '@openan/portal-sdk';
 import { setApiClient } from '@/service/api.js';
 import { ErrorBoundary } from '@/components/common/error_boundary/index.jsx';
+import './index.css';
 import OrchestrationCenter from '@/components/orchestration_center/index.jsx';
 import { PLUGIN_I18N_NAMESPACE, registerPluginI18n } from '@/plugin-i18n.js';
+
+// Two portal menus share this bundle: /orchestration → 工作流管理 (browse
+// first), /orchestration-builder → 工作流构建 (the three build methods).
+const getRouteMode = () => (typeof window !== 'undefined' && window.location.pathname.startsWith('/orchestration-builder') ? 'build' : 'manage');
 
 export default function OrchestrationCenterPlugin() {
     const { theme, api, i18n } = usePortalContext();
     const i18nReady = useMemo(() => registerPluginI18n(i18n), [i18n]);
     const isDark = theme.isDark;
+    const [mode, setMode] = useState(getRouteMode);
+    useEffect(() => {
+        const timer = setInterval(() => setMode(getRouteMode()), 250);
+        return () => clearInterval(timer);
+    }, []);
 
     // Route every service-layer request through the Portal's axios instance
     // (per-plugin gateway + auth cookie). Idempotent.
@@ -47,7 +57,7 @@ export default function OrchestrationCenterPlugin() {
         <I18nextProvider i18n={i18n} defaultNS={PLUGIN_I18N_NAMESPACE}>
             <div className="h-full w-full relative z-10 visible animate-in">
                 <ErrorBoundary>
-                    <OrchestrationCenter isDark={isDark} />
+                    <OrchestrationCenter isDark={isDark} mode={mode} />
                 </ErrorBoundary>
             </div>
         </I18nextProvider>

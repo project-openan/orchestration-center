@@ -26,6 +26,7 @@ import {
   getRoleCatalog,
   getWorkflow,
   getWorkflowById,
+  getWorkflowBpmn,
   createWorkflow,
   delWorkflowById,
   getTemplates,
@@ -191,12 +192,16 @@ describe('api service', () => {
       expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/agent-cards'));
     });
 
-    it('getWorkflow should call api.get with correct URL', async () => {
+    it('getWorkflow should call api.get with the paginated workflows URL', async () => {
       const mockApi = axios.create();
-      mockApi.get.mockResolvedValue({ status: 'success', data: [] });
+      mockApi.get.mockResolvedValue({ status: 'success', data: [], pagination: { offset: 0, has_more: false } });
 
       await getWorkflow();
-      expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/rest/v1/orchestrate/workflows'));
+      // The management table needs the full list: the client walks every
+      // limit=100 page (offset pagination) and aggregates the result.
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('/rest/v1/orchestrate/workflows?limit=100&offset=0')
+      );
     });
 
     it('getWorkflow loads every page instead of hiding older workflows', async () => {
@@ -230,6 +235,29 @@ describe('api service', () => {
 
       await getWorkflowById(testId);
       expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining(`/rest/v1/orchestrate/workflows/${testId}`));
+    });
+
+    it('getWorkflowBpmn should request the bpmn endpoint as text', async () => {
+      const mockApi = axios.create();
+      const xml = '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions/>';
+      mockApi.get.mockResolvedValue(xml);
+      const testId = 'wf-9';
+
+      const result = await getWorkflowBpmn(testId);
+      expect(result).toBe(xml);
+      expect(mockApi.get).toHaveBeenCalledWith(
+        expect.stringContaining(`/rest/v1/orchestrate/workflows/${testId}/bpmn`),
+        { responseType: 'text' }
+      );
+    });
+
+    it('getWorkflowBpmn should unwrap an object payload from clients that ignore responseType', async () => {
+      const mockApi = axios.create();
+      const xml = '<bpmn:definitions/>';
+      mockApi.get.mockResolvedValue({ data: xml });
+
+      const result = await getWorkflowBpmn('wf-9');
+      expect(result).toBe(xml);
     });
 
     it('createWorkflow should call api.post with correct URL and data', async () => {

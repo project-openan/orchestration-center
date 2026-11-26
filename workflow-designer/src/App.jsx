@@ -102,6 +102,11 @@ const MainContainer = () => {
    };
 
    const [activeTab, setActiveTab] = useState(() => {
+       // Deep link: /orchestration?workflow=<id> (e.g. from a showcase card)
+       // lands directly on the Orchestration Center with that PSOP opened.
+       try {
+           if (new URLSearchParams(window.location.search).get('workflow')) return 'orchestration';
+       } catch (e) { /* ignore malformed search */ }
        return localStorage.getItem('activeTab') || 'agents'
    });
 

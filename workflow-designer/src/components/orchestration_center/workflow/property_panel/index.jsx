@@ -16,13 +16,27 @@
 //    under the License.
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from "react-i18next";
-import { X } from 'lucide-react';
+import { AgentRegistryBadges, matchAgentInfo, useAgentRegistryStatus } from '../agent_registry.jsx';
+import { Bot, X } from 'lucide-react';
 import DeleteConfirm from "@/components/common/pop_confirm/index.jsx";
 import { getAgentCards } from "@/service/api.js";
 import { hasRoleTasks, workflowBinding, isApprovedEntry, isApprovedRoleSkill } from '../rolePolicy.js';
 
+// Agent chip colors — deterministic per agent name, shared with the view panel.
+const AGENT_CHIP_COLORS = ['bg-blue-500', 'bg-purple-500', 'bg-teal-500', 'bg-orange-500', 'bg-pink-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-cyan-500'];
+
+const agentAvatarClass = (agentName) => {
+    if (!agentName) return 'bg-slate-400';
+    let hash = 0;
+    for (let i = 0; i < agentName.length; i++) {
+        hash = agentName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return AGENT_CHIP_COLORS[Math.abs(hash) % AGENT_CHIP_COLORS.length];
+};
+
 const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes, setEdges, isDark, onDelete, onClose, readOnly = false, roleMode = false, catalog = null, onRoleTaskContentChange }) => {
     const { t } = useTranslation();
+    const registry = useAgentRegistryStatus();
     const [allAgents, setAllAgents] = React.useState([]);
     const roleCanvas = roleMode || hasRoleTasks(nodes);
     const protectedWorkflow = readOnly || workflowBinding(nodes) === 'mixed' || (roleCanvas && !catalog);
@@ -39,13 +53,13 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         fetchAgents();
     }, [protectedWorkflow, roleCanvas]);
     const theme = {
-        container: isDark ? 'bg-zinc-950 text-zinc-300' : 'bg-white text-zinc-800',
-        emptyBg: isDark ? 'bg-zinc-950' : 'bg-zinc-50/50',
+        container: isDark ? 'bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-900/90 text-zinc-200' : 'bg-gradient-to-b from-white to-slate-50/70 text-slate-800',
+        emptyBg: isDark ? 'bg-zinc-900/60' : 'bg-zinc-50/50',
         header: isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50/30 border-zinc-200/50',
         label: isDark ? 'text-zinc-500' : 'text-zinc-500',
         inputArea: isDark ? 'bg-zinc-900 border-zinc-800 focus:border-zinc-500 text-zinc-200' : 'bg-zinc-50 border-zinc-200 focus:border-zinc-400',
         footer: isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50/50 border-zinc-100',
-        confirmBtn: isDark ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-zinc-800 text-white hover:bg-zinc-900'
+        confirmBtn: 'bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20'
     };
     const activeElement = useMemo(() => {
         if (!selectedElement) return null;
@@ -458,14 +472,18 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
 
     return (
         <div className={`flex flex-col h-full w-full transition-colors ${theme.container}`}>
-            <div className={`flex flex-row items-center justify-between p-4 border-b transition-colors ${theme.header}`}>
-                <h3 className="text-sm font-bold flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.2)] ${isNode ? 'bg-zinc-400' : 'bg-zinc-500'}`} />
-                    {isNode ? t('workflow.panel.nodeConfig') : t('workflow.panel.edgeConfig')}
-                </h3>
-                <p className="text-[12px] text-zinc-500 font-mono tracking-wider uppercase truncate">
-                    ID: {activeElement.id}
-                </p>
+            <div className={`flex flex-row items-center justify-between gap-3 p-4 border-b transition-colors ${theme.header}`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
+                        <Bot size={16} className="text-white" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="text-sm font-bold truncate leading-tight">{isNode ? t('workflow.panel.nodeConfig') : t('workflow.panel.edgeConfig')}</h3>
+                        <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase truncate mt-0.5">
+                            ID: {activeElement.id}
+                        </p>
+                    </div>
+                </div>
                 {!isBoundaryNode && (
                     <DeleteConfirm
                         title={t('common.confirm_delete')}
@@ -505,14 +523,14 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
 
                         {data.subtasks && data.subtasks.length > 0 ? (
                             <div className="space-y-3">
-                                <label className={`text-[12px] ml-1 font-bold uppercase tracking-widest ${theme.label}`}>
+                                <label className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
                                     {t('workflow.panel.subtasks')} ({data.subtasks.length})
                                 </label>
                                 <div className="flex flex-col gap-2.5">
                                     {data.subtasks.map((task, idx) => (
-                                        <div key={`${task.agent}-${task.skill}-${idx}`} className={`group/task relative p-3 rounded-xl border transition-all ${isDark ? 'bg-zinc-900 border-zinc-800/50' : 'bg-zinc-50 border-zinc-200/50 shadow-sm'}`}>
+                                        <div key={`${task.agent}-${task.skill}-${idx}`} className={`group/task relative p-3 rounded-xl border transition-all ${isDark ? 'bg-zinc-900/60 border-zinc-800/80' : 'bg-white border-slate-200/80 shadow-sm'}`}>
                                             <div className="flex justify-between items-center mb-1.5">
-                                                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tight">{task.agent}</span>
+                                                <span className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wide text-white px-2 py-0.5 rounded-md ${agentAvatarClass(task.agent)}`}>{task.agent}</span>
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className={`w-1.5 h-1.5 rounded-full ${(task.status === 'success' || task.status === 'completed') ? 'bg-emerald-500' :
@@ -530,6 +548,19 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
                                                 </div>
+                                            </div>
+                                            <div className="mt-1"><AgentRegistryBadges info={matchAgentInfo(registry, task.agent)} isDark={isDark} t={t} /></div>
+                                            <div className="mt-2">
+                                                <label className={`text-[10px] font-bold uppercase tracking-widest opacity-50 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                                                    {t('workflow.panel.taskDesc')}
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={task.description || ''}
+                                                    onChange={(e) => handleSubtaskDescChange(idx, e.target.value)}
+                                                    placeholder={task.defaultTask || ''}
+                                                    className={`w-full mt-0.5 px-2 py-1 text-[12px] rounded-lg border outline-none transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-blue-500' : 'bg-white border-zinc-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-400'}`}
+                                                />
                                             </div>
                                             <div className="relative mt-1">
                                                 <select
@@ -560,18 +591,6 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                                                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                                 </div>
                                             </div>
-                                            <div className="mt-2">
-                                                <label className={`text-[10px] font-bold uppercase tracking-widest opacity-50 ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-                                                    {t('workflow.panel.taskDesc')}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={task.description || ''}
-                                                    onChange={(e) => handleSubtaskDescChange(idx, e.target.value)}
-                                                    placeholder={task.defaultTask || ''}
-                                                    className={`w-full mt-0.5 px-2 py-1 text-[12px] rounded-lg border outline-none transition-all ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-200 placeholder:text-zinc-600 focus:border-blue-500' : 'bg-white border-zinc-200 text-slate-800 placeholder:text-slate-400 focus:border-blue-400'}`}
-                                                />
-                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -585,7 +604,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
 
                         <div className={`mt-4 pt-4 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
                             <div className="space-y-3">
-                                <label className={`text-[12px] ml-1 font-bold uppercase tracking-widest ${theme.label}`}>
+                                <label className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
                                     {t('workflow.panel.stepType')}
                                 </label>
                                 <select
@@ -600,7 +619,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                             </div>
 
                             <div className="space-y-3 mt-3">
-                                <label className={`text-[12px] ml-1 font-bold uppercase tracking-widest ${theme.label}`}>
+                                <label className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
                                     {t('workflow.panel.layer')}
                                 </label>
                                 <select
@@ -617,7 +636,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                             </div>
 
                             <div className="space-y-2 mt-3">
-                                <label className={`text-[12px] ml-1 font-bold uppercase tracking-widest ${theme.label}`}>
+                                <label className={`text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
                                     {t('workflow.panel.contextFrom')}
                                 </label>
                                 <p className={`text-[11px] opacity-60 ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
@@ -683,7 +702,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                     </>
                 ) : (
                     <section className="space-y-4">
-                        <div className={`flex flex-col gap-2 p-3 rounded-xl border ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50 border-zinc-100'}`}>
+                        <div className={`flex flex-col gap-2 p-3 rounded-xl border ${isDark ? 'bg-zinc-900/60 border-zinc-800/80' : 'bg-white border-slate-200/80'}`}>
                             <div className="flex justify-between text-[12px] tracking-tight">
                                 <span className="text-zinc-500 font-bold uppercase">{t('workflow.panel.source')}</span>
                                 <span className={isDark ? 'text-zinc-300' : 'text-zinc-700'}>{activeElement.source}</span>
@@ -721,21 +740,21 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
 
 
 const ReadOnlyField = ({ label, value, isDark }) => (
-    <div className={`flex justify-between items-center py-3 border-b transition-colors ${isDark ? 'border-zinc-800/50' : 'border-zinc-100'}`}>
-        <span className={`text-[14px] ${isDark ? 'text-zinc-200' : 'text-zinc-500'}`}>{label}</span>
-        <span className={`text-[14px] font-semibold ${isDark ? 'text-zinc-200' : 'text-zinc-900'}`}>{value || '-'}</span>
+    <div className="grid grid-cols-[88px_1fr] items-start gap-3 py-1.5">
+        <span className={`text-[11px] leading-5 font-medium ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>{label}</span>
+        <span className={`text-[13px] leading-5 font-medium break-words ${isDark ? 'text-zinc-200' : 'text-slate-800'}`}>{value || '-'}</span>
     </div>
 );
 
 const Field = ({ label, value, onChange, placeholder, isTextArea, fontMono, isDark }) => {
     const baseClass = `w-full px-3 py-2 rounded-lg text-sm transition-all outline-none border shadow-sm placeholder:text-zinc-600 ${isDark
-            ? 'bg-zinc-900 border-zinc-800 focus:border-zinc-500 text-zinc-100'
-            : 'bg-zinc-50 border-zinc-200 focus:border-zinc-400 text-zinc-800'
+            ? 'bg-zinc-900 border-zinc-800 focus:border-blue-500 text-zinc-100'
+            : 'bg-zinc-50 border-zinc-200 focus:border-blue-400 text-zinc-800'
         } ${fontMono ? 'font-mono text-[14px]' : ''}`;
 
     return (
         <div className="space-y-1.5">
-            <label className={`text-[14px] ml-1 font-bold uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>
+            <label className={`text-[11px] ml-1 font-bold uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
                 {label}
             </label>
             {isTextArea ? (
