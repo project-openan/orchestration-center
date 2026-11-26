@@ -14,7 +14,12 @@ Each key under `models:` is a capability (`chat`, `embed`, `rerank`, or a new
 name backed by a registered protocol profile). `model` and `url` are required;
 `provider` defaults to `openai_compatible` (OpenAI-compatible request/response contract; `openai` remains an alias)
 and `aoc_signed` adds AOC request signing. Optional fields are `description`,
-`timeout` (positive seconds), `verify_ssl`, and `enable_thinking`.
+`timeout` (positive seconds), `verify_ssl`, and `enable_thinking`. Chat profiles
+also support `stream`, `stream_total_timeout` (positive seconds, default 600),
+`proxy` and `extra_body` for additional provider options. Protocol inputs such
+as model/messages and the stream switch cannot be overridden by extra_body;
+embedding/reranking profiles cannot enable chat SSE. Incomplete or truncated
+streams fail rather than return partial answers. See [SPG/model streaming](../../docs/en/SPG%20Import.md).
 
 ```yaml
 models:

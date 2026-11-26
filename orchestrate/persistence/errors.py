@@ -49,5 +49,15 @@ class StorageValidationError(StorageError):
     """The caller passed a value this backend cannot store (e.g. an over-long id)."""
 
 
+class RoleReferenceError(StorageValidationError):
+    """A role-bound workflow references an unauthorized catalog entry.
+
+    Raised by the save-time catalog gate: the exact catalog release is not
+    configured/readable (``CATALOG_VERSION_UNAVAILABLE``) or a reference is
+    not approved (``INVALID_ROLE_SKILL``). Drafts never authorize, so the
+    workflow must not be persisted as an executable template.
+    """
+
+
 class StorageConfigError(StorageValidationError):
     """The persistence configuration is missing or invalid; fail fast at startup."""

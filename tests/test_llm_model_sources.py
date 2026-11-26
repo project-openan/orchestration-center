@@ -379,3 +379,17 @@ def test_legacy_common_config_models_yaml_still_supported(tmp_path, monkeypatch)
     assert model_sources_mod.resolve_model_file(source) == legacy_file
     configs = model_sources_mod.load_model_configs(source)
     assert configs["chat"]["model"] == "from-legacy"
+
+
+@pytest.mark.parametrize('key', ['model', 'messages', 'input', 'query', 'documents', 'stream'])
+def test_extra_body_cannot_replace_protocol_inputs(tmp_path, key):
+    path = write_models(tmp_path, {'chat': chat(extra_body={key: 'override'})})
+    with pytest.raises(ValueError, match='reserved fields'):
+        load_model_configs(EnvironmentSettingsSource(tmp_path/'.env'), path)
+
+
+@pytest.mark.parametrize('capability', ['embed', 'rerank'])
+def test_non_chat_capabilities_reject_stream(tmp_path, capability):
+    path = write_models(tmp_path, {capability: chat(stream=True)})
+    with pytest.raises(ValueError, match='does not support chat streaming'):
+        load_model_configs(EnvironmentSettingsSource(tmp_path/'.env'), path)

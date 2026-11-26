@@ -11,15 +11,15 @@
         {
           "task_id": "task1",
           "description": "Fault identification",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Identification",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Identification",
           "status": "pending"
         },
         {
           "task_id": "task2",
           "description": "Automatic diagnosis",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
           "status": "pending"
         }
       ],
@@ -64,8 +64,8 @@
         {
           "task_id": "task6",
           "description": "Automatically generate repair solution",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
           "status": "pending"
         }
       ],
@@ -106,8 +106,8 @@
         {
           "task_id": "task7",
           "description": "Send fault incident and automatically generated handling recommendations to service layer fault center",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Handling",
           "status": "pending"
         }
       ],

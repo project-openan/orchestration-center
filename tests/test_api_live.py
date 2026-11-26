@@ -36,7 +36,7 @@ def mock_deps(account_session, monkeypatch):
     fake_delete.handle.return_value = True
 
     class FakeRetrieval:
-        def list_recent_workflows(self, limit=10, workflow_type='psop'):
+        def list_recent_workflows(self, limit=10, workflow_type='psop', offset=0):
             return []
         def get_psop_by_id(self, wid):
             return None

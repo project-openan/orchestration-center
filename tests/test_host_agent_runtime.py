@@ -99,6 +99,24 @@ def _context_snapshot():
     )
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["binding_metadata", "raw_role"])
+async def test_role_execution_remains_disabled_until_host_verification(mode):
+    executor = _executor()
+    context = _context_snapshot()
+    if mode == "binding_metadata":
+        context.metadata["__orch_binding__"] = "{}"
+    else:
+        context.metadata["__orch_psop__"]["steps"][0]["subtasks"][0]["binding"] = "role"
+    executor._load_agent_cards = AsyncMock()
+    queue = _EventQueue()
+    await executor.execute(context, queue)
+    executor._load_agent_cards.assert_not_awaited()
+    errors = [event for event in queue.events if event.status.state == TaskState.TASK_STATE_FAILED]
+    assert errors
+    assert "ROLE_EXECUTION_NOT_ENABLED" in str(errors[-1])
+
+
 def test_runtime_requires_a_control_point_factory():
     with pytest.raises(ValueError, match="control_point_factory is required"):
         HostAgentExecutor(

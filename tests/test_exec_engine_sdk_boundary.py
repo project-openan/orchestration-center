@@ -19,6 +19,26 @@ class _EmptyRetrieval:
         return []
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reverse", [False, True])
+async def test_same_name_hosts_require_an_unambiguous_organization(monkeypatch, reverse):
+    cards = [
+        SimpleNamespace(name="Host Agent", provider=SimpleNamespace(organization=org))
+        for org in ("Org-A", "Org-B")
+    ]
+    if reverse:
+        cards.reverse()
+    config = {}
+    monkeypatch.setattr("common.util.config_util.get_conf", lambda: config)
+    engine = OrchestrationEngine(cards, select_template=False)
+    events = [event async for event in engine.events("diagnose service")]
+    assert events[-1]["data"]["code"] == "HOST_AGENT_AMBIGUOUS"
+
+    config["workflow_host_agent_organization"] = "Org-B"
+    engine = OrchestrationEngine(cards, select_template=False)
+    assert engine._find_target_card().provider.organization == "Org-B"
+
+
 class _PublicWorkflowClient:
     def __init__(self):
         self.sent = []
@@ -47,6 +67,7 @@ class _PublicWorkflowClient:
 async def test_orchestration_uses_public_workflow_stream_api(monkeypatch):
     client = _PublicWorkflowClient()
     engine = OrchestrationEngine.__new__(OrchestrationEngine)
+    engine._select_template = False
     engine.lang = "zh"
     engine._agent_cards = [SimpleNamespace(name="Host Agent")]
     engine._target_agent = "Host Agent"
@@ -77,6 +98,7 @@ async def test_orchestration_reports_terminal_cancellation_without_sdk_metadata(
             )
 
     engine = OrchestrationEngine.__new__(OrchestrationEngine)
+    engine._select_template = False
     engine.lang = "zh"
     engine._target_agent = "Host Agent"
     monkeypatch.setattr(SharedHandlers, "retrieval", lambda: _EmptyRetrieval())
@@ -99,6 +121,7 @@ async def test_orchestration_reports_terminal_success_without_sdk_metadata(monke
             )
 
     engine = OrchestrationEngine.__new__(OrchestrationEngine)
+    engine._select_template = False
     engine.lang = "zh"
     engine._target_agent = "Host Agent"
     monkeypatch.setattr(SharedHandlers, "retrieval", lambda: _EmptyRetrieval())

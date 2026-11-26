@@ -236,8 +236,8 @@
         {
           "task_id": "e2abda89-bc8f-467c-bde5-22b343ea0471",
           "description": "Construct a virtual image of the core network topology, real-time network traffic, and core network NE/NF load conditions using network digital twin",
-          "agent": "RAN Agent",
-          "skill": "Analysis and Evaluation",
+          "agent": "Core Network Analytics Agent",
+          "skill": "Core Network Digital Twin Analysis",
           "status": "pending"
         }
       ],
@@ -259,8 +259,8 @@
         {
           "task_id": "c2103766-9319-4b48-b08b-4e73d58d0221",
           "description": "Model signaling storms",
-          "agent": "RAN Agent",
-          "skill": "Analysis and Evaluation",
+          "agent": "Core Network Analytics Agent",
+          "skill": "Core Network Digital Twin Analysis",
           "status": "pending"
         }
       ],
@@ -282,8 +282,8 @@
         {
           "task_id": "1ef1147b-84ad-4304-ad55-f676f28ad345",
           "description": "Analyze the load capacity of NEs to identify bottlenecks",
-          "agent": "RAN Agent",
-          "skill": "Analysis and Evaluation",
+          "agent": "Core Network Analytics Agent",
+          "skill": "Core Network Digital Twin Analysis",
           "status": "pending"
         }
       ],
@@ -305,8 +305,8 @@
         {
           "task_id": "f2e9511d-5bbd-41d5-816f-87388b77f3c0",
           "description": "Automatically generate optimization recommendations, including flow control parameter adjustment plans",
-          "agent": "Network Optimization Agent",
-          "skill": "IP Network Quality Optimization",
+          "agent": "Core Network Analytics Agent",
+          "skill": "Core Network Flow Control Optimization",
           "status": "pending"
         }
       ],

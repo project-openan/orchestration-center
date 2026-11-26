@@ -39,7 +39,7 @@ from common.custom import HandlerRegistry, InterfaceType
 from common.util.persistence_mode import persistence_mode
 from orchestrate.handlers import execution_record_processor as execution_records
 from orchestrate.handlers import psop_processor as psops
-from orchestrate.persistence.file_backend import FilePreflowRepository
+from orchestrate.persistence.document_models import DocumentPreflowRepository
 from orchestrate.persistence.contracts import (
     Capability,
     ExecutionRecordRepository,
@@ -49,7 +49,6 @@ from orchestrate.persistence.contracts import (
     UserRepository,
 )
 from orchestrate.persistence.errors import StorageConfigError, StorageUnavailableError
-from orchestrate.workflow_storage_instance import get_workflow_storage
 
 
 def _ensure_mode(source_mode: str) -> None:
@@ -199,14 +198,12 @@ class SqlPersistenceBackend(PersistenceBackend):
         self.mode = mode
         self._conf = conf or {}
         self._provider = SqlConnectionProvider(mode, self._conf.get('connection_config'))
-        # PreFlows stay file-backed in both database modes (see AGENTS.md);
-        # injectable for the same reason as in the file backend.
-        if storage is None:
-            storage = get_workflow_storage()
+        from orchestrate.persistence.documents import SqlDocuments
+        self._documents = SqlDocuments(self._provider)
         self._psops = _SqlPsopRepository(mode, self._provider)
         self._executions = _SqlExecutionRecordRepository(mode, self._provider)
         self._users = _SqlUserRepository(mode, self._provider)
-        self._preflows = FilePreflowRepository(storage)
+        self._preflows = DocumentPreflowRepository(self._documents)
 
     @_bound
     def check_ready(self) -> None:
@@ -228,7 +225,18 @@ class SqlPersistenceBackend(PersistenceBackend):
         from database.utils.table_creation import create_tables
 
         _ensure_mode(self.mode)
+        if str(self._conf.get("deployment_mode", "single")).lower() == "cluster":
+            self._documents.check_ready()
+            from orchestrate.server.sql_sessions import check_auth_schema
+            check_auth_schema(self._provider)
+            return
         create_tables()
+        self._documents.initialize()
+        from orchestrate.server.sql_sessions import ensure_auth_schema
+        ensure_auth_schema(self._provider)
+
+    def documents(self):
+        return self._documents
 
     def psops(self) -> PsopRepository:
         return self._psops

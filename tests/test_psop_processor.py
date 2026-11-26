@@ -7,6 +7,7 @@
 
 Covers:
 - build_tasks_summary: normal, empty, many tasks truncated
+- generation_binding: role, instance, mixed and empty workflows
 - custom_save_psop: success, conn None, query error
 - custom_delete_psop: success, not found, conn None, exception
 - get_all_psops: success, empty, error
@@ -23,6 +24,7 @@ from orchestrate.handlers.psop_processor import (
     build_tasks_summary,
     custom_delete_psop,
     custom_save_psop,
+    generation_binding,
     get_all_psops,
     get_psop_by_id,
 )
@@ -109,6 +111,35 @@ class TestBuildTasksSummary:
         assert result is not None
         assert "Real task" in result
         assert len(result.split("; ")) == 1
+
+
+# ---------------------------------------------------------------------------
+# generation_binding
+# ---------------------------------------------------------------------------
+
+class TestGenerationBinding:
+    def _psop_with_tasks(self, bindings):
+        psop = MagicMock()
+        psop.steps = []
+        for binding in bindings:
+            task = MagicMock()
+            task.binding = binding
+            step = MagicMock()
+            step.subtasks = [task]
+            psop.steps.append(step)
+        return psop
+
+    def test_role_task_marks_role_generation(self):
+        assert generation_binding(self._psop_with_tasks(["role"])) == "role"
+
+    def test_mixed_generation_projects_as_role(self):
+        assert generation_binding(self._psop_with_tasks(["instance", "role"])) == "role"
+
+    def test_instance_only_generation(self):
+        assert generation_binding(self._psop_with_tasks(["instance"])) == "instance"
+
+    def test_workflows_without_binding_default_to_instance(self):
+        assert generation_binding(self._psop_with_tasks([])) == "instance"
 
 
 # ---------------------------------------------------------------------------

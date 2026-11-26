@@ -182,11 +182,8 @@ def test_public_event_contract_does_not_invent_init_or_named_close(relative):
 
 @pytest.mark.parametrize("relative", ["docs/zh/用户指南.md", "docs/zh/编排中心API参考.md"])
 def test_pdf_input_heading_is_not_translated(relative):
-    from orchestrate.server import frontend_support_server
-    import inspect
-
-    source = inspect.getsource(frontend_support_server)
-    assert 'chapters_md.get("5. Interaction Flow")' in source
+    from orchestrate.solution_package.parse_flow import SolutionPackageParser
+    assert SolutionPackageParser.select_chapter_title(['6. Interaction Flow'], '5. Interaction Flow') == '6. Interaction Flow'
     assert "5. Interaction Flow" in (ROOT / relative).read_text(encoding="utf-8")
 
 

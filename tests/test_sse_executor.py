@@ -36,7 +36,7 @@ class _StubEngine:
         self._events = events or []
         self._exc = exc
 
-    async def events(self, intent):
+    async def events(self, intent, *, psop=None, resolution_request=None):
         for evt in self._events:
             yield evt
         if self._exc:
@@ -134,7 +134,7 @@ async def test_disconnecting_backpressured_stream_closes_engine_and_records_stop
     produced = 0
 
     class EndlessEngine:
-        async def events(self, intent):
+        async def events(self, intent, *, psop=None, resolution_request=None):
             nonlocal produced
             try:
                 while True:
@@ -292,6 +292,29 @@ class TestHeartbeat:
 # ===========================================================================
 
 class TestExecutionRecordSave:
+    def test_frozen_evidence_survives_event_truncation_and_final_status_updates(self):
+        snapshot = {"execution_psop": {"id": "wf", "status": "pending"}, "template": {"id": "wf"}}
+        resolution = {"execution_id": "frozen-id", "resolution_snapshot": snapshot,
+                      "template_fingerprint": "template-hash", "snapshot_fingerprint": "snapshot-hash",
+                      "bindings": [{"selection_reason": "highest_priority", "exclusions": {"b": ["OUT_OF_SCOPE"]}}]}
+        events = [{"type": "resolution", "data": resolution}]
+        events += [{"type": "progress", "data": {}} for _ in range(1001)]
+        events += [{"type": "psop_update", "data": {"psop": {"id": "wf", "status": "completed"}}},
+                   {"type": "complete", "data": {}}]
+        handler = MagicMock()
+        with patch("orchestrate.server.sse_executor.OrchestrationEngine", return_value=_StubEngine(events)), \
+             patch("orchestrate.handlers.dispatch.get_storage_handler", return_value=handler):
+            response = _run_and_collect(dispatch_intent_sse([MagicMock()], "intent"))
+            _collect_stream(response)
+        record = handler.handle.call_args.args[0]
+        assert record.execution_id == "frozen-id"
+        assert record.resolution_snapshot == snapshot
+        assert record.template_fingerprint == "template-hash"
+        assert record.snapshot_fingerprint == "snapshot-hash"
+        assert record.final_psop["status"] == "completed"
+        assert record.resolution_snapshot["execution_psop"]["status"] == "pending"
+        assert not any(event["type"] == "resolution" for event in record.events)
+
     def test_record_saved_on_success(self):
         events = [{"type": "start", "data": {"workflow_id": "wf-final"}}]
         with patch("orchestrate.server.sse_executor.OrchestrationEngine", return_value=_StubEngine(events)):

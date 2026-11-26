@@ -28,7 +28,7 @@ class AgentCardProvider(Protocol):
 
 
 class EngineClientFactory(Protocol):
-    def create(self, agent_cards: list[Any]): ...
+    def create(self, agent_cards: list[Any], *, auth_provider: Any | None = None): ...
 
 
 class RegistryAgentCardProvider:
@@ -53,18 +53,24 @@ class DefaultEngineClientFactory:
         ssl_verify: bool = False,
         max_negotiation_exchanges: int = 3,
         transport_factory: Callable[..., Any] = A2ATransport,
+        auth_provider: Any | None = None,
     ) -> None:
         self._credentials_config = credentials_config
         self._ssl_verify = ssl_verify
         self._max_negotiation_exchanges = max_negotiation_exchanges
         self._transport_factory = transport_factory
+        self._auth_provider = auth_provider
 
-    def create(self, agent_cards: list[Any]):
-        transport = self._transport_factory(
-            agent_cards=agent_cards,
-            credentials_config=self._credentials_config,
-            ssl_verify=self._ssl_verify,
-        )
+    def create(self, agent_cards: list[Any], *, auth_provider: Any | None = None):
+        provider = auth_provider if auth_provider is not None else self._auth_provider
+        transport_kwargs: dict[str, Any] = {
+            "agent_cards": agent_cards,
+            "credentials_config": self._credentials_config,
+            "ssl_verify": self._ssl_verify,
+        }
+        if provider is not None:
+            transport_kwargs["auth_provider"] = provider
+        transport = self._transport_factory(**transport_kwargs)
         return WorkflowEngineClient.owning(
             transport,
             max_negotiation_exchanges=self._max_negotiation_exchanges,

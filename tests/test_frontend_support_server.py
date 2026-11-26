@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -20,10 +20,21 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from io import BytesIO
 import json
+from pathlib import Path
 from fastapi.testclient import TestClient
+
+from a2a.types import AgentCard
 
 import httpx
 
+from orchestrate.core.catalog_gate import CatalogGate
+from orchestrate.core.model.execution_record import ExecutionStatus
+from orchestrate.core.model.instance_binding import (
+    InstanceBinding, InstanceRegistry, ServiceScope, SkillMapping,
+)
+from orchestrate.core.model.psop import PSOP
+from orchestrate.core.model.role_catalog import RoleCatalog
+from orchestrate.core.shared_handlers import SharedHandlers
 from orchestrate.server.frontend_support_server import app
 
 
@@ -64,7 +75,10 @@ def mock_agent_lib():
 @pytest.fixture
 def mock_parser():
     """Mock SolutionPackageParser"""
+    from orchestrate.solution_package.parse_flow import SolutionPackageParser
+    select_title = SolutionPackageParser.select_chapter_title
     with patch('orchestrate.server.frontend_support_server.SolutionPackageParser') as MockParser:
+        MockParser.select_chapter_title.side_effect = select_title
         mock_instance = MockParser.return_value
         yield mock_instance
 
@@ -81,10 +95,13 @@ class TestParsePdfEndpoint:
         """Test empty filename.
 
         httpx's files= helper drops an empty filename from the multipart
-        Content-Disposition header entirely, which FastAPI then rejects at
-        the schema-validation layer (422) before the handler ever runs. To
-        actually exercise the handler's own `if not file.filename` check we
-        need to send a raw multipart body with filename="" explicit.
+        Content-Disposition header entirely, so the body is written by hand to
+        keep filename="" explicit. Which layer rejects that explicit empty name
+        depends on the multipart implementation: Starlette up to 1.8 passes it to
+        the handler, whose own `if not file.filename` answers 400, while Starlette
+        1.9 treats it as a missing upload and multipart validation answers 422
+        before the handler runs. Both refuse the request, so assert the rejection
+        rather than the layer that produced it.
         """
         body = (
             b'--boundary123\r\n'
@@ -98,8 +115,9 @@ class TestParsePdfEndpoint:
             content=body,
             headers={'Content-Type': 'multipart/form-data; boundary=boundary123'},
         )
-        assert response.status_code == 400
-        assert 'Filename is required' in response.json()['message']
+        assert response.status_code in (400, 422)
+        if response.status_code == 400:
+            assert 'Filename is required' in response.json()['message']
 
     def test_parse_pdf_wrong_extension(self, client):
         """Test non-PDF file"""
@@ -262,6 +280,60 @@ class TestPsopsEndpoints:
 
         response = client.delete('/psops/nonexistent')
         assert response.status_code == 404
+
+
+class TestWorkflowBpmnEndpoint:
+    """GET /workflows/{id}/bpmn -- PSOP retrieved via the normal query path,
+    converted to BPMN 2.0 XML for the frontend export button."""
+
+    BASE_URL = f'{BASE}/workflows'
+
+    @staticmethod
+    def _real_psop():
+        from orchestrate.core.model.psop import PSOP, Step, Task, JumpCondition
+        return PSOP(
+            id="wf-bpmn-internal",
+            name="内部导出流程",
+            steps=[
+                Step(name="step1", subtasks=[Task(description="t1", agent="a1", skill="s1")],
+                     next=[JumpCondition(step="step2", condition="")]),
+                Step(name="step2", subtasks=[Task(description="t2", agent="a2", skill="s2")]),
+            ],
+        )
+
+    def test_get_workflow_bpmn_success(self, client, mock_retrieval):
+        mock_retrieval.get_psop_by_id.return_value = self._real_psop()
+
+        response = client.get(f'{self.BASE_URL}/wf-bpmn-internal/bpmn')
+        assert response.status_code == 200
+        assert response.headers['content-type'].startswith('application/xml')
+        disposition = response.headers.get('content-disposition', '')
+        assert '.bpmn' in disposition
+        # Chinese workflow names cannot travel in a latin-1 header: they ride
+        # the RFC 5987 filename* parameter, with an ASCII fallback alongside.
+        assert "filename*=UTF-8''" in disposition
+        assert response.text.startswith('<?xml version="1.0"')
+        assert '<bpmn:process' in response.text
+        assert '<bpmn:task' in response.text
+
+    def test_get_workflow_bpmn_not_found(self, client, mock_retrieval):
+        mock_retrieval.get_psop_by_id.return_value = None
+
+        response = client.get(f'{self.BASE_URL}/nonexistent/bpmn')
+        assert response.status_code == 404
+
+    def test_get_workflow_bpmn_conversion_error(self, client, mock_retrieval):
+        """A PSOP without steps cannot be converted -> 500."""
+        mock_retrieval.get_psop_by_id.return_value = self._real_psop().model_copy(update={"steps": []})
+
+        response = client.get(f'{self.BASE_URL}/wf-empty/bpmn')
+        assert response.status_code == 500
+
+    def test_get_workflow_bpmn_retrieval_error(self, client, mock_retrieval):
+        mock_retrieval.get_psop_by_id.side_effect = RuntimeError('db down')
+
+        response = client.get(f'{self.BASE_URL}/err-id/bpmn')
+        assert response.status_code == 500
 
 
 class TestAgentCardsEndpoint:
@@ -487,3 +559,297 @@ class TestStartProcessStreamEndpoint:
         assert response.status_code == 200
 
 
+
+
+# ===========================================================================
+# Catalog gate on /generate-from-intent (sub-requirement 2)
+# ===========================================================================
+
+_GATE_SOURCE = dict(package="synthetic", pdf="synthetic.pdf", pdf_pages=[1])
+
+
+def _gate_catalog(tmp_path, status="approved"):
+    catalog = RoleCatalog.model_validate(dict(
+        catalog_version="pilot-v1",
+        roles=[dict(
+            role_id="optimizer", role_version="1", name="Optimizer",
+            description="Synthetic test role", source=_GATE_SOURCE, review_status=status,
+            skills=[dict(skill_id="explore", name="explore", description="explore",
+                         source=_GATE_SOURCE, review_status=status)],
+        )],
+    ))
+    path = tmp_path / "catalog.json"
+    path.write_text(catalog.model_dump_json(), encoding="utf-8")
+    return str(path)
+
+
+def _gate_role_psop():
+    return PSOP.model_validate(dict(
+        id="wf-explore", name="Role demo", catalog_version="pilot-v1",
+        steps=[dict(name="optimize", subtasks=[dict(
+            task_id="t1", description="Explore intent", binding="role",
+            agent="optimizer", skill="explore", role_version="1",
+        )])],
+    ))
+
+
+class _RecordingHandler:
+    def __init__(self):
+        self.saved = []
+
+    def handle(self, psop):
+        self.saved.append(psop.id)
+        return psop.id
+
+
+class _ExplodingHandler:
+    def handle(self, psop):
+        raise RuntimeError("storage down")
+
+
+class TestGenerateFromIntentCatalogGate:
+    def _post(self, client, monkeypatch, generated_psop, save_handler):
+        monkeypatch.setattr(SharedHandlers, "_save_handle", save_handler)
+        with patch("orchestrate.server.frontend_support_server.get_agent_cards",
+                   new_callable=AsyncMock) as mock_cards, \
+             patch("orchestrate.server.frontend_support_server.IntentPsopGenerator") as mock_gen_class:
+            mock_cards.return_value = [AgentCard()]
+            mock_gen = MagicMock()
+            mock_gen.generate_psop_from_intent.return_value = generated_psop
+            mock_gen_class.return_value = mock_gen
+            return client.post(
+                f"{BASE}/generate-from-intent", json={"user_intent": "optimize energy"})
+
+    def test_unauthorized_role_psop_is_422_not_success(self, client, monkeypatch, tmp_path):
+        monkeypatch.setattr(
+            "orchestrate.core.catalog_gate.configured_catalog_path",
+            lambda: _gate_catalog(tmp_path, status="draft"))
+        recording = _RecordingHandler()
+        resp = self._post(client, monkeypatch, _gate_role_psop(),
+                          CatalogGate(recording))
+        assert resp.status_code == 422
+        assert "INVALID_ROLE_SKILL" in resp.text
+        assert recording.saved == []
+
+    def test_missing_catalog_rejects_role_psop(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "orchestrate.core.catalog_gate.configured_catalog_path", lambda: None)
+        recording = _RecordingHandler()
+        resp = self._post(client, monkeypatch, _gate_role_psop(),
+                          CatalogGate(recording))
+        assert resp.status_code == 422
+        assert "CATALOG_VERSION_UNAVAILABLE" in resp.text
+        assert recording.saved == []
+
+    def test_approved_role_psop_saves_and_returns_result(self, client, monkeypatch, tmp_path):
+        monkeypatch.setattr(
+            "orchestrate.core.catalog_gate.configured_catalog_path",
+            lambda: _gate_catalog(tmp_path))
+        recording = _RecordingHandler()
+        resp = self._post(client, monkeypatch, _gate_role_psop(),
+                          CatalogGate(recording))
+        assert resp.status_code == 200
+        assert resp.json()["data"]["id"] == "wf-explore"
+        assert recording.saved == ["wf-explore"]
+
+    def test_generic_auto_save_failure_still_returns_result(self, client, monkeypatch, tmp_path):
+        """Plain storage failures keep the existing non-fatal behavior:
+        the gate passes (approved catalog) and the storage handler itself
+        fails with a generic error."""
+        monkeypatch.setattr(
+            "orchestrate.core.catalog_gate.configured_catalog_path",
+            lambda: _gate_catalog(tmp_path))
+        resp = self._post(client, monkeypatch, _gate_role_psop(), _ExplodingHandler())
+        assert resp.status_code == 200
+        assert resp.json()["data"]["id"] == "wf-explore"
+
+
+# ===========================================================================
+# GET /execute: dispatch-time role resolution threading (sub-requirement 4)
+# ===========================================================================
+
+_ROLE_SEED_CATALOG = Path("samples/role_pilot/role_catalog.json")
+_ROLE_OPTIMIZER = "ran-energy-optimizer"
+
+
+def _role_approve_all(value):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "review_status":
+                value[key] = "approved"
+            else:
+                _role_approve_all(item)
+    elif isinstance(value, list):
+        for item in value:
+            _role_approve_all(item)
+
+
+def _role_approved_catalog_file(tmp_path):
+    data = json.loads(_ROLE_SEED_CATALOG.read_text(encoding="utf-8"))
+    _role_approve_all(data)
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return str(path)
+
+
+def _role_registry_file(tmp_path):
+    scope = ServiceScope(tenant="t", site="s", business_object="b")
+    registry = InstanceRegistry(config_version="cfg-v1", instances=[
+        InstanceBinding(
+            instance_id="inst-a", agent_name="Technical RAN A", endpoint="http://127.0.0.1:1",
+            enabled=True, technical_status="passed", scopes=[scope],
+            skills=[SkillMapping(role_id=_ROLE_OPTIMIZER, role_version="1.0.0",
+                                 skill_id="explore-energy-intent",
+                                 instance_skill_id="explore-a", execution_skill="Explore A")],
+        ),
+        InstanceBinding(
+            instance_id="inst-b", agent_name="Technical RAN B", endpoint="http://127.0.0.1:2",
+            enabled=True, technical_status="passed", scopes=[scope],
+            skills=[SkillMapping(role_id=_ROLE_OPTIMIZER, role_version="1.0.0",
+                                 skill_id="fulfill-energy-intent",
+                                 instance_skill_id="explore-b", execution_skill="Explore B")],
+        ),
+    ])
+    path = tmp_path / "registry.json"
+    path.write_text(registry.model_dump_json(), encoding="utf-8")
+    return str(path)
+
+
+def _pilot_role_psop():
+    return PSOP.model_validate(dict(
+        id="wf-role-pilot", name="Role pilot", catalog_version="pilot-wireless-v1",
+        steps=[dict(name="explore", subtasks=[dict(
+            task_id="t1", description="Explore energy intent", binding="role",
+            agent=_ROLE_OPTIMIZER, skill="explore-energy-intent", role_version="1.0.0",
+        )])],
+    ))
+
+
+def _pilot_cards():
+    from samples.role_pilot.technical_server import pilot_card
+    return [pilot_card("a", 1), pilot_card("b", 2)]
+
+
+def _sse_events(response):
+    return [json.loads(line.removeprefix("data: "))
+            for line in response.text.splitlines()
+            if line.startswith("data: ")]
+
+
+class _RecordingRecordHandler:
+    def __init__(self):
+        self.records = []
+
+    def handle(self, record):
+        self.records.append(record)
+        return record.execution_id
+
+
+class _CapturingHostClient:
+    """Stands in for the A2A-T transport so dispatch stays offline."""
+
+    def __init__(self):
+        self.contents = []
+
+    async def stream_message(self, agent_name, content):
+        self.contents.append(content)
+        yield {"task_state": "COMPLETED", "metadata": {}}
+
+    async def close(self):
+        pass
+
+
+class TestExecuteRoleResolution:
+    """GET /execute threads scope/authorized/caller into role resolution,
+    the SSE body carries the resolution evidence, and the saved execution
+    record captures it. Fail-closed when the registry is unconfigured."""
+
+    @pytest.fixture(autouse=True)
+    def stub_transport(self, monkeypatch):
+        from orchestrate.runtime.exec_engine import OrchestrationEngine
+        client = _CapturingHostClient()
+        monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self: client)
+        self.host_client = client
+
+    @pytest.fixture(autouse=True)
+    def capture_records(self, monkeypatch):
+        handler = _RecordingRecordHandler()
+        monkeypatch.setattr("orchestrate.handlers.dispatch.get_storage_handler",
+                            lambda interface_type: handler)
+        self.records = handler.records
+
+    @pytest.fixture(autouse=True)
+    def role_retrieval(self, mock_retrieval):
+        mock_retrieval.get_psop_by_id.return_value = _pilot_role_psop()
+
+    def _dispatch(self, client, monkeypatch, tmp_path, *, registry=True, params=None):
+        monkeypatch.setattr("orchestrate.runtime.instance_projection.configured_authorized_instances", lambda: ["inst-a", "inst-b"])
+        monkeypatch.setattr(
+            "orchestrate.core.catalog_gate.configured_catalog_path",
+            lambda: _role_approved_catalog_file(tmp_path))
+        monkeypatch.setattr(
+            "orchestrate.runtime.instance_projection.configured_registry_path",
+            lambda: _role_registry_file(tmp_path) if registry else None)
+        with patch("orchestrate.server.frontend_support_server.get_agent_cards",
+                   new_callable=AsyncMock) as mock_cards:
+            mock_cards.return_value = _pilot_cards()
+            query = {"psop_id": "wf-role-pilot"}
+            query.update(params or {})
+            return client.get(f"{BASE}/execute", params=query)
+
+    def test_scope_params_resolve_and_capture_evidence(self, client, monkeypatch, tmp_path):
+        response = self._dispatch(client, monkeypatch, tmp_path, params={
+            "scope": "t/s/b",
+            "authorized_instances": "inst-a,inst-b",
+            "caller_id": "endpoint-test",
+        })
+        assert response.status_code == 200
+
+        events = _sse_events(response)
+        resolutions = [e for e in events if e["type"] == "resolution"]
+        assert len(resolutions) == 1
+        resolution = resolutions[0]["data"]
+        assert resolution["catalog_version"] == "pilot-wireless-v1"
+        assert resolution["execution_scope"] == "t/s/b"
+
+        psop_updates = [e for e in events if e["type"] == "psop_update"]
+        assert psop_updates
+        final_psop = psop_updates[-1]["data"]["psop"]
+        assert all(task["binding"] == "instance"
+                   for step in final_psop["steps"] for task in step["subtasks"])
+
+        assert len(self.records) == 1
+        record = self.records[0]
+        assert record.catalog_version == "pilot-wireless-v1"
+        assert record.execution_scope == "t/s/b"
+        assert record.bindings
+        assert record.card_fingerprints
+        assert record.execution_id == resolution["execution_id"]
+
+        assert self.host_client.contents == []
+        assert events[-1]["data"]["code"] == "ROLE_EXECUTION_NOT_ENABLED"
+        assert record.status == ExecutionStatus.FAILED
+        assert record.resolution_snapshot["context"]["caller_id"] == "fixture-admin"
+        assert record.resolution_snapshot["bindings"][0]["selection_reason"]
+        assert record.template_fingerprint == resolution["template_fingerprint"]
+
+    def test_without_registry_fails_closed(self, client, monkeypatch, tmp_path):
+        response = self._dispatch(client, monkeypatch, tmp_path, registry=False, params={
+            "scope": "t/s/b",
+            "authorized_instances": "inst-a,inst-b",
+        })
+        assert response.status_code == 200
+
+        events = _sse_events(response)
+        errors = [e for e in events if e["type"] == "error"]
+        assert len(errors) == 1
+        assert errors[0]["data"]["code"] == "RESOLUTION_INPUT_INVALID"
+        assert all(e["type"] != "resolution" for e in events)
+
+        assert len(self.records) == 1
+        record = self.records[0]
+        assert record.status == ExecutionStatus.FAILED
+        assert not record.bindings
+        assert not record.catalog_version
+        # Fail-closed: nothing reached transport.
+        assert self.host_client.contents == []

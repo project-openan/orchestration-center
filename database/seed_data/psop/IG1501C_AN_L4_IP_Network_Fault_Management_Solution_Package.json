@@ -11,8 +11,8 @@
         {
           "task_id": "8f30acc5-9f29-4e83-940b-7a1406c8b254",
           "description": "Perform fault identification",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Identification",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Identification",
           "status": "pending"
         }
       ],
@@ -32,8 +32,8 @@
         {
           "task_id": "82fd566b-e2a0-46f8-95dc-4a1196af9471",
           "description": "Perform automatic diagnosis",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
           "status": "pending"
         }
       ],
@@ -57,8 +57,8 @@
         {
           "task_id": "b35b2769-3e56-4448-a4fe-eb621b381451",
           "description": "Perform automatic repair",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Handling",
           "status": "pending"
         }
       ],
@@ -78,8 +78,8 @@
         {
           "task_id": "9b5eb4a7-ff72-45e0-bd83-5336b9b6fba2",
           "description": "Report fault incident and handling results to service layer's fault management center",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Handling",
           "status": "pending"
         }
       ],
@@ -120,8 +120,8 @@
         {
           "task_id": "1d161a8a-ecf0-492c-b2f9-23d27d2f0da6",
           "description": "Generate repair solution",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
           "status": "pending"
         }
       ],
@@ -141,8 +141,8 @@
         {
           "task_id": "725c2d62-c49a-442f-81e7-ca7729afeb83",
           "description": "Send fault incident and automatically generated handling recommendations to service layer fault center",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Handling",
           "status": "pending"
         }
       ],

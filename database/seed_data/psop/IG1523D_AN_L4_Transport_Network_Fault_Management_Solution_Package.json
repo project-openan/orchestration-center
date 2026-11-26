@@ -11,8 +11,8 @@
         {
           "task_id": "b1079331-28db-4046-9d6f-c5a7af3697ba",
           "description": "Continuously monitor network performance metrics and alarm information in real-time",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Identification",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Identification",
           "status": "pending"
         },
         {
@@ -43,8 +43,8 @@
         {
           "task_id": "41652e58-babd-4a16-8905-b799444de3eb",
           "description": "Automatically identify faults and potential network anomalies, diagnose root causes and locations, generate corresponding repair solutions, automatically execute and verify the result based on collected data",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Handling",
           "status": "pending"
         }
       ],
@@ -64,8 +64,8 @@
         {
           "task_id": "c67d817b-a46b-406a-b3b6-d34fac6a47f1",
           "description": "Report identified anomaly details (including root causes and locations) to the cross-domain OSS system's Fault Agent for oversight",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Diagnosis",
           "status": "pending"
         }
       ],
@@ -85,8 +85,8 @@
         {
           "task_id": "0af09929-2306-4de9-b290-31c44749872f",
           "description": "Submit the completed anomaly resolution case to the OSS system's Fault Agent for archiving and future reference",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Handling",
           "status": "pending"
         }
       ],
@@ -223,8 +223,8 @@
         {
           "task_id": "01b5f254-9225-4cd1-bd00-b56f7f1206be",
           "description": "Automatically execute the corresponding network operations according to the fault repair solution, verify the results, and report to the cross-domain agent",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "Transport Network Fault Management Agent",
+          "skill": "Transport Network Fault Handling",
           "status": "pending"
         }
       ],

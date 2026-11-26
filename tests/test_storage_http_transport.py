@@ -61,6 +61,10 @@ def test_storage_failure_over_actual_listener(mode, transport, tmp_path, monkeyp
     for module in (psop_processor, execution_record_processor, user_store):
         monkeypatch.setattr(module, "create_connection", lambda: None)
 
+    def unavailable():
+        raise ConnectionError("Synthetic shared authentication storage outage")
+    monkeypatch.setattr(context._persistence_context.backend._provider, "connection", unavailable)
+
     options = {}
     verify = True
     if transport == "https":

@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -46,7 +47,6 @@ from loguru import logger
 
 from common.util.config_util import get_root_path
 from common.util.persistence_mode import persistence_mode
-from database.utils.db_connection import create_connection
 from orchestrate.core.model.psop import PSOP
 
 SEED_DATA_DIR = Path(get_root_path()) / "database" / "seed_data" / "psop"
@@ -55,6 +55,11 @@ INSERT_SEED_PSOP_SQL = """
     INSERT INTO psop (id, name, description, psop_content)
     VALUES (%s, %s, %s, %s)
     ON CONFLICT (id) DO NOTHING
+"""
+INSERT_SEED_PSOP_MYSQL_SQL = """
+    INSERT INTO psop (id, name, description, psop_content)
+    VALUES (%s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE id = id
 """
 
 TESTING_ENV = "TESTING"
@@ -107,12 +112,8 @@ def seed_default_psops(seed_dir: Path = SEED_DATA_DIR) -> int:
     if _testing_mode():
         logger.info("TESTING mode: skipping default data seeding")
         return 0
-    if persistence_mode() == "mysql":
-        # The seed SQL is PostgreSQL-flavored (ON CONFLICT ... DO NOTHING);
-        # MySQL deployments get their own seeder later if needed.
-        logger.info("MySQL persistence mode: skipping PostgreSQL-flavored default data import")
-        return 0
-
+    from database.utils.db_connection import create_connection
+    insert_sql = INSERT_SEED_PSOP_MYSQL_SQL if persistence_mode() == 'mysql' else INSERT_SEED_PSOP_SQL
     conn = create_connection()
     if conn is None:
         raise RuntimeError("Unable to connect to database; default data not imported")
@@ -129,20 +130,23 @@ def seed_default_psops(seed_dir: Path = SEED_DATA_DIR) -> int:
             try:
                 with conn.cursor() as cur:
                     cur.execute(
-                        INSERT_SEED_PSOP_SQL,
+                        insert_sql,
                         (row["id"], row["name"], row["description"], row["psop_content"]),
                     )
-                    # rowcount is 0 when ON CONFLICT DO NOTHING skipped the row
-                    if cur.rowcount > 0:
-                        inserted += 1
-                        logger.info(f"Imported default workflow '{psop.name}' (id={psop.id})")
-                    else:
-                        skipped += 1
-                        logger.debug(f"Default workflow already present, skipped: '{psop.name}' (id={psop.id})")
+                    was_inserted = cur.rowcount > 0
+                conn.commit()
+                if was_inserted:
+                    inserted += 1
+                    logger.info(f"Imported default workflow '{psop.name}' (id={psop.id})")
+                else:
+                    skipped += 1
             except Exception as e:
+                # A PostgreSQL error aborts the transaction. Roll back this
+                # seed before attempting the next, never report rolled-back
+                # earlier seeds as successfully imported.
+                conn.rollback()
                 logger.error(f"Unexpected error importing seed '{path.name}': {e}")
                 skipped += 1
-        conn.commit()
     finally:
         conn.close()
 

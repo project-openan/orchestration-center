@@ -111,7 +111,25 @@ def live_postgres(monkeypatch):
             keep.close()
 
 
-def test_live_crud_unicode_upsert_large_records_and_utc(live_postgres, sample_psop_dict):
+def test_live_default_seeds_are_idempotent_and_preserve_user_edits(live_postgres, monkeypatch):
+    from database.utils.seed_data import seed_default_psops
+    monkeypatch.delenv('TESTING', raising=False)
+    assert seed_default_psops() == 19
+    from database.utils.seed_data import SEED_DATA_DIR
+    for path in SEED_DATA_DIR.glob('*.json'):
+        expected = PSOP.model_validate_json(path.read_text(encoding='utf-8'))
+        assert psops.get_psop_by_id(expected.id) == expected
+    workflow = psops.get_psop_by_id(psops.get_all_psops()[0].workflow_id)
+    workflow.name = 'Operator edited default'
+    psops.custom_save_psop(workflow)
+    assert seed_default_psops() == 0
+    assert psops.get_psop_by_id(workflow.id).name == 'Operator edited default'
+    assert len(psops.get_all_psops()) == 19
+
+
+@pytest.mark.parametrize('session_timezone', ['UTC', 'Asia/Shanghai'])
+def test_live_crud_unicode_upsert_large_records_and_utc(live_postgres, sample_psop_dict, monkeypatch, session_timezone):
+    monkeypatch.setitem(live_postgres, 'options', '-c timezone='+session_timezone)
     create_tables()  # startup is idempotent
     psop = PSOP.model_validate({
         **sample_psop_dict,
@@ -143,14 +161,15 @@ def test_live_crud_unicode_upsert_large_records_and_utc(live_postgres, sample_ps
     assert records.db_get_execution_record(record.execution_id) == record
     summaries = records.db_list_execution_records()
     assert len(summaries) == 1 and summaries[0]["status"] == "success"
-    # Stored as UTC (08:05+08:00 became 00:05), but PostgreSQL reads the column
-    # back as a *naive* datetime and sql_dialect.timestamp_iso() only re-attaches
-    # the offset for MySQL, so the rendered value here has no "+00:00" while the
-    # MySQL API returns one. That divergence is API-visible: a browser parses an
-    # offset-free timestamp as local time. The storage work unifies the two, and
-    # this assertion flips to the offset form when it does.
-    assert summaries[0]["started_at"] == "2026-10-09T00:05:00"
-    assert summaries[0]["completed_at"] == "2026-10-09T00:06:00"
+    assert summaries[0]["started_at"] == "2026-10-09T00:05:00+00:00"
+    assert summaries[0]["completed_at"] == "2026-10-09T00:06:00+00:00"
+    conn = db_connection.create_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT started_at FROM execution_records WHERE execution_id=%s', (record.execution_id,))
+            assert cursor.fetchone()[0] == datetime(2026, 10, 9, 0, 5)
+    finally:
+        conn.close()
     assert records.db_delete_execution_record(record.execution_id)
     assert not records.db_delete_execution_record(record.execution_id)
     assert psops.custom_delete_psop(psop.id)

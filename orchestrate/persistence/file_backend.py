@@ -34,7 +34,7 @@ from orchestrate.core.model.execution_record import ExecutionRecord
 from orchestrate.core.model.preflow import PreFlow
 from orchestrate.core.model.psop import PSOP
 from orchestrate.core.persistence import WorkflowStorage
-from orchestrate.core.task_summary import build_tasks_summary
+from orchestrate.core.task_summary import build_tasks_summary, generation_binding
 from orchestrate.core.workflow_search_result import WorkflowSearchResult
 from orchestrate.persistence.contracts import (
     Capability,
@@ -72,6 +72,7 @@ class FilePsopRepository(PsopRepository):
                 user_intent=psop.user_intent,
                 related_preflow=psop.related_preflow,
                 tasks_summary=build_tasks_summary(psop),
+                binding=generation_binding(psop),
             ))
         return summaries
 
@@ -125,9 +126,15 @@ class FilePersistenceBackend(PersistenceBackend):
     def __init__(self, conf: Optional[dict] = None,
                  storage: Optional[WorkflowStorage] = None) -> None:
         self._conf = conf or {}
-        # Injectable so a test can point the ports at a throwaway directory
-        # instead of the process-wide storage singleton.
-        self._storage = storage if storage is not None else get_workflow_storage()
+        import os
+        from orchestrate.persistence.documents import FileDocuments, data_root
+        if storage is not None:
+            self._storage = storage
+        elif self._conf.get("data_dir") or os.environ.get("ORCH_DATA_DIR"):
+            self._storage = WorkflowStorage(str(data_root(self._conf)))
+        else:
+            self._storage = get_workflow_storage()
+        self._documents = FileDocuments(self._storage.psop_dir.parents[1])
         self._psops = FilePsopRepository(self._storage)
         self._executions = _FileExecutionRecordRepository(self._storage)
         self._preflows = FilePreflowRepository(self._storage)
@@ -149,9 +156,15 @@ class FilePersistenceBackend(PersistenceBackend):
         from database.utils.seed_data import seed_default_psops_to_file_storage
 
         try:
-            seed_default_psops_to_file_storage()
+            seed_default_psops_to_file_storage(target_dir=self._storage.psop_dir)
         except Exception as e:
             logger.error(f"Default workflow seeding into file storage failed (non-blocking): {e}")
+
+    def preflows_for(self, storage):
+        return FilePreflowRepository(storage)
+
+    def documents(self):
+        return self._documents
 
     def psops(self) -> PsopRepository:
         return self._psops

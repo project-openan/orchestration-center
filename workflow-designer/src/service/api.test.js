@@ -23,6 +23,7 @@ import {
   defaultPort,
   defaultGateway,
   getAgentCards,
+  getRoleCatalog,
   getWorkflow,
   getWorkflowById,
   getWorkflowBpmn,
@@ -191,16 +192,40 @@ describe('api service', () => {
       expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/agent-cards'));
     });
 
-    it('getWorkflow should call api.get with correct URL', async () => {
+    it('getWorkflow should call api.get with the paginated workflows URL', async () => {
       const mockApi = axios.create();
-      mockApi.get.mockResolvedValue({ data: 'workflows' });
+      mockApi.get.mockResolvedValue({ status: 'success', data: [], pagination: { offset: 0, has_more: false } });
 
       await getWorkflow();
-      // The management table needs the full list: limit=100 is the backend cap.
+      // The management table needs the full list: the client walks every
+      // limit=100 page (offset pagination) and aggregates the result.
       expect(mockApi.get).toHaveBeenCalledWith(
-        expect.stringContaining('/rest/v1/orchestrate/workflows'),
-        { params: { limit: 100 } }
+        expect.stringContaining('/rest/v1/orchestrate/workflows?limit=100&offset=0')
       );
+    });
+
+    it('getWorkflow loads every page instead of hiding older workflows', async () => {
+      const mockApi = axios.create();
+      const first = Array.from({ length: 100 }, (_, i) => ({ workflow_id: `wf-${i}` }));
+      mockApi.get.mockResolvedValueOnce({ status: 'success', data: first, pagination: { offset: 0, has_more: true } });
+      mockApi.get.mockResolvedValueOnce({ status: 'success', data: [{ workflow_id: 'wf-100' }], pagination: { offset: 100, has_more: false } });
+      const result = await getWorkflow();
+      expect(result.data).toHaveLength(101);
+      expect(result.pagination.has_more).toBe(false);
+      expect(mockApi.get).toHaveBeenLastCalledWith(expect.stringContaining('limit=100&offset=100'));
+    });
+
+    it('getWorkflow rejects non-progressing pages instead of looping forever', async () => {
+      const mockApi = axios.create();
+      mockApi.get.mockResolvedValue({ status: 'success', data: [], pagination: { offset: 0, has_more: true } });
+      await expect(getWorkflow()).rejects.toThrow('no progress');
+    });
+
+    it('getWorkflow propagates a later page failure instead of returning a partial list', async () => {
+      const mockApi = axios.create();
+      mockApi.get.mockResolvedValueOnce({ status: 'success', data: [{ workflow_id: 'wf-0' }], pagination: { offset: 0, has_more: true } });
+      mockApi.get.mockRejectedValueOnce(new Error('synthetic failure'));
+      await expect(getWorkflow()).rejects.toThrow('synthetic failure');
     });
 
     it('getWorkflowById should call api.get with correct URL', async () => {
@@ -293,6 +318,25 @@ describe('api service', () => {
         expect.stringContaining('/rest/v1/orchestrate/generate-from-preflow'),
         { preflow, agent_cards: agentCards }
       );
+    });
+
+    it('sends role options without AgentCards and queries the exact catalog version', async () => {
+      const mockApi = axios.create();
+      mockApi.post.mockResolvedValue({ status: 'success', data: { id: 'wf' } });
+      mockApi.get.mockResolvedValue({ status: 'success', data: { catalog_version: 'v1', roles: [] } });
+      await handlePlan({ name: 'Input' }, undefined, { binding: 'role', catalog_version: 'v1', ignored: true });
+      expect(mockApi.post).toHaveBeenCalledWith(expect.stringContaining('/generate-from-preflow'), {
+        preflow: { name: 'Input' }, binding: 'role', catalog_version: 'v1',
+      });
+      await getRoleCatalog('v1');
+      expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('/role-catalog'), { params: { catalog_version: 'v1' } });
+    });
+
+    it('preserves structured generation codes in resolved error envelopes', async () => {
+      const mockApi = axios.create();
+      mockApi.post.mockResolvedValue({ status: 'error', message: { code: 'INVALID_ROLE_SKILL', message: 'Unapproved reference' } });
+      await expect(generateWorkflowFromIntent('Analyze', undefined, { binding: 'role' }))
+        .rejects.toThrow('INVALID_ROLE_SKILL: Unapproved reference');
     });
 
     it('handlePlan should throw error when status is not success', async () => {

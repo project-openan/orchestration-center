@@ -26,6 +26,7 @@ def create_tables():
     if persistence_mode() == "mysql":
         from database.utils.mysql_connection import get_backend
         get_backend().create_tables()
+        _seed_defaults()
         return
     create_psop_sql = """
                        CREATE TABLE IF NOT EXISTS psop
@@ -97,6 +98,10 @@ def create_tables():
         logger.info("Database tables verified/created: psop, execution_records, users")
     finally:
         conn.close()
+    _seed_defaults()
+
+
+def _seed_defaults():
     try:
         # Installation phase: import the shipped default SPG workflows so a
         # fresh deployment starts with a usable workflow library. Idempotent -

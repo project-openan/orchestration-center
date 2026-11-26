@@ -100,7 +100,8 @@ registry center. The design below assumes nothing about the network between them
 ## 4. Design principles
 
 - **P1 — Fail closed.** No shipped configuration may expose a management API without a
-  credential. Insecure operation is an explicit, loud, scoped opt-in.
+  credential, and no credentialless mode exists: a deployment that names none is refused
+  at startup rather than served anonymously.
 - **P2 — One model per principal class.** Humans are accounts with roles; agents are
   identities with signing keys and an accountable operator. They are never the same row in a
   table.
@@ -260,13 +261,13 @@ A startup check (`security_preflight`) evaluates the deployment before the serve
 | `true` | yes | any | start; mTLS may add a principal |
 | `true` | no | non-loopback | start, but every non-public route requires a principal from the host — i.e. no anonymous path exists |
 | `false` | yes | any | start; warn that transport is plaintext |
-| `false` | no | loopback | start only with `security.dev_insecure_mode=true`; log a warning at startup and an audit entry |
+| `false` | no | loopback | **refuse to start**: the bind address never waives authentication |
 | `false` | no | non-loopback | **refuse to start**, with a message naming the two ways to fix it |
 
-`security.dev_insecure_mode` must be echoed by the health endpoint so an exposed dev instance is
-visible to operators. In the registry center the equivalent default flips
-`owner.isolation.enabled` to `true` (a breaking change for deployments that rely on anonymous
-card writes — see the open questions).
+The earlier `security.dev_insecure_mode` escape hatch was removed together with the shared
+account model, so a credentialless deployment cannot start on loopback or anywhere else. In
+the registry center the equivalent default flips `owner.isolation.enabled` to `true` (a
+breaking change for deployments that rely on anonymous card writes — see the open questions).
 
 ## 7. Migration plan
 
@@ -276,8 +277,8 @@ Each phase is independently reviewable and shippable.
 `orchestrate/start.py` calls a `security_preflight()` before deciding the bind branch;
 `docs/en/...` and `README` describe the two ways to run a local demo. Registry: default
 `owner.isolation.enabled=true`, with owner-less cards readable by all and writable by admins.
-Tests: preflight matrix (unit), server refuses to start in the unsafe cell, dev flag permits a
-loopback bind.
+Tests: preflight matrix (unit), server refuses to start in the unsafe cell, a removed dev flag
+never permits a credentialless bind.
 
 **Phase 1 — external API authentication and default-deny.**
 Add a principal dependency on `/api/v1/*`; accept mTLS CN and bearer tokens; keep a

@@ -31,6 +31,7 @@ from collections import deque
 from contextlib import suppress
 from datetime import datetime, timezone
 from typing import List
+from uuid import uuid4
 
 import anyio
 from a2a.types import AgentCard
@@ -39,6 +40,7 @@ from loguru import logger
 
 from orchestrate.core.model.psop import PSOP
 from orchestrate.runtime.exec_engine import OrchestrationEngine
+from orchestrate.runtime.instance_projection import ResolutionRequest
 
 _EVENT_QUEUE_CAPACITY = 64
 _RECORDED_EVENT_LIMIT = 1000
@@ -67,23 +69,55 @@ async def dispatch_intent_sse(
     semaphore: anyio.Semaphore | None = None,
     *,
     psop: PSOP | None = None,
+    resolution_request: ResolutionRequest | None = None,
+    select_template: bool = True,
+    request=None,
 ) -> StreamingResponse:
     """Dispatch an intent to a host agent via A2A-T and stream events.
 
     Slim orchestration: the orchestration center does NOT execute the
     workflow itself. A supplied PSOP is captured as a detached snapshot
     and sent with the intent, without another intent search. Without one,
-    the center searches by intent; the Host resolves a workflow only if
-    no snapshot was found. Execution stays in the Host's SDK.
+    the center searches by intent and fails if no template can be loaded.
+    ``select_template=False`` explicitly sends a raw intent to the Host.
+    Execution stays in the Host's SDK.
+
+    ``resolution_request`` carries per-execution role-resolution inputs
+    (scope, authorized instances, caller identity) consumed by the
+    dispatch-time role resolution inside ``OrchestrationEngine.events``.
 
     This function drains the A2A-T response stream, extracts the SDK
     events from metadata, and forwards them to the frontend SSE.
     """
+    from common.util.config_util import get_conf
+    if str(get_conf().get("deployment_mode", "single")).lower() == "cluster":
+        from fastapi import HTTPException
+        from orchestrate.server.durable_api import submit_execution, durable_event_response
+        if request is None:
+            raise HTTPException(503, "Cluster execution requires a verified request")
+        cursor_header = request.headers.get("Last-Event-ID")
+        key = request.headers.get("Idempotency-Key") or request.query_params.get("request_key")
+        if cursor_header:
+            job_id, separator, raw = cursor_header.rpartition(":")
+            if separator != ":" or not raw.isdecimal():
+                raise HTTPException(400, "Invalid execution event cursor")
+            return await durable_event_response(request, job_id, int(raw))
+        if not key:
+            raise HTTPException(428, "Cluster execution requires Idempotency-Key or request_key; use POST /runs")
+        job = await submit_execution(request, agent_cards=agent_cards, intent=intent,
+            target_agent=target_agent, lang=lang, psop=psop, resolution_request=resolution_request,
+            idempotency_key=key, select_template=select_template)
+        return await durable_event_response(request, job["job_id"])
+
     if semaphore is not None:
         semaphore.acquire_nowait()
 
     try:
-        response = _build_sse_response(agent_cards, intent, target_agent, lang, psop)
+        response = _build_sse_response(
+            agent_cards, intent, target_agent, lang, psop,
+            resolution_request=resolution_request,
+            select_template=select_template,
+        )
     except BaseException:
         if semaphore is not None:
             semaphore.release()
@@ -94,24 +128,15 @@ async def dispatch_intent_sse(
 def _build_sse_response(
     agent_cards: List[AgentCard], intent: str, target_agent: str | None, lang: str | None,
     psop: PSOP | None = None,
+    resolution_request: ResolutionRequest | None = None,
+    select_template: bool = True,
 ) -> StreamingResponse:
     # Capture before the deferred response body starts; later edits must not
     # change the workflow the caller selected for this execution.
     selected_psop = psop.model_copy(deep=True) if psop is not None else None
-    if not agent_cards:
-        async def error_stream():
-            yield f"data: {json.dumps({'type': 'error', 'message': 'No agent cards available'}, ensure_ascii=False)}\n\n"
-        return StreamingResponse(
-            error_stream(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
-        )
-
-    engine = OrchestrationEngine(agent_cards, target_agent=target_agent, lang=lang)
+    engine = OrchestrationEngine(
+        agent_cards, target_agent=target_agent, lang=lang, select_template=select_template,
+    ) if agent_cards else None
 
     async def stream():
         from orchestrate.core.model.execution_record import ExecutionRecord, ExecutionStatus
@@ -119,6 +144,7 @@ def _build_sse_response(
         from orchestrate.handlers.dispatch import get_storage_handler
 
         started_at = datetime.now(timezone.utc)
+        execution_id = uuid4().hex
         collected_events = deque(maxlen=_RECORDED_EVENT_LIMIT)
         dropped_events = 0
         psop_id = selected_psop.id if selected_psop is not None else ""
@@ -126,6 +152,7 @@ def _build_sse_response(
         final_psop = selected_psop.model_dump(mode="json") if selected_psop is not None else None
         record_status = ExecutionStatus.SUCCESS
         record_error = None
+        record_resolution = None
         saw_terminal_event = False
 
         HEARTBEAT_INTERVAL = 15
@@ -134,9 +161,18 @@ def _build_sse_response(
         done_sentinel = object()
 
         async def _drain_engine():
+            if engine is None:
+                # Even registry-empty failures use the normal terminal event
+                # and persistence path. Do not search or construct transport.
+                await event_queue.put({"type": "error", "message": "No agent cards available",
+                    "data": {"code": "NO_AGENT_CARDS", "error": "No agent cards available"},
+                    "timestamp": time.time()})
+                await event_queue.put(done_sentinel)
+                return
             event_stream = (
-                engine.events(intent, psop=selected_psop)
-                if selected_psop is not None else engine.events(intent)
+                engine.events(intent, psop=selected_psop, resolution_request=resolution_request)
+                if selected_psop is not None
+                else engine.events(intent, resolution_request=resolution_request)
             )
             try:
                 async for event in event_stream:
@@ -193,7 +229,11 @@ def _build_sse_response(
                         if not psop_name:
                             psop_name = psop_data.get("name", "")
 
+                elif evt_type == "resolution":
+                    record_resolution = evt_data
+
                 elif evt_type == "error":
+                    evt_data.setdefault("execution_id", (record_resolution or {}).get("execution_id", execution_id))
                     saw_terminal_event = True
                     record_status = ExecutionStatus.FAILED
                     record_error = evt_data.get("error", "Unknown error")
@@ -226,7 +266,8 @@ def _build_sse_response(
                 psop_name = intent[:80]
 
             try:
-                record = ExecutionRecord(
+                record_kwargs = dict(
+                    execution_id=execution_id,
                     psop_id=psop_id,
                     psop_name=psop_name,
                     started_at=started_at,
@@ -238,6 +279,39 @@ def _build_sse_response(
                             if dropped_events else []) + list(collected_events),
                     error=record_error,
                 )
+                if record_resolution:
+                    record_kwargs.update(
+                        **{
+                            key: value
+                            for key, value in {
+                                "execution_id": record_resolution.get("execution_id"),
+                                "catalog_version": record_resolution.get("catalog_version"),
+                                "config_version": record_resolution.get("config_version"),
+                                "policy_version": record_resolution.get("policy_version"),
+                                "execution_scope": record_resolution.get("execution_scope"),
+                                "bindings": record_resolution.get("bindings"),
+                                "card_fingerprints": record_resolution.get("card_fingerprints"),
+                                "resolution_snapshot": record_resolution.get("resolution_snapshot"),
+                                "template_fingerprint": record_resolution.get("template_fingerprint"),
+                                "snapshot_fingerprint": record_resolution.get("snapshot_fingerprint"),
+                            }.items()
+                            if value is not None
+                        }
+                    )
+                # Traceability for the confirm flow: what the caller confirmed
+                # and which manual overrides were applied -- including on
+                # resolution refusals, so failed attempts keep their evidence.
+                if resolution_request is not None and (resolution_request.task_overrides
+                        or resolution_request.group_overrides
+                        or resolution_request.tie_break):
+                    record_kwargs["overrides_applied"] = {
+                        "task_overrides": dict(resolution_request.task_overrides),
+                        "group_overrides": dict(resolution_request.group_overrides),
+                        "tie_break": resolution_request.tie_break,
+                    }
+                if resolution_request is not None and resolution_request.confirm_fingerprint:
+                    record_kwargs["confirm_fingerprint"] = resolution_request.confirm_fingerprint
+                record = ExecutionRecord(**record_kwargs)
                 handler = get_storage_handler(InterfaceType.SAVE_EXECUTION_RECORD)
                 handler.handle(record)
                 logger.info(f"[SSE] Execution record saved: {record.execution_id} (status={record_status.value})")
@@ -253,3 +327,19 @@ def _build_sse_response(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+async def resume_execution_sse(request):
+    """Resume existing runs before registry lookup or workflow selection."""
+    from common.util.config_util import get_conf
+    if str(get_conf().get("deployment_mode", "single")).lower() != "cluster":
+        return None
+    value = request.headers.get("Last-Event-ID")
+    if not value:
+        return None
+    from fastapi import HTTPException
+    from orchestrate.server.durable_api import durable_event_response
+    job_id, separator, seq = value.rpartition(":")
+    if separator != ":" or not seq.isdecimal():
+        raise HTTPException(400, "Invalid execution event cursor")
+    return await durable_event_response(request, job_id, int(seq))

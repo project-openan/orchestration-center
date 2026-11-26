@@ -28,10 +28,11 @@ class WorkflowSearchResult(BaseModel):
     description: Optional[str] = Field(None, description="Workflow description")
     tags: List[str] = Field(default_factory=list, description="Tags")
     created_at: datetime = Field(..., description="Creation timestamp")
-    score: float = Field(default=1.0, description="Search relevance score")
+    score: float = Field(1.0, description="Search relevance score")
     user_intent: Optional[str] = Field(None, description="User intent text")
     related_preflow: Optional[str] = Field(None, description="Related PreFlow ID")
     tasks_summary: Optional[str] = Field(None, description="Concise summary of steps/tasks in the workflow")
+    binding: Optional[str] = Field(None, description="Generation binding: role (role-catalog tasks) or instance")
 
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()

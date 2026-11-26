@@ -11,7 +11,11 @@ Docker Compose 通过 `LLM_CONFIG_HOST_FILE` 挂载模型文件。
 `models:` 下的每个键是一种能力（`chat`、`embed`、`rerank`，或由已注册协议
 Profile 支持的其它名称）。`model` 与 `url` 必填；`provider` 默认 `openai_compatible`（`openai` 是兼容别名）
 （兼容 OpenAI 请求/响应格式），`aoc_signed` 增加 AOC 签名。可选项有
-`description`、`timeout`（正数秒）、`verify_ssl`、`enable_thinking`。
+`description`、`timeout`（正数秒）、`verify_ssl`、`enable_thinking`。聊天 Profile 还支持
+`stream`、`stream_total_timeout`（正数秒，默认 600）、`proxy` 和添加厂商选项的
+`extra_body`；后者禁止覆盖 model/messages 等协议输入及 stream 开关。
+embed/rerank 不能启用聊天 SSE；断流、截断按失败处理，不返回残缺答案。
+详见 [SPG/模型流式配置](../../docs/zh/SPG导入.md)。
 
 ```yaml
 models:

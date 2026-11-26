@@ -104,7 +104,8 @@ def create_connection():
         from database.utils.connection_provider import current_provider
         provider = current_provider()
         if provider is not None:
-            return provider.connection()
+            from orchestrate.persistence.documents import bound_sql_connection
+            return bound_sql_connection(provider) or provider.connection()
         if persistence_mode() == "mysql":
             from database.utils.mysql_connection import get_backend
             return get_backend().connection()
@@ -112,7 +113,9 @@ def create_connection():
             return None
         conn_info = _ConnInfoHolder.get()
         conn = psycopg2.connect(**conn_info)
-        logger.info(f"Connected to database '{conn_info.get('database', 'unknown')}' on {conn_info.get('host', 'localhost')}:{conn_info.get('port', 5432)}")
+        logger.info(
+            f"Connected to database '{conn_info.get('database', 'unknown')}' "
+                f"on {conn_info.get('host', 'localhost')}:{conn_info.get('port', 5432)}")
         return conn
     except ValueError:
         # Config errors must fail loudly, without embedding driver/config values.

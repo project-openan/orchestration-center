@@ -46,7 +46,7 @@ class SolutionPackageParser:
     def find_chapter_range(doc, chapter_title: str) -> tuple:
         """Find the page range for a specific chapter in the PDF TOC."""
         start = None
-        end = doc.page_count
+        end = doc.page_count + 1
         for level, title, page in doc.get_toc():
             if title == chapter_title:
                 start = page
@@ -58,7 +58,22 @@ class SolutionPackageParser:
     @staticmethod
     def _normalize_chapter_title(title: str) -> str:
         """Strip leading chapter numbering ('6.', '5.3.', '10.2.') and lowercase."""
-        return re.sub(r'^\s*\d+(?:\.\d+)*\.?\s*', '', title or '').strip().lower()
+        return re.sub(r'^\s*\d+(?:\.\d+)*(?:[.)]\s*|\s+)', '', title or '').strip().lower()
+
+    @staticmethod
+    def select_chapter_title(titles, chapter_title: str) -> Optional[str]:
+        """Choose the same chapter for single-chapter and upload APIs."""
+        titles = list(titles)
+        if chapter_title in titles:
+            return chapter_title
+        topic = SolutionPackageParser._normalize_chapter_title(chapter_title)
+        if not topic:
+            return None
+        for title in titles:
+            if SolutionPackageParser._normalize_chapter_title(title) == topic:
+                return title
+        matches = [title for title in titles if topic in SolutionPackageParser._normalize_chapter_title(title)]
+        return matches[0] if len(matches) == 1 else None
 
     @staticmethod
     def find_chapter_range_fuzzy(doc, chapter_title: str) -> tuple:
@@ -71,24 +86,13 @@ class SolutionPackageParser:
         the remaining topic text (case-insensitive, exact match first, then
         substring containment).
         """
-        topic = SolutionPackageParser._normalize_chapter_title(chapter_title)
-        if not topic:
-            return None, None
         toc = doc.get_toc()
-        match_index = None
-        for i, (level, title, _page) in enumerate(toc):
-            if SolutionPackageParser._normalize_chapter_title(title) == topic:
-                match_index = i
-                break
-        if match_index is None:
-            for i, (level, title, _page) in enumerate(toc):
-                if topic in SolutionPackageParser._normalize_chapter_title(title):
-                    match_index = i
-                    break
+        selected = SolutionPackageParser.select_chapter_title([title for _, title, _ in toc], chapter_title)
+        match_index = next((i for i, (_, title, _) in enumerate(toc) if title == selected), None)
         if match_index is None:
             return None, None
         level, _title, start = toc[match_index]
-        end = doc.page_count
+        end = doc.page_count + 1
         for j in range(match_index + 1, len(toc)):
             next_level, _, next_page = toc[j]
             if next_level <= level:
@@ -209,6 +213,8 @@ The text to convert is below:
         prompt = self.build_markdown_prompt(chapter_text)
         try:
             _, res = self.llm.ask_llm(prompt)
+            if not isinstance(res, str) or not res.strip():
+                raise PDFParsingError('LLM conversion produced empty markdown')
             return res
         except Exception as e:
             raise PDFParsingError(f"LLM conversion failed: {e}") from e
@@ -225,7 +231,7 @@ The text to convert is below:
             return chapter_title, markdown_content
         except Exception as e:
             logger.error(f"Failed to convert chapter '{chapter_title}': {e}")
-            return chapter_title, f"# {chapter_title}\n\n*Conversion failed: {str(e)}*"
+            raise PDFParsingError(f"Chapter conversion failed: {chapter_title}") from e
 
     def convert_all_chapters_to_markdown(self, chapters_dict: Dict[str, str], max_workers: int = 4) -> Dict[str, str]:
         """Convert all chapters to markdown in parallel while preserving order."""
@@ -249,7 +255,7 @@ The text to convert is below:
                 except Exception as e:
                     chapter_title = chapter_titles[index]
                     logger.error(f"Error processing chapter '{chapter_title}': {e}")
-                    results[index] = (chapter_title, f"# {chapter_title}\n\n*Conversion failed: {str(e)}*")
+                    raise PDFParsingError(f"Chapter conversion failed: {chapter_title}") from e
 
         for result in results:
             if result:

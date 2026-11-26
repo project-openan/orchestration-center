@@ -36,15 +36,19 @@ def null_safe_equal(column: str) -> str:
 
 
 def timestamp_parameter(value: datetime | None):
-    """MySQL DATETIME has no timezone; store aware values as naive UTC."""
-    if value is not None and persistence_mode() == "mysql" and value.tzinfo is not None:
+    """Both SQL schemas use timezone-less columns; bind explicit naive UTC.
+
+    Passing an aware datetime to PostgreSQL TIMESTAMP otherwise delegates the
+    conversion to the connection timezone and can shift the stored instant.
+    """
+    if value is not None and value.tzinfo is not None:
         return value.astimezone(timezone.utc).replace(tzinfo=None)
     return value
 
 
 def timestamp_iso(value):
     if isinstance(value, datetime):
-        if persistence_mode() == "mysql" and value.tzinfo is None:
+        if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
-        return value.isoformat()
+        return value.astimezone(timezone.utc).isoformat()
     return value

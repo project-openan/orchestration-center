@@ -17,10 +17,10 @@
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 """
@@ -49,6 +49,22 @@ class Task(BaseModel):
     skill: str = Field(..., description="Skill required to execute the task",
                        examples=['best_effort_energy_saving', 'extreme_backup_energy_saving'])
     status: TaskStatus = Field(TaskStatus.PENDING, description="Task execution status")
+    binding: Literal["instance", "role"] = "instance"
+    role_version: Optional[str] = Field(None, min_length=1)
+    binding_group: Optional[str] = Field(None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_binding(self):
+        if self.binding == "role":
+            if not self.role_version or not self.role_version.strip():
+                raise ValueError("Role tasks require role_version")
+            if not self.agent.strip() or not self.skill.strip():
+                raise ValueError("Role tasks require non-empty role and skill IDs")
+        elif self.role_version is not None or self.binding_group is not None:
+            raise ValueError("Instance tasks cannot carry role version or binding group")
+        if self.binding_group is not None and not self.binding_group.strip():
+            raise ValueError("binding_group must not be blank")
+        return self
 
 
 class JumpCondition(BaseModel):
@@ -103,3 +119,29 @@ class PSOP(BaseModel):
                                         empty by default")
     tags: Optional[List[str]] = Field(default_factory=list, description="Tags for quick filtering")
     source: Optional[str] = Field(None, description="Creation method: graph_editor, ai_intent, solution_package, template")
+    catalog_version: Optional[str] = Field(None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_role_bindings(self):
+        groups = {}
+        task_ids = set()
+        has_roles = any(t.binding == "role" for s in self.steps for t in s.subtasks)
+        if not has_roles:
+            return self
+        if not self.catalog_version or not self.catalog_version.strip():
+            raise ValueError("Role workflows require catalog_version")
+        for step in self.steps:
+            for task in step.subtasks:
+                if task.task_id in task_ids:
+                    raise ValueError("Role workflows require unique task IDs")
+                task_ids.add(task.task_id)
+                if task.binding != "role":
+                    continue
+                if step.type == StepType.SELF_LOOP:
+                    raise ValueError("Role binding is not supported in SelfLoop")
+                if task.binding_group:
+                    identity = (task.agent, task.role_version)
+                    previous = groups.setdefault(task.binding_group, identity)
+                    if previous != identity:
+                        raise ValueError("Binding groups require the same role and version")
+        return self

@@ -16,6 +16,8 @@
 //    under the License.
 import React, { useMemo, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useTranslation } from 'react-i18next';
+import { errorStepNames, formatRoleResolution, formatWorkflowError } from '../workflowErrors.js';
 import remarkGfm from 'remark-gfm';
 import {
     CheckCircle2,
@@ -45,7 +47,7 @@ import {
  * Event grouping logic (Phase 3.2: groupEventsByStep)
  * ────────────────────────────────────────────────────────────────── */
 
-function groupEventsByStep(events) {
+function groupEventsByStep(events, workflow) {
     const steps = new Map();
     let currentStep = null;
 
@@ -56,6 +58,21 @@ function groupEventsByStep(events) {
 
    for (const event of events) {
        const stepName = event.data?.step;
+       if (event.type === 'error' || event.type === 'dispatch_error') {
+           // Error task IDs belong to the original PSOP namespace. An SDK ID,
+           // agent name, or the most recently active step is not a mapping.
+           const targets = errorStepNames(workflow, event.data);
+           if (!event.data?.code && !event.data?.task_ids && stepName) targets.push(stepName);
+           for (const name of new Set(targets)) {
+               const target = steps.get(name);
+               if (target) {
+                   target.status = 'failed';
+                   target.endTime = event.timestamp;
+                   target.error = event.data;
+               }
+           }
+           continue;
+       }
        if (event.type === 'step_start') {
            currentStep = stepName;
            steps.set(stepName, {
@@ -151,11 +168,6 @@ function groupEventsByStep(events) {
                 if (event.data?.results && !step.output) {
                     step.output = event.data.results;
                 }
-                break;
-            case 'error':
-                step.status = 'failed';
-                step.endTime = event.timestamp;
-                step.error = event.data;
                 break;
             case 'task_status_changed':
                 if (event.data?.result && stepName) {
@@ -581,7 +593,7 @@ const StepPhase = React.memo(({ step, isDark }) => {
                             <div className="flex items-start gap-2">
                                 <XCircle size={14} className="text-rose-500 shrink-0 mt-0.5" />
                                 <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
-                                    {step.error.error || JSON.stringify(step.error)}
+                                    {formatWorkflowError(step.error)}
                                 </span>
                             </div>
                         </div>
@@ -599,7 +611,7 @@ const StepPhase = React.memo(({ step, isDark }) => {
 const WorkflowHeader = React.memo(({ events, steps, isRunning }) => {
     const startEvent = events.find(e => e.type === 'start');
     const completeEvent = events.find(e => e.type === 'complete');
-    const errorEvent = events.find(e => e.type === 'error');
+    const errorEvent = events.find(e => e.type === 'error' || e.type === 'dispatch_error');
     const wfName = startEvent?.data?.workflow || '';
     const totalSteps = startEvent?.data?.steps || 0;
     const completedSteps = steps.filter(s => s.status === 'completed').length;
@@ -657,14 +669,15 @@ const WorkflowHeader = React.memo(({ events, steps, isRunning }) => {
  * ExecutionTimeline - Main timeline container
  * ────────────────────────────────────────────────────────────────── */
 
-const ExecutionTimeline = React.memo(({ events, isDark, isRunning }) => {
+const ExecutionTimeline = React.memo(({ events, isDark, isRunning, workflow }) => {
+    const { t } = useTranslation();
     const steps = useMemo(() => {
-        const result = groupEventsByStep(events);
+        const result = groupEventsByStep(events, workflow);
         if (result.length > 0) {
             console.log('[Timeline] steps:', result.map(s => ({ name: s.name, status: s.status, selfLoop: s.isSelfLoop, interactions: s.interactions.length })));
         }
         return result;
-    }, [events]);
+    }, [events, workflow]);
 
     if (events.length === 0) {
         return (
@@ -681,6 +694,14 @@ const ExecutionTimeline = React.memo(({ events, isDark, isRunning }) => {
     return (
         <div className="space-y-3">
             <WorkflowHeader events={events} steps={steps} isRunning={isRunning} />
+            {events.filter(event => ['resolution', 'error', 'dispatch_error'].includes(event.type)).map((event, index) => (
+                <section key={index} role={event.type === 'resolution' ? 'status' : 'alert'}
+                    className={`rounded-xl border p-4 ${event.type === 'resolution' ? 'border-blue-300 dark:border-blue-800' : 'border-rose-300 text-rose-600 dark:border-rose-800'}`}>
+                    {event.type === 'resolution' && <h3 className="font-semibold mb-2">{t('execution.roleResolution')}</h3>}
+                    <p className="text-xs whitespace-pre-wrap break-words">{event.type === 'resolution'
+                        ? formatRoleResolution(event.data) : formatWorkflowError(event.data)}</p>
+                </section>
+            ))}
             <div className="space-y-3">
                 {steps.map((step, idx) => (
                     <StepPhase key={idx} step={step} isDark={isDark} />

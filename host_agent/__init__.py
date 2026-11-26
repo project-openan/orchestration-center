@@ -17,16 +17,38 @@
 
 """First-class Host Agent runtime for workflow execution."""
 
-from .config import ControlPointContext, HostAgentConfig
-from .execution import HostExecutionTracker, host_event_state, host_final_state
-from .runtime import HostAgentEventCallback, HostAgentExecutor
+from importlib import import_module
+
+# Importing a public wire contract must not initialize the execution runtime.
+_EXPORT_MODULES = {
+    "ControlPointContext": "config",
+    "HostAgentConfig": "config",
+    "RoleExecutionContext": "config",
+    "RoleTaskIdentity": "config",
+    "HostAgentEventCallback": "runtime",
+    "HostAgentExecutor": "runtime",
+    "HostExecutionTracker": "execution",
+    "host_event_state": "execution",
+    "host_final_state": "execution",
+}
 
 __all__ = [
     "ControlPointContext",
     "HostAgentEventCallback",
     "HostAgentConfig",
+    "RoleExecutionContext",
+    "RoleTaskIdentity",
     "HostAgentExecutor",
     "HostExecutionTracker",
     "host_event_state",
     "host_final_state",
 ]
+
+
+def __getattr__(name: str):
+    module_name = _EXPORT_MODULES.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(f".{module_name}", __name__), name)
+    globals()[name] = value
+    return value

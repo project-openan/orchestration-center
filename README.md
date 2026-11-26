@@ -137,6 +137,10 @@ sequenceDiagram
 
 MySQL setup, storage boundaries and container instructions: [MySQL persistence](docs/en/MySQL%20Persistence.md).
 
+SPG batch import, default-library readiness and safe upgrade of installed examples: [SPG import](docs/en/SPG%20Import.md). Default AN L4 AgentCards are a planning catalog, not deployed business agents.
+
+PSOP intent retrieval, the optional embedding recall switch and how it degrades: [PSOP retrieval](docs/en/PSOP%20Retrieval.md).
+
 ## Quick Start
 
 ### Prerequisites
@@ -468,6 +472,29 @@ HTTP and HTTPS enforce the same account authentication. `verify_client=false` or
 
 ### Auth Endpoints
 
+The bundled Host Agent uses `HOST_ORCHESTRATION_USERNAME` and
+`HOST_ORCHESTRATION_PASSWORD` to access the center's PSOP search/detail APIs through
+the execution SDK. The SDK shares the acquired token across both calls and renews
+it after expiry or one rejected request. Set `HOST_ORCHESTRATION_URL` when the
+center is remote; use an existing account that has completed any required initial
+password change. Alternatively use `HOST_ORCHESTRATION_TOKEN` for an explicitly
+configured Bearer integration. Account credentials and a fixed token are mutually
+exclusive. These credentials are independent of AgentCard and registry credentials.
+
+For verified HTTPS set `client_verify_server=true`; optional
+`HOST_ORCHESTRATION_CA_FILE`, `HOST_ORCHESTRATION_CLIENT_CERT`,
+`HOST_ORCHESTRATION_CLIENT_KEY`, `HOST_ORCHESTRATION_CLIENT_KEY_PASSWORD` and
+`HOST_ORCHESTRATION_CRL_FILE` configure the same TLS identity for login and PSOP
+queries. Generic hosts can inject `OrchestrationWorkflowRepository(auth_provider=...,
+...)` via `HostAgentExecutor(workflow_repository=...)`, including their existing
+OAuth2 provider. With no credentials, snapshot execution is still available;
+center lookups require authentication and fail with 401 when it is absent.
+
+This integration requires `workflow-exec-engine>=0.1.1,<0.2` and
+`a2a-t-sdk>=1.2.0,<2`. Until the corresponding SDK releases are published, install
+the reviewed local wheels into `.venv` before installing application requirements.
+An earlier 0.1.0/0.0.9 package does not contain this management-authentication API.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/v1/auth/token` | Same login account, returns Bearer token without setting a cookie |
@@ -569,6 +596,7 @@ The workflow engine does not initialize the retired A2A-T negotiation state mach
 | [User Guide](docs/en/Orchestration%20Center%20User%20Guide.md) | Features, scenarios, quick start, FAQ |
 | [API Reference](docs/en/Orchestration%20Center%20API%20Reference.md) | Full REST API specification |
 | [Developer Guide](docs/en/Orchestration%20Center%20Development%20Guide.md) | Custom handlers, LLM module, extension |
+| [Role Binding Pilot](docs/en/Role%20Binding%20Pilot.md) | Role dispatch contract, Host validation, policy context and technical limits |
 | [GCP Deployment Guide](docs/en/Orchestration%20Center%20GCP%20Containerized%20Deployment%20Guide.md) | Historical GCP guide — current one-click entrypoint is unsupported |
 | [Frontend README](workflow-designer/README.md) | Workflow Designer setup and tech stack |
 | [LLM Config](etc/config/README_en.md) | LLM configuration reference |

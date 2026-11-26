@@ -7,11 +7,15 @@
 from fastapi import HTTPException
 
 from orchestrate.persistence.errors import (
-    StorageConfigError, StorageConflictError, StorageError, StorageUnavailableError, StorageValidationError,
+    RoleReferenceError, StorageConfigError, StorageConflictError, StorageError,
+    StorageUnavailableError, StorageValidationError,
 )
 
 
 def storage_http_exception(exc: StorageError) -> HTTPException:
+    if isinstance(exc, RoleReferenceError):
+        # Role-reference rejections are API-contract codes, not driver details.
+        return HTTPException(422, str(exc))
     if isinstance(exc, StorageConfigError):
         return HTTPException(500, "Storage configuration error")
     if isinstance(exc, StorageUnavailableError):

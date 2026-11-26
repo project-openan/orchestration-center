@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -25,6 +25,7 @@ Endpoints:
   POST /api/v1/orchestrate/sop           — SOP-based orchestration (JSON text or PDF/TXT/MD file upload)
   POST /api/v1/orchestrate/intent        — Intent-based orchestration
   GET  /api/v1/orchestrate/psop/{id}     — Get PSOP workflow by ID
+  GET  /api/v1/orchestrate/psop/{id}/bpmn — Get PSOP workflow by ID, converted to BPMN 2.0 XML
   POST /api/v1/orchestrate/search        — Search/retrieve workflows by natural language intent
   POST /api/v1/orchestrate/execute       — Auto-orchestrate + execute (SSE)
   GET  /api/v1/orchestrate/execute/{id}  — Execute a known PSOP (SSE)
@@ -32,26 +33,33 @@ Endpoints:
   GET  /api/v1/executions/{id}           — Get execution result
 """
 
+import asyncio
 import os
 import re
 import tempfile
+from functools import partial
 from typing import Any, Optional
 
 import anyio
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, Depends
+from fastapi.responses import Response
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from common.config import FLOW_CTL_START_PROCESS_STREAM, FLOW_CTL_PLAN, FLOW_CTL_GENERATE_PSOP, MAX_FILE_SIZE_BYTES
+from orchestrate.core.bpmn_converter import psop_to_bpmn, bpmn_content_disposition
 from orchestrate.handlers.dispatch import get_storage_handler
 from orchestrate.persistence.errors import StorageError
 from orchestrate.server.storage_error_response import storage_http_exception
 from common.custom.interface_type import InterfaceType
 from orchestrate.core.intent_psop_generator import IntentPsopGenerator
+from orchestrate.core.role_generation import GenerationOptions, RoleGenerationError, RoleGenerationServiceError
+from orchestrate.server.generation_support import prepare_generation, role_arguments, validate_before_save, generation_http_exception
 from orchestrate.core.model.preflow import PreFlow
 from orchestrate.core.model.psop import PSOP
 from orchestrate.core.psop_generator import PsopGenerator
 from orchestrate.core.shared_handlers import SharedHandlers
+from orchestrate.runtime.instance_projection import ResolutionRequest, bind_resolution_identity
 from orchestrate.server.sse_executor import dispatch_intent_sse
 from orchestrate.server.response_utils import ok, created, get_agent_cards
 from orchestrate.server.middleware import RateLimiter
@@ -69,20 +77,38 @@ intent_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_GENERATE_PSOP, 10)))
 # Request Models
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class SOPOrchestrateRequest(BaseModel):
-    sop_content: str = Field(..., min_length=1, max_length=50000, description="Natural language SOP steps (markdown text)")
+class SOPOrchestrateRequest(GenerationOptions):
+    sop_content: str = Field(..., min_length=1, max_length=50000,
+                             description="Natural language SOP steps (markdown text)")
     name: Optional[str] = Field(None, max_length=256, description="Optional workflow name")
 
-class IntentOrchestrateRequest(BaseModel):
+class IntentOrchestrateRequest(GenerationOptions):
     intent: str = Field(..., min_length=1, max_length=10000, description="Natural language intent or task description")
     name: Optional[str] = Field(None, max_length=256, description="Optional workflow name")
 
 class ExecuteRequest(BaseModel):
-    task: str = Field(..., min_length=1, max_length=10000, description="Task description used to select an existing PSOP; this endpoint does not generate workflows. No match is reported through SSE error.")
-    name: Optional[str] = Field(None, max_length=256, deprecated=True, description="Deprecated compatibility input; ignored. To name a new workflow, use /orchestrate/intent instead.")
+    task: str = Field(..., min_length=1, max_length=10000,
+                      description="Task description used to select an existing PSOP; this endpoint does not "
+                                  "generate workflows. No match is reported through SSE error.")
+    name: Optional[str] = Field(None, max_length=256, deprecated=True,
+                                description="Deprecated compatibility input; ignored. "
+                                          "To name a new workflow, use /orchestrate/intent instead.")
+    scope: Optional[str] = Field(
+        None, max_length=512, description="Execution scope tenant/site/business_object for role resolution")
+    authorized_instances: Optional[list[str]] = Field(
+        None, description="Requested subset of server-authorized instance IDs; empty means none")
+    caller_id: Optional[str] = Field(None, max_length=256, deprecated=True,
+                                     description="Compatibility input, ignored; authenticated identity is recorded")
+    task_overrides: Optional[dict[str, str]] = Field(
+        None, description="Manual role re-selection: task_id -> instance_id; must satisfy the same "
+                          "eligibility rules as automatic selection")
+    group_overrides: Optional[dict[str, str]] = Field(
+        None, description="Manual re-selection for whole binding groups: binding_group -> instance_id")
+    tie_break: Optional[str] = Field(None, description="Equal-priority policy: error (default) or instance_id")
 
 class SearchRequest(BaseModel):
-    intent: str = Field(..., min_length=1, max_length=10000, description="Natural language intent to search for matching workflows")
+    intent: str = Field(..., min_length=1, max_length=10000,
+                        description="Natural language intent to search for matching workflows")
     top_n: Optional[int] = Field(5, description="Maximum number of results to return", ge=1, le=20)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -94,6 +120,8 @@ async def orchestrate_sop(
     request: Request,
     file: Optional[UploadFile] = File(None),
     name: Optional[str] = Form(None),
+    binding: Optional[str] = Form(None),
+    catalog_version: Optional[str] = Form(None),
     _: Any = Depends(RateLimiter(config, "sop_orchestrate"))
 ):
     """
@@ -122,7 +150,19 @@ async def orchestrate_sop(
                 raw_body = await request.json()
             except Exception:
                 raise HTTPException(status_code=400, detail="Invalid JSON body")
+            try:
+                options = GenerationOptions.model_validate(raw_body)
+            except ValidationError as error:
+                raise HTTPException(status_code=422, detail="Invalid generation options") from error
             body = SOPOrchestrateRequest.model_validate(raw_body)
+        else:
+            try:
+                options = GenerationOptions(
+                    binding=binding if binding is not None else "instance", catalog_version=catalog_version)
+            except ValidationError as error:
+                raise HTTPException(status_code=422, detail="Invalid generation options") from error
+
+        context = await anyio.to_thread.run_sync(partial(prepare_generation, options, "external_sop"))
 
         if file:
             filename = file.filename or ""
@@ -173,23 +213,25 @@ async def orchestrate_sop(
         if not sop_text or not sop_text.strip():
             raise HTTPException(status_code=400, detail="SOP content is empty")
 
-        agent_cards = await get_agent_cards()
+        agent_cards = [] if context else await get_agent_cards()
         preflow = PreFlow(name=workflow_name or "SOP Workflow", steps_md=sop_text)
         generator = PsopGenerator()
         # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         psop = await anyio.to_thread.run_sync(
-            generator.generate_psop_workflow, preflow, agent_cards, abandon_on_cancel=False,
+            partial(generator.generate_psop_workflow, preflow, agent_cards, **role_arguments(context)), abandon_on_cancel=False,
         )
         psop.user_intent = sop_text[:200]
         psop.related_preflow = preflow.id
 
-        save_handler = get_storage_handler(InterfaceType.SAVE_PSOP)
-        save_handler.handle(psop)
+        await anyio.to_thread.run_sync(validate_before_save, psop, context)
+        SharedHandlers.save_psop().handle(psop)
         return created(data=psop.model_dump(), message="PSOP generated and saved")
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
         raise
+    except (RoleGenerationError, RoleGenerationServiceError) as error:
+        raise generation_http_exception(error) from error
     except StorageError as e:
         raise storage_http_exception(e) from e
     except Exception as e:
@@ -219,21 +261,25 @@ async def orchestrate_intent(
     try:
         intent_semaphore.acquire_nowait()
         acquired = True
-        agent_cards = await get_agent_cards()
+        context = await anyio.to_thread.run_sync(partial(prepare_generation, body, "external_intent"))
+        agent_cards = [] if context else await get_agent_cards()
         generator = IntentPsopGenerator()
         # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         psop = await anyio.to_thread.run_sync(
-            generator.generate_psop_from_intent, body.intent, agent_cards, body.name,
+            partial(generator.generate_psop_from_intent, body.intent,
+                    agent_cards, body.name, **role_arguments(context)),
             abandon_on_cancel=False,
         )
 
-        save_handler = get_storage_handler(InterfaceType.SAVE_PSOP)
-        save_handler.handle(psop)
+        await anyio.to_thread.run_sync(validate_before_save, psop, context)
+        SharedHandlers.save_psop().handle(psop)
         return created(data=psop.model_dump(), message="PSOP generated and saved")
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
         raise
+    except (RoleGenerationError, RoleGenerationServiceError) as error:
+        raise generation_http_exception(error) from error
     except StorageError as e:
         raise storage_http_exception(e) from e
     except Exception as e:
@@ -270,6 +316,40 @@ async def get_psop(
     except Exception as e:
         logger.error(f"Failed to get PSOP: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get PSOP: {e}") from e
+
+
+@router.get("/orchestrate/psop/{psop_id}/bpmn")
+async def get_psop_bpmn(
+    psop_id: str,
+    _: Any = Depends(RateLimiter(config, "get_workflow"))
+):
+    """
+    Get a single PSOP workflow by ID, converted to BPMN 2.0 XML.
+
+    Implementation: the PSOP is retrieved through the normal PSOP query path
+    (same storage/handlers as ``GET /orchestrate/psop/{psop_id}``) and then
+    converted to BPMN on the fly, so BPMN needs no separate storage.
+
+    Returns the BPMN 2.0 XML document (``application/xml``) including the
+    BPMNDiagram DI section, ready to be opened in standard BPMN tooling.
+    """
+    try:
+        retrieval = SharedHandlers.retrieval()
+        psop = retrieval.get_psop_by_id(psop_id)
+        if not psop:
+            raise HTTPException(status_code=404, detail=f"PSOP {psop_id} not found")
+        return Response(
+            content=psop_to_bpmn(psop),
+            media_type="application/xml",
+            headers={"Content-Disposition": bpmn_content_disposition(psop)},
+        )
+    except HTTPException:
+        raise
+    except StorageError as e:
+        raise storage_http_exception(e) from e
+    except Exception as e:
+        logger.error(f"Failed to convert PSOP {psop_id} to BPMN: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to convert PSOP to BPMN: {e}") from e
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 4. Search/retrieve workflows
@@ -319,13 +399,29 @@ async def execute_workflow(
 
     To create a workflow, use /orchestrate/intent first, then execute its ID.
     The deprecated name input is accepted for compatibility but has no effect.
+    The scope/authorized_instances/caller_id inputs feed dispatch-time role
+    resolution for role-bound workflows; ordinary workflows ignore them.
 
     Returns an SSE stream with execution progress and results.
     """
     try:
+        from orchestrate.server.sse_executor import resume_execution_sse
+        resumed = await resume_execution_sse(request)
+        if resumed is not None:
+            return resumed
         agent_cards = await get_agent_cards()
+        resolution_request = ResolutionRequest(
+            scope=body.scope,
+            authorized_instance_ids=body.authorized_instances,
+            caller_id=body.caller_id,
+            task_overrides=dict(body.task_overrides or {}),
+            group_overrides=dict(body.group_overrides or {}),
+            tie_break=body.tie_break,
+        )
+        bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             agent_cards, body.task, lang=lang, semaphore=execute_semaphore,
+            resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -347,22 +443,44 @@ async def execute_psop_by_id(
     psop_id: str,
     user_intent: str = Query(None, description="Runtime user intent for context injection"),
     lang: str = Query(None, description="Language for agent responses (zh/en)"),
+    scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
+    authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
+    caller_id: str = Query(None, deprecated=True,
+                           description="Compatibility input, ignored; authenticated identity is recorded"),
+    task_overrides: str = Query(None, description="JSON object task_id -> instance_id for manual role re-selection"),
+    group_overrides: str = Query(
+        None, description="JSON object binding_group -> instance_id for manual group re-selection"),
+    tie_break: str = Query(None, description="Equal-priority policy: error (default) or instance_id"),
     _: Any = Depends(RateLimiter(config, "ext_execute_by_id"))
 ):
     """
     Execute a known PSOP workflow by ID.
 
+    Role-bound workflows resolve at dispatch; pass scope/authorized_instances/
+    caller_id is ignored; authenticated identity is recorded. The instance list
+    may only narrow the server-authorized set.
+
     Returns an SSE stream with execution progress and results.
     """
     try:
+        from orchestrate.server.sse_executor import resume_execution_sse
+        resumed = await resume_execution_sse(request)
+        if resumed is not None:
+            return resumed
         retrieval = SharedHandlers.retrieval()
         psop = retrieval.get_psop_by_id(psop_id)
         if not psop:
             raise HTTPException(status_code=404, detail=f"PSOP {psop_id} not found")
         intent = user_intent or psop.name or psop_id
+        from orchestrate.server.role_execution_api import resolution_request_from_query
+
+        resolution_request = resolution_request_from_query(
+            scope, authorized_instances, caller_id, task_overrides, group_overrides, tie_break,
+        )
+        bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             await get_agent_cards(), intent, lang=lang, semaphore=execute_semaphore,
-            psop=psop,
+            psop=psop, resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -380,6 +498,7 @@ async def execute_psop_by_id(
 
 @router.get("/executions")
 async def list_executions(
+    request: Request,
     _: Any = Depends(RateLimiter(config, "list_executions"))
 ):
     """
@@ -391,6 +510,9 @@ async def list_executions(
     try:
         handler = get_storage_handler(InterfaceType.LIST_EXECUTION_RECORDS)
         records = handler.handle()
+        from orchestrate.server.durable_api import history_visible
+        records = [record for record in records
+                   if await asyncio.to_thread(history_visible, record.get("execution_id"), request)]
         return ok(data=records, message=f"Found {len(records)} execution record(s)")
     except HTTPException:
         raise
@@ -403,12 +525,16 @@ async def list_executions(
 @router.get("/executions/{execution_id}")
 async def get_execution(
     execution_id: str,
+    request: Request,
     _: Any = Depends(RateLimiter(config, "get_execution"))
 ):
     """
     Get execution result by execution ID.
     """
     try:
+        from orchestrate.server.durable_api import history_visible
+        if not await asyncio.to_thread(history_visible, execution_id, request):
+            raise HTTPException(404, "Execution not found")
         handler = get_storage_handler(InterfaceType.GET_EXECUTION_RECORD)
         record = handler.handle(execution_id)
         if not record:

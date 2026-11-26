@@ -24,7 +24,8 @@ import {
     useReactFlow,
     useNodesState,
     useEdgesState,
-    addEdge
+    addEdge,
+    reconnectEdge
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import CustomEdge from './CustomEdge';
@@ -40,8 +41,11 @@ import ToolbarLite from "./toolbar_lite/index.jsx";
 import WorkflowLoader from "./loading/index.jsx";
 import PropertyPanel from "./property_panel/index.jsx";
 import Sidebar from "./sidebar/index.jsx";
-import { normalizeStatus, BACKEND_STATUS } from './utils/index.jsx';
+import RoleSidebar from './sidebar/RoleSidebar.jsx';
+import { normalizeStatus, BACKEND_STATUS, transformWorkflowToReactFlow } from './utils/index.jsx';
 import { AgentRegistryBadges, matchAgentInfo, useAgentRegistryStatus } from './agent_registry.jsx';
+import { hasRoleTasks, workflowBinding, approvedRoleSkills, createRoleTask, filterNodeChanges, filterEdgeChanges } from './rolePolicy.js';
+import { useRoleCatalog, decorateRoleNodes } from './roleCatalog.js';
 
 
 const nodeTypes = {
@@ -355,6 +359,11 @@ const FlowInner = ({
     workflowId,
     workflowName,
     workflowDescription,
+    workflowMetadata,
+    displayCatalog,
+    catalogUnavailable,
+    catalogLoading,
+    roleMode,
     onCancel,
     onSaveSuccess,
     onDirtyChange
@@ -631,20 +640,35 @@ const FlowInner = ({
 
     const [editNodes, setEditNodes, onNodesChange] = useNodesState(initialEditNodes);
     const [editEdges, setEditEdges, onEdgesChange] = useEdgesState([]);
+    const sourceBinding = workflowBinding(importedNodes, workflowBinding(workflowMetadata));
+    const canvasBinding = workflowBinding(editNodes, roleMode ? 'role' : 'instance');
+    const mixedWorkflow = workflowBinding(workflowMetadata) === 'mixed' || sourceBinding === 'mixed' || canvasBinding === 'mixed'
+        || (hasRoleTasks(workflowMetadata) && sourceBinding === 'instance' && importedNodes?.some(node => node.type === 'agentNode'));
+    const catalogEmpty = roleMode && displayCatalog && approvedRoleSkills(displayCatalog).size === 0;
+    const protectedWorkflow = mixedWorkflow || (roleMode && (!displayCatalog || catalogEmpty));
+    const [canvasError, setCanvasError] = useState('');
     const [selectedElement, setSelectedElement] = useState(null);
     const [isDirty, setIsDirty] = useState(false);
     const [showExitConfirm, setShowExitConfirm] = useState(false);
     const [phenomenon, setPhenomenon] = useState('');
+    // Mutable copy of workflowMetadata.steps: the saved design snapshot for
+    // protected canvases. transformReactFlowToPSOP serializes this detached
+    // snapshot (never the canvas), so role task content edits must land here.
+    const [prevMetadata, setPrevMetadata] = useState(workflowMetadata);
+    const [designSteps, setDesignSteps] = useState(() => JSON.parse(JSON.stringify(workflowMetadata?.steps || [])));
+    if (prevMetadata !== workflowMetadata) {
+        setPrevMetadata(workflowMetadata);
+        setDesignSteps(JSON.parse(JSON.stringify(workflowMetadata?.steps || [])));
+    }
 
     useEffect(() => {
-        if (mode === 'edit' && importedNodes?.length > 0) {
-            setEditNodes(importedNodes.map(node => ({
+        if (mode === 'edit') {
+            setEditNodes((importedNodes?.length ? importedNodes : initialEditNodes).map(node => ({
                 ...node,
                 zIndex: 100,
-                deletable: !isBoundaryNode(node),
-                data: { ...node.data, isDark, editable: true }
             })));
             setIsDirty(false);
+            setSelectedElement(null);
         }
     }, [importedNodes, setEditNodes, mode]);
 
@@ -652,20 +676,21 @@ const FlowInner = ({
         if (mode === 'edit') {
             setEditNodes(nds => nds.map(node => ({
                 ...node,
-                data: { ...node.data, isDark, editable: true }
+                deletable: !protectedWorkflow && !isBoundaryNode(node),
+                data: { ...node.data, isDark, editable: !protectedWorkflow }
             })));
         }
-    }, [isDark, mode, setEditNodes]);
+    }, [isDark, mode, setEditNodes, protectedWorkflow, importedNodes]);
 
     useEffect(() => {
-        if (mode === 'edit' && importedEdges?.length > 0) {
-            setEditEdges(importedEdges.map(edge => ({
+        if (mode === 'edit') {
+            setEditEdges((importedEdges || []).map(edge => ({
                 ...edge,
                 type: 'custom',
                 data: { ...edge.data, condition: edge.data?.condition || edge.label || '' },
                 zIndex: 0,
                 animated: true,
-                style: { strokeWidth: 3, stroke: isDark ? '#3b82f6' : '#2563eb' },
+                style: { strokeWidth: 3 },
             })));
             setIsDirty(false);
         }
@@ -675,37 +700,33 @@ const FlowInner = ({
         if (mode === 'edit') {
             setEditEdges(eds => eds.map(edge => ({
                 ...edge,
+                deletable: !protectedWorkflow,
                 style: { ...edge.style, stroke: isDark ? '#3b82f6' : '#2563eb' },
             })));
         }
-    }, [isDark, mode, setEditEdges]);
+    }, [isDark, mode, setEditEdges, protectedWorkflow, importedEdges]);
 
     // Track changes for isDirty
     const onNodesChangeWithDirty = useCallback((changes) => {
         // Defence in depth: never let a keyboard shortcut, controls action, or
         // downstream change stream remove the system-managed START/END markers.
-        const safeChanges = changes.filter(
-            (change) => {
-                if (change.type !== 'remove') return true;
-                const node = editNodes.find(item => item.id === change.id);
-                return !isBoundaryNode(node);
-            }
-        );
+        const safeChanges = filterNodeChanges(changes, editNodes, protectedWorkflow);
         onNodesChange(safeChanges);
         const hasChange = safeChanges.some(c => c.type === 'position' || c.type === 'remove' || c.type === 'add' || c.type === 'reset');
         if (hasChange) setIsDirty(true);
-    }, [onNodesChange, editNodes]);
+    }, [onNodesChange, editNodes, protectedWorkflow]);
 
     const onBeforeDelete = useCallback(async ({ nodes: nodesToDelete = [], edges: edgesToDelete = [] }) => ({
-        nodes: nodesToDelete.filter(node => !isBoundaryNode(node)),
-        edges: edgesToDelete,
-    }), []);
+        nodes: protectedWorkflow ? [] : nodesToDelete.filter(node => !isBoundaryNode(node)),
+        edges: protectedWorkflow ? [] : edgesToDelete,
+    }), [protectedWorkflow]);
 
     const onEdgesChangeWithDirty = useCallback((changes) => {
-        onEdgesChange(changes);
-        const hasChange = changes.some(c => c.type === 'remove' || c.type === 'add' || c.type === 'reset');
+        const safeChanges = filterEdgeChanges(changes, protectedWorkflow);
+        onEdgesChange(safeChanges);
+        const hasChange = safeChanges.some(c => c.type === 'remove' || c.type === 'add' || c.type === 'reset');
         if (hasChange) setIsDirty(true);
-    }, [onEdgesChange]);
+    }, [onEdgesChange, protectedWorkflow]);
 
     useEffect(() => {
         const handleBeforeUnload = (e) => {
@@ -732,13 +753,51 @@ const FlowInner = ({
         if (onDirtyChange) onDirtyChange(isDirty);
     }, [isDirty, onDirtyChange]);
 
-    const handleSaveSuccess = useCallback((savedId) => {
+    const handleSaveSuccess = useCallback((savedId, savedDesign) => {
         setIsDirty(false);
-        if (onSaveSuccess) onSaveSuccess(savedId);
-    }, [onSaveSuccess]);
+        if (!onSaveSuccess) return;
+        if (!savedDesign) { onSaveSuccess(savedId); return; }
+        // Refresh the parent's view as well as its metadata: returning to the
+        // detail view must not reopen the pre-edit topology on the next edit.
+        const graph = transformWorkflowToReactFlow(savedDesign);
+        graph.nodes = graph.nodes.map(node => {
+            const current = editNodes.find(item => node.type === 'agentNode'
+                ? item.type === 'agentNode' && (item.data?.label?.trim() || item.id) === node.id
+                : item.type === node.type);
+            return current ? { ...node, position: current.position } : node;
+        });
+        onSaveSuccess(savedId, savedDesign, graph);
+    }, [onSaveSuccess, editNodes]);
+
+    // Content edits update the canvas and the compatibility snapshot. Mixed
+    // designs keep their existing content-only correction path.
+    const handleRoleTaskContentChange = useCallback((nodeId, taskIndex, patch) => {
+        if (!displayCatalog || approvedRoleSkills(displayCatalog).size === 0) return;
+        const task = editNodes.find(node => node.id === nodeId)?.data?.subtasks?.[taskIndex];
+        if (task?.binding !== 'role') return;
+        const taskId = task.task_id || null;
+        const safePatch = Object.fromEntries(['description', 'agent', 'role_version', 'skill']
+            .filter(key => Object.hasOwn(patch, key)).map(key => [key, patch[key]]));
+        patch = safePatch;
+        setEditNodes(nds => nds.map(node => {
+            if (node.id !== nodeId) return node;
+            const subtasks = (node.data.subtasks || []).map((task, i) => (
+                i === taskIndex ? { ...task, ...patch } : task
+            ));
+            return { ...node, data: { ...node.data, subtasks } };
+        }));
+        setDesignSteps(steps => steps.map(step => {
+            if (step.name !== nodeId) return step;
+            const subtasks = (step.subtasks || []).map((task, i) => (
+                (taskId ? task.task_id === taskId : i === taskIndex) ? { ...task, ...patch } : task
+            ));
+            return { ...step, subtasks };
+        }));
+        setIsDirty(true);
+    }, [displayCatalog, setEditNodes, editNodes, setDesignSteps]);
 
     const onDeleteSelected = useCallback(() => {
-        if (!selectedElement) return;
+        if (!selectedElement || protectedWorkflow) return;
         // Guard by type so both id schemes ('startNode'/'endNode' on a blank
         // canvas and 'START_NODE'/'END_OF_WORKFLOW' on imported workflows) are covered
         const selNode = editNodes.find(n => n.id === selectedElement.id);
@@ -751,10 +810,32 @@ const FlowInner = ({
             setEditEdges((eds) => eds.filter((edge) => edge.id !== selectedElement.id));
         }
         setSelectedElement(null);
-    }, [selectedElement, editNodes, setEditNodes, setEditEdges]);
+        setIsDirty(true);
+    }, [selectedElement, editNodes, setEditNodes, setEditEdges, protectedWorkflow]);
+
+    // React Flow v12 re-invokes onSelectionChange whenever its prop identity
+    // changes (SelectionListenerInner effect). An inline arrow would re-fire on
+    // every parent re-render with the still-selected store elements and
+    // re-open the panel right after the close button cleared it.
+    const handleSelectionChange = useCallback(({ nodes, edges }) => {
+        setSelectedElement(nodes[0] || edges[0] || null);
+    }, []);
+
+    // Closing the edit panel must also deselect in the controlled nodes/edges:
+    // adoption syncs the empty selection back into the RF store, clearing the
+    // canvas highlight and letting re-clicking the same step reopen the panel.
+    const closeEditPanel = useCallback(() => {
+        setSelectedElement(null);
+        setEditNodes(nds => nds.some(node => node.selected)
+            ? nds.map(node => (node.selected ? { ...node, selected: false } : node))
+            : nds);
+        setEditEdges(eds => eds.some(edge => edge.selected)
+            ? eds.map(edge => (edge.selected ? { ...edge, selected: false } : edge))
+            : eds);
+    }, [setEditNodes, setEditEdges]);
 
     const onNodeDragStop = useCallback((event, node) => {
-        if (mode !== 'edit' || !node || node.type !== 'agentNode' || !rfInstance) return;
+        if (protectedWorkflow || mode !== 'edit' || !node || node.type !== 'agentNode' || !rfInstance) return;
 
         const allNodes = rfInstance.getNodes();
         const targetNode = allNodes.find(n => {
@@ -775,6 +856,10 @@ const FlowInner = ({
         });
 
         if (targetNode) {
+            if (roleMode && targetNode.data.type === 'SelfLoop') {
+                setCanvasError(t('workflow.roleCanvas.selfLoop'));
+                return;
+            }
             setEditNodes((nds) => {
                 const sourceNode = nds.find(n => n.id === node.id);
                 if (!sourceNode) return nds;
@@ -796,10 +881,12 @@ const FlowInner = ({
 
             setEditEdges((eds) => eds.filter(e => e.source !== node.id && e.target !== node.id));
             if (selectedElement?.id === node.id) setSelectedElement(null);
+            setIsDirty(true);
         }
-    }, [mode, rfInstance, setEditNodes, setEditEdges, selectedElement]);
+    }, [mode, rfInstance, setEditNodes, setEditEdges, selectedElement, protectedWorkflow, roleMode, t]);
 
     const onConnect = useCallback((params) => {
+        if (protectedWorkflow) return;
         const newEdge = {
             ...params,
             type: 'custom',
@@ -810,15 +897,30 @@ const FlowInner = ({
         };
         setEditEdges((eds) => addEdge(newEdge, eds));
         setIsDirty(true);
-    }, [setEditEdges, isDark]);
+    }, [setEditEdges, isDark, protectedWorkflow]);
+
+    const onReconnect = useCallback((oldEdge, connection) => {
+        if (protectedWorkflow) return;
+        setEditEdges(edges => reconnectEdge(oldEdge, connection, edges));
+        setIsDirty(true);
+    }, [protectedWorkflow, setEditEdges]);
 
     const onDrop = useCallback((event) => {
         event.preventDefault();
+        if (protectedWorkflow) return;
         const rawData = event.dataTransfer.getData('application/agent-template');
         if (!rawData || !rfInstance) return;
 
         try {
             const templateData = JSON.parse(rawData);
+            if ((templateData.binding === 'role') !== roleMode) {
+                setCanvasError(t('workflow.roleCanvas.mixed'));
+                return;
+            }
+            const newSubtask = roleMode ? createRoleTask(templateData, displayCatalog) : {
+                agent: templateData.agent, skill: templateData.skill,
+                skillsList: templateData.skillsList || [], description: templateData.description, status: 'pending',
+            };
             const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
 
             // Search for nodes under the release location and attempt to merge them
@@ -837,19 +939,17 @@ const FlowInner = ({
             });
 
             if (targetNode) {
+                if (roleMode && targetNode.data.type === 'SelfLoop') {
+                    setCanvasError(t('workflow.roleCanvas.selfLoop'));
+                    return;
+                }
                 // Merge into existing steps
                 setEditNodes((nds) => nds.map(n => {
                     if (n.id === targetNode.id) {
                         const currentSubtasks = n.data.subtasks || [];
                         const newSubtasks = [
                             ...currentSubtasks,
-                            {
-                                agent: templateData.agent,
-                                skill: templateData.skill,
-                                skillsList: templateData.skillsList || [],
-                                description: templateData.description,
-                                status: 'pending'
-                            }
+                            newSubtask
                         ];
                         return {
                             ...n,
@@ -870,13 +970,6 @@ const FlowInner = ({
                     nextIndex += 1;
                 }
                 const newId = `step${nextIndex}`;
-                const newSubtask = {
-                    agent: templateData.agent,
-                    skill: templateData.skill,
-                    skillsList: templateData.skillsList || [],
-                    description: templateData.description,
-                    status: 'pending'
-                };
                 const newNode = {
                     id: newId,
                     type: 'agentNode',
@@ -887,6 +980,7 @@ const FlowInner = ({
                         subtasks: [newSubtask],
                         status: 'pending',
                         name: newId,
+                        type: 'AllSuccess',
                         editable: true,
                         isDark,
                     },
@@ -894,16 +988,17 @@ const FlowInner = ({
                     height: 100 + 1 * 60
                 };
                 setEditNodes((nds) => nds.concat(newNode));
-                setIsDirty(true);
             }
+            setIsDirty(true);
+            setCanvasError('');
         } catch (error) {
-            console.error(t('error.parse_failed'), error);
+            setCanvasError(t('workflow.roleCanvas.invalidDrop'));
         }
-    }, [editNodes, screenToFlowPosition, setEditNodes, isDark, t, rfInstance]);
+    }, [editNodes, screenToFlowPosition, setEditNodes, isDark, t, rfInstance, protectedWorkflow, roleMode, displayCatalog]);
 
-    const displayNodes = mode === 'view' ? viewPositionNodes : editNodes;
+    const displayNodes = useMemo(() => decorateRoleNodes(mode === 'view' ? viewPositionNodes : editNodes, displayCatalog),
+        [mode, viewPositionNodes, editNodes, displayCatalog]);
     const displayEdges = mode === 'view' ? viewPositionEdges : editEdges;
-
     return (
         <div ref={containerRef} className={`h-full w-full relative overflow-hidden select-none transition-colors duration-300 ${themeClasses.container}`}>
             <ReactFlow
@@ -914,10 +1009,11 @@ const FlowInner = ({
                 onNodesChange={mode === 'edit' ? onNodesChangeWithDirty : onViewNodesChange}
                 onEdgesChange={mode === 'edit' ? onEdgesChangeWithDirty : onViewEdgesChange}
                 onConnect={mode === 'edit' ? onConnect : undefined}
+                onReconnect={mode === 'edit' ? onReconnect : undefined}
                 onNodeDragStop={(e, n) => { onNodeDragStop(e, n); setIsDirty(true); }}
                 onDrop={mode === 'edit' ? onDrop : undefined}
                 onDragOver={mode === 'edit' ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } : undefined}
-                onSelectionChange={mode === 'edit' ? (({ nodes, edges }) => setSelectedElement(nodes[0] || edges[0] || null)) : undefined}
+                onSelectionChange={mode === 'edit' ? handleSelectionChange : undefined}
                 onNodeClick={(e, n) => {
                     if (mode === 'view') {
                         e.stopPropagation();
@@ -931,9 +1027,12 @@ const FlowInner = ({
                         if (onSelectChange) onSelectChange(null);
                     }
                 }}
-                nodesConnectable={mode === 'edit'}
+                nodesConnectable={mode === 'edit' && !protectedWorkflow}
+                edgesReconnectable={mode === 'edit' && !protectedWorkflow}
                 nodesDraggable={true}
                 elementsSelectable={true}
+                multiSelectionKeyCode={['Shift', 'Control', 'Meta']}
+                selectionKeyCode="Shift"
                 onBeforeDelete={mode === 'edit' ? onBeforeDelete : undefined}
                 onInit={setRfInstance}
                 colorMode={isDark ? 'dark' : 'light'}
@@ -949,6 +1048,7 @@ const FlowInner = ({
                 }}
             >
                 <Background color={themeClasses.gridColor} gap={20} variant="dots" />
+                {catalogUnavailable && <p role="status" className="absolute bottom-24 left-4 z-40 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 p-3 text-sm">{t('workflow.catalogUnavailable')}</p>}
                 <Controls showInteractive={mode === 'edit'} position="bottom-left" />
             </ReactFlow>
 
@@ -1000,21 +1100,25 @@ const FlowInner = ({
                 <>
                     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
                         <div className="pointer-events-auto">
-                            <Toolbar isDark={isDark} nodes={editNodes} edges={editEdges} workflowId={workflowId} workflowName={workflowName} workflowDescription={workflowDescription} onCancel={handleCancel} onClear={() => { setEditNodes(initialEditNodes); setEditEdges([]); setIsDirty(true); }} onFitView={() => fitView({ padding: 0.4, duration: 800 })} onSaveSuccess={handleSaveSuccess} />
+                            <Toolbar isDark={isDark} nodes={editNodes} edges={editEdges} workflowId={workflowId} workflowName={workflowName} workflowDescription={workflowDescription} workflowMetadata={workflowMetadata} roleMode={roleMode} protectedWorkflow={protectedWorkflow} catalog={displayCatalog} designSteps={designSteps} onCancel={handleCancel} onClear={() => { if (protectedWorkflow) return; setEditNodes(initialEditNodes); setEditEdges([]); setIsDirty(true); }} onFitView={() => fitView({ padding: 0.4, duration: 800 })} onSaveSuccess={handleSaveSuccess} />
                         </div>
                     </div>
                     <div className="absolute left-1/2 -translate-x-1/2 bottom-8 h-auto z-40 pointer-events-none flex items-center min-h-0">
                         <div className={`pointer-events-auto flex items-center backdrop-blur-md border rounded-[2rem] overflow-hidden transition-all shadow-2xl ${themeClasses.panel}`}>
-                            <Sidebar isDark={isDark} />
+                            {!protectedWorkflow && (roleMode ? <RoleSidebar catalog={displayCatalog} isDark={isDark} /> : <Sidebar isDark={isDark} />)}
+                            {protectedWorkflow && <p role="note" className="px-5 py-3 text-sm">{t(mixedWorkflow ? 'workflow.roleProtection'
+                                : catalogLoading ? 'common.loading' : catalogEmpty ? 'workflow.roleCanvas.emptyCatalog' : 'workflow.roleEditUnavailable')}</p>}
                         </div>
                     </div>
                     <div className={`absolute justify-center right-4 top-4 bottom-4 w-80 z-40 pointer-events-none flex flex-col min-h-0 transition-all duration-300 transform ${selectedElement ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0'}`}>
                         <div className={`pointer-events-auto flex flex-col backdrop-blur-md border rounded-2xl overflow-hidden ${themeClasses.panel}`}>
                             {selectedElement && (
-                                <PropertyPanel isDark={isDark} selectedElement={selectedElement} nodes={editNodes} edges={editEdges} setNodes={(nds) => { setEditNodes(nds); setIsDirty(true); }} setEdges={(eds) => { setEditEdges(eds); setIsDirty(true); }} onDelete={onDeleteSelected} setPhenomenon={setPhenomenon} onClose={() => setSelectedElement(null)} />
+                                <PropertyPanel readOnly={protectedWorkflow} roleMode={roleMode} isDark={isDark} selectedElement={selectedElement} nodes={displayNodes} edges={editEdges} setNodes={(nds) => { if (protectedWorkflow) return; setEditNodes(nds); setIsDirty(true); }} setEdges={(eds) => { if (protectedWorkflow) return; setEditEdges(eds); setIsDirty(true); }} onDelete={onDeleteSelected} setPhenomenon={setPhenomenon} onClose={closeEditPanel} catalog={displayCatalog} onRoleTaskContentChange={handleRoleTaskContentChange} />
                             )}
                         </div>
                     </div>
+                    {canvasError && <button type="button" role="alert" onClick={() => setCanvasError('')}
+                        className="absolute top-24 left-4 z-50 rounded-lg border border-red-300 bg-red-50 text-red-800 p-3 text-sm">{canvasError}</button>}
                     {showExitConfirm && (
                         <div className={`fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/40 dark:bg-zinc-950/60 backdrop-blur-md`}>
                             <div className={`relative w-full max-w-sm p-6 rounded-[2rem] border shadow-2xl ${isDark ? 'bg-zinc-900 border-zinc-700/50 text-zinc-100' : 'bg-white border-slate-200 text-slate-900'}`}>
@@ -1046,11 +1150,24 @@ const UnifiedWorkflow = ({
     workflowId,
     workflowName,
     workflowDescription,
+    workflowMetadata,
+    newWorkflowBinding,
     onCancel,
     onSaveSuccess,
     onDirtyChange
 }) => {
     const { t } = useTranslation();
+
+    const sourceNodes = mode === 'view' ? nodes : importedNodes || [];
+    const containsRoles = hasRoleTasks(workflowMetadata) || hasRoleTasks(sourceNodes);
+    const binding = newWorkflowBinding ?? 'instance';
+    const newWorkflow = !workflowId && !workflowMetadata?.id && !sourceNodes.some(node => node.type === 'agentNode');
+    const roleMode = containsRoles || (newWorkflow && binding === 'role');
+    const version = workflowMetadata?.catalog_version || sourceNodes.find(node => node.data?.catalogVersion)?.data.catalogVersion;
+    const { catalog, unavailable, loading: catalogLoading } = useRoleCatalog(version, roleMode, { allowLatest: newWorkflow });
+    const effectiveMetadata = useMemo(() => newWorkflow && roleMode && catalog
+        ? { ...workflowMetadata, catalog_version: catalog.catalog_version, source: 'graph_editor' }
+        : workflowMetadata, [newWorkflow, roleMode, catalog, workflowMetadata]);
 
     if (mode === 'view' && isLoading) {
         return <WorkflowLoader isDark={isDark} loadingMessage={loadingMessage} />;
@@ -1089,6 +1206,11 @@ const UnifiedWorkflow = ({
                     workflowId={workflowId}
                     workflowName={workflowName}
                     workflowDescription={workflowDescription}
+                    workflowMetadata={effectiveMetadata}
+                    displayCatalog={catalog}
+                    catalogUnavailable={unavailable}
+                    catalogLoading={catalogLoading}
+                    roleMode={roleMode}
                     onCancel={onCancel}
                     onSaveSuccess={onSaveSuccess}
                     onDirtyChange={onDirtyChange}

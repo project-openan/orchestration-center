@@ -117,3 +117,42 @@ class TestSeedDefaultPsopsToFileStorage:
             assert record["steps"], f"seed without steps: {path.name}"
             ids.add(record["id"])
         assert len(ids) == 19, "seed workflow ids must be unique"
+
+
+@pytest.mark.parametrize('mode,clause', [('mysql', 'ON DUPLICATE KEY UPDATE id = id'), ('postgresql', 'ON CONFLICT (id) DO NOTHING')])
+def test_sql_seed_uses_idempotent_dialect_and_keeps_going_after_rollback(seed_dir, monkeypatch, mode, clause):
+    from unittest.mock import MagicMock
+    from database.utils import seed_data
+    connection = MagicMock()
+    connection.cursor.return_value.__enter__.return_value.rowcount = 1
+    connection.commit.side_effect = [OSError('synthetic commit failure'), None]
+    monkeypatch.setattr('database.utils.db_connection.create_connection', lambda: connection)
+    monkeypatch.setattr(seed_data, 'persistence_mode', lambda: mode)
+    assert seed_data.seed_default_psops(seed_dir) == 1
+    assert connection.rollback.call_count == 1
+    assert connection.commit.call_count == 2
+    sql = connection.cursor.return_value.__enter__.return_value.execute.call_args.args[0]
+    assert clause in sql
+    connection.close.assert_called_once()
+
+
+def test_mysql_table_creation_reaches_default_seed(monkeypatch):
+    from unittest.mock import MagicMock
+    from database.utils import table_creation
+    seed, backend = MagicMock(), MagicMock()
+    monkeypatch.setattr(table_creation, 'persistence_mode', lambda: 'mysql')
+    monkeypatch.setattr('database.utils.mysql_connection.get_backend', lambda: backend)
+    monkeypatch.setattr(table_creation, 'seed_default_psops', seed)
+    table_creation.create_tables()
+    backend.create_tables.assert_called_once()
+    seed.assert_called_once()
+
+
+def test_file_backend_seeds_its_own_injected_directory(tmp_path, monkeypatch):
+    from orchestrate.core.persistence import WorkflowStorage
+    from orchestrate.persistence.file_backend import FilePersistenceBackend
+    storage = WorkflowStorage(str(tmp_path))
+    backend = FilePersistenceBackend(storage=storage)
+    backend.initialize()
+    assert len(storage.list_psops()) == 19
+    assert all(storage.load_psop(workflow_id) for workflow_id in storage.list_psops())

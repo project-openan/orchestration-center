@@ -110,3 +110,23 @@ def test_unbalanced_json_reports_possible_truncation():
 def test_braces_inside_strings_do_not_confuse_the_span():
     text = 'prefix {"name": "a \\"quoted\\" {brace} case"} suffix'
     assert parse_llm_json_response(text) == {"name": 'a "quoted" {brace} case'}
+
+
+@pytest.mark.parametrize("prefix,suffix", [("", ""), ("Matching results:\n", "\nDone")])
+def test_array_of_objects_is_not_truncated_to_first_object(prefix, suffix):
+    values = [{"action_id": "a1", "nested": {"text": "[quoted]"}}, {"action_id": "a2"}]
+    assert parse_llm_json_response(prefix + json.dumps(values) + suffix) == values
+
+
+def test_redacted_parse_error_keeps_response_out_of_logs_and_exceptions():
+    from loguru import logger
+
+    output = []
+    sink = logger.add(lambda message: output.append(str(message)))
+    try:
+        with pytest.raises(ValueError) as error:
+            parse_llm_json_response("private-model-response", redact_errors=True)
+        assert "private-model-response" not in str(error.value)
+        assert "private-model-response" not in "".join(output)
+    finally:
+        logger.remove(sink)

@@ -423,7 +423,7 @@ When executing a workflow, the system pushes execution progress in real time via
 
 ### 3.3 Usage Limitations
 
-- The current version only supports parsing sections titled "5. Interaction Flow" in PDF documents
+- PDF parsing accepts "5. Interaction Flow" and numbering variants such as "6. Interaction Flow". Keep the English topic title. See [SPG import and defaults](SPG%20Import.md).
 - Workflow IDs are automatically generated upon saving and do not support customization
 - Agents started by the sample script are for demo purposes only; production environments should connect to real Agent services
 

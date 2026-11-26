@@ -19,6 +19,7 @@ from common.custom import HandlerRegistry, InterfaceType
 class MachineIdentity:
     subject: str
     role: str | None = None
+    subject_id: str | None = None
 
 
 def external_auth_mode(conf: dict) -> str:
@@ -70,7 +71,7 @@ async def authenticate_external(request: Request, conf: dict) -> MachineIdentity
         from orchestrate.server.auth import require_user_authentication, require_session_identity
         require_user_authentication()
         identity = require_session_identity(request, allow_cookie=False)
-        return MachineIdentity(identity.username, identity.role)
+        return MachineIdentity(identity.username, identity.role, identity.subject_id)
     if mode == "custom":
         try:
             identity = await _custom_handler().handle(request)

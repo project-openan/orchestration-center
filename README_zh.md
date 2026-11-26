@@ -137,6 +137,10 @@ sequenceDiagram
 
 MySQL 配置、存储边界与容器启动步骤见 [MySQL 持久化配置](docs/zh/MySQL持久化配置.md)。
 
+SPG 批量导入、默认库执行依赖及已有示例的安全升级见 [SPG 导入](docs/zh/SPG导入.md)。默认 AN L4 卡片是规划目录，不代表业务 Agent 已部署。
+
+PSOP 意图检索、可选的 embedding 召回开关及其降级行为见 [PSOP 检索](docs/zh/PSOP检索.md)。
+
 ## 快速开始
 
 ### 环境要求

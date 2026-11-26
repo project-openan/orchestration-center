@@ -156,6 +156,20 @@ def _upgrade_password_scheme(
         close_resource(conn)
 
 
+def _shared_auth_store():
+    """Resolve the same authoritative store for HTTP and legacy SQL callers."""
+    from database.utils.connection_provider import current_provider
+    from common.util.persistence_mode import persistence_mode
+    provider = current_provider()
+    if provider is None and persistence_mode() in {"postgresql", "mysql"}:
+        from orchestrate.server.sql_sessions import LegacyAuthProvider
+        provider = LegacyAuthProvider(persistence_mode(), create_connection)
+    if provider is not None:
+        from orchestrate.server.sql_sessions import shared_store
+        return shared_store(provider)
+    return None
+
+
 def authenticate_user(username: str, password: str) -> Optional[dict]:
     """Verify username/plaintext password. Returns user dict or None.
 
@@ -165,6 +179,9 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
     no forced reset. A successful legacy or v2 login is opportunistically
     upgraded to the current bcrypt scheme.
     """
+    shared = _shared_auth_store()
+    if shared is not None:
+        return shared.authenticate(username, password)
     conn = require_connection(create_connection())
     try:
         result, err = execute_query(
@@ -238,6 +255,9 @@ def list_users() -> list[dict]:
 
 def delete_user(username: str) -> bool:
     """Delete a user. Returns True on success."""
+    shared = _shared_auth_store()
+    if shared is not None:
+        return shared.delete_account(username)
     conn = require_connection(create_connection())
     try:
         _, err = execute_query(
@@ -286,6 +306,9 @@ def update_password(username: str, new_password: str) -> bool:
     """Update a user's password (plaintext) under the current scheme and
     clear any pending forced-change flag. Returns True on success.
     """
+    shared = _shared_auth_store()
+    if shared is not None:
+        return shared.update_password(username, new_password)
     conn = require_connection(create_connection())
     try:
         # bcrypt (v3) embeds its own salt; the salt column stays empty.

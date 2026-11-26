@@ -51,6 +51,50 @@ def test_architecture_import_direction(source, forbidden):
     assert violations == []
 
 
+def _host_import_violations(source):
+    allowed = {"host_agent.role_contract", "host_agent.dispatch_auth"}
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            modules = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            # Package-root imports can resolve lazy runtime exports as well as
+            # modules. Check each imported name rather than allowing the root.
+            modules = ([f"host_agent.{alias.name}" for alias in node.names]
+                       if node.module == "host_agent" else [node.module])
+        else:
+            continue
+        yield from (module for module in modules
+                    if (module == "host_agent" or module.startswith("host_agent."))
+                    and module not in allowed)
+
+
+def test_orchestrate_only_imports_host_wire_contracts():
+    violations = [
+        f"{path.relative_to(ROOT)}: {module}"
+        for path in (ROOT / "orchestrate").rglob("*.py")
+        for module in _host_import_violations(path.read_text(encoding="utf-8-sig"))
+    ]
+    assert violations == []
+
+
+@pytest.mark.parametrize("source,allowed", [
+    ("import host_agent.role_contract as contract", True),
+    ("from host_agent.role_contract import RoleSnapshot", True),
+    ("import host_agent.dispatch_auth", True),
+    ("from host_agent import role_contract, dispatch_auth", True),
+    ("import host_agent", False),
+    ("import host_agent.runtime", False),
+    ("from host_agent import runtime", False),
+    ("from host_agent import HostAgentExecutor", False),
+    ("from host_agent.config import HostAgentConfig", False),
+    ("from host_agent import *", False),
+    ("import host_agent.role_contract_extra", False),
+    ("from host_agent.role_contract.runtime import Executor", False),
+])
+def test_host_contract_allowlist_covers_import_forms(source, allowed):
+    assert bool(list(_host_import_violations(source))) is not allowed
+
+
 def _run_cold_import(code):
     # A separate interpreter prevents earlier pytest imports from registering
     # handlers or masking a transitive package dependency.

@@ -144,7 +144,9 @@ class GenericLLM:
         logger.debug("GenericLLM request")
         if self._stream:
             body = dict(body)
-            body.setdefault('stream', True)
+            if 'stream' in body and body['stream'] is not True:
+                raise ValueError("Streaming configuration conflicts with request body.stream")
+            body['stream'] = True
             return self._do_stream_request(body, headers)
         response = self._client.post(self._url, headers=headers, json=body)
         response.raise_for_status()
@@ -159,51 +161,67 @@ class GenericLLM:
         """
         answer_parts: List[str] = []
         reasoning_parts: List[str] = []
-        finish_reason = None
-        usage = None
+        completed = False
         started = _time.monotonic()
         with self._client.stream('POST', self._url, headers=headers, json=body) as response:
             response.raise_for_status()
-            for line in response.iter_lines():
-                if _time.monotonic() - started > self._stream_total_timeout:
-                    raise TimeoutError(
-                        f"Streaming LLM response exceeded total timeout "
-                        f"{self._stream_total_timeout}s (server keep-alives suppress read timeouts)"
-                    )
-                if not line or not line.startswith('data:'):
-                    continue
-                payload = line[len('data:'):].strip()
-                if not payload or payload == '[DONE]':
-                    if payload == '[DONE]':
-                        break
-                    continue
+            if response.headers.get('content-type', '').split(';', 1)[0].strip().lower() != 'text/event-stream':
+                raise ValueError("Streaming LLM returned a non-SSE response")
+            data_lines: List[str] = []
+
+            def events():
+                for line in response.iter_lines():
+                    if _time.monotonic() - started > self._stream_total_timeout:
+                        raise TimeoutError("Streaming LLM response exceeded total timeout")
+                    if not line:
+                        if data_lines:
+                            yield '\n'.join(data_lines)
+                            data_lines.clear()
+                    elif line.startswith('data:'):
+                        data_lines.append(line[5:].lstrip(' '))
+                # An unterminated event is not dispatched: EOF is not an SSE
+                # event boundary. Completion must come from a full event.
+
+            for payload in events():
+                if payload.strip() == '[DONE]':
+                    completed = True
+                    break
                 try:
                     chunk = json.loads(payload)
-                except json.JSONDecodeError:
-                    logger.debug(f"Ignoring non-JSON SSE payload: {payload[:100]}")
-                    continue
-                if chunk.get('usage'):
-                    usage = chunk['usage']
+                except json.JSONDecodeError as exc:
+                    raise ValueError("Streaming LLM returned invalid JSON") from exc
+                if not isinstance(chunk, dict) or 'error' in chunk:
+                    raise ValueError("Streaming LLM returned an error or invalid event")
                 choices = chunk.get('choices') or []
+                if not isinstance(choices, list):
+                    raise ValueError("Streaming LLM returned invalid choices")
                 if not choices:
-                    logger.warning(f"SSE chunk without choices: {str(chunk)[:200]}")
+                    # Optional usage-only chunks carry no content.
                     continue
-                delta = choices[0].get('delta') or {}
-                if choices[0].get('finish_reason'):
-                    finish_reason = choices[0]['finish_reason']
+                choice = choices[0]
+                if not isinstance(choice, dict):
+                    raise ValueError("Streaming LLM returned an invalid choice")
+                reason = choice.get('finish_reason')
+                if reason is not None:
+                    if reason != 'stop':
+                        raise ValueError(f"Streaming LLM did not complete normally: {reason}")
+                    completed = True
+                delta = choice.get('delta') or {}
+                if not isinstance(delta, dict):
+                    raise ValueError("Streaming LLM returned an invalid delta")
                 content = delta.get('content')
+                reasoning = delta.get('reasoning_content')
+                if any(value is not None and not isinstance(value, str) for value in (content, reasoning)):
+                    raise ValueError("Streaming LLM returned non-text content")
                 if content:
                     answer_parts.append(content)
-                reasoning = delta.get('reasoning_content')
                 if reasoning:
                     reasoning_parts.append(reasoning)
+        if not completed:
+            raise ValueError("Streaming LLM ended before a completion marker")
         answer = ''.join(answer_parts)
         if not answer:
-            logger.warning(
-                f"Streaming LLM response produced EMPTY content: "
-                f"finish_reason={finish_reason}, reasoning_chars={len(''.join(reasoning_parts))}, "
-                f"usage={usage}"
-            )
+            raise ValueError("Streaming LLM produced no answer content")
         return {
             'choices': [{
                 'message': {

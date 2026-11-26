@@ -248,9 +248,14 @@ def load_model_configs(
             "proxy": raw.get("proxy", ""),
             "stream_total_timeout": float(stream_total_timeout),
         })
-        # extra_body lets a deployment add provider-specific request fields
-        # (e.g. DeepSeek's effort/max_tokens) on top of the profile contract.
+        if config['stream'] and not config.get('response', {}).get('answer'):
+            raise ValueError(f"{selected}: {capability} does not support chat streaming")
+        # Provider options may extend, never replace, the protocol inputs.
         if raw.get("extra_body"):
+            reserved = set(config.get('body', {})) | {'model', 'messages', 'input', 'query', 'documents', 'stream'}
+            overlap = reserved.intersection(raw['extra_body'])
+            if overlap:
+                raise ValueError(f"{selected}: {capability}.extra_body overrides reserved fields: {', '.join(sorted(overlap))}")
             config["body"] = {**config.get("body", {}), **raw["extra_body"]}
         result[capability] = config
     return result

@@ -34,7 +34,8 @@ def _extract_json_span(text: str) -> Optional[str]:
     closes -- the latter usually means the answer was cut off by an output
     token limit.
     """
-    for opener, closer in (("{", "}"), ("[", "]")):
+    pairs = sorted((("{", "}"), ("[", "]")), key=lambda pair: text.find(pair[0]) if pair[0] in text else len(text))
+    for opener, closer in pairs:
         start = text.find(opener)
         if start == -1:
             continue
@@ -66,6 +67,8 @@ def _extract_json_span(text: str) -> Optional[str]:
 def parse_llm_json_response(
     llm_response: str,
     output_model: Optional[Type[BaseModel]] = None,
+    *,
+    redact_errors: bool = False,
 ) -> Union[BaseModel, Dict[str, Any], List[Any]]:
     """Extract and parse JSON from LLM response code blocks.
 
@@ -89,9 +92,15 @@ def parse_llm_json_response(
     else:
         # Models do not always honor the ```json fence request: accept a bare
         # JSON object/array as well (leading/trailing prose is tolerated).
-        json_str = _extract_json_span(llm_response)
+        try:
+            # Prefer the complete JSON value: scanning for '{' first would
+            # otherwise truncate an array of objects to its first element.
+            json.loads(llm_response)
+            json_str = llm_response
+        except (json.JSONDecodeError, TypeError):
+            json_str = _extract_json_span(llm_response)
         if json_str is None:
-            preview = llm_response[:200] if len(llm_response) > 200 else llm_response
+            preview = "[redacted]" if redact_errors else llm_response[:200]
             error_msg = (
                 "No JSON code block found in LLM answer and no balanced JSON "
                 "object/array detected (possible output truncation by the "
@@ -100,7 +109,7 @@ def parse_llm_json_response(
             logger.error(error_msg)
             raise ValueError(error_msg)
     if not json_str:
-        preview = llm_response[:200] if len(llm_response) > 200 else llm_response
+        preview = "[redacted]" if redact_errors else llm_response[:200]
         error_msg = f"Empty JSON content found in code block. Response preview: {preview}"
         logger.error(error_msg)
         raise ValueError(error_msg)
@@ -113,5 +122,5 @@ def parse_llm_json_response(
         logger.error(f"Invalid JSON format: {e}")
         raise ValueError(f"Invalid JSON format: {e}") from e
     except Exception as e:
-        logger.error(f"Failed to parse JSON into model: {e}")
+        logger.error("Failed to parse JSON into model: {}", type(e).__name__ if redact_errors else e)
         raise

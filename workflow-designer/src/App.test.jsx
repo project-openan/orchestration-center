@@ -20,10 +20,10 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/components/common/header/index.jsx', () => ({
-    default: ({onLogout}) => <div data-testid="header" data-has-logout={onLogout ? 'true' : 'false'}/>,
+    default: ({onLogout}) => <button data-testid="header" data-has-logout={onLogout ? 'true' : 'false'} onClick={onLogout}/>,
 }));
 vi.mock('@/components/common/login/index.jsx', () => ({
-    default: () => <div data-testid="login-page"/>,
+    default: ({singleAccount}) => <div data-testid="login-page" data-single-account={String(singleAccount)}/>,
 }));
 vi.mock('@/components/common/password_change/index.jsx', () => ({default: () => null}));
 vi.mock('./components/registry_center/index.jsx', () => ({default: () => null}));
@@ -93,6 +93,24 @@ describe('App startup auth routing', () => {
         expect(container.querySelector('[data-testid="backend-unreachable"]')).not.toBeNull();
         expect(container.querySelector('[data-testid="login-page"]')).toBeNull();
         expect(container.querySelector('[data-testid="header"]')).toBeNull();
+    });
+
+    it.each([true, false])('uses the backend account mode even when registration is disabled: %s', async singleAccount => {
+        authCheckMock.mockResolvedValue({auth_required: true, authenticated: false,
+            registration_enabled: false, single_account: singleAccount});
+        act(() => root.render(<App/>));
+        await flush();
+        expect(container.querySelector('[data-testid="login-page"]').dataset.singleAccount).toBe(String(singleAccount));
+    });
+
+    it('keeps the multi-user account mode after logout', async () => {
+        authCheckMock.mockResolvedValue({auth_required: true, authenticated: true,
+            username: 'alice', role: 'user', single_account: false});
+        act(() => root.render(<App/>));
+        await flush();
+        await act(async () => container.querySelector('[data-testid="header"]').click());
+        expect(logoutMock).toHaveBeenCalledOnce();
+        expect(container.querySelector('[data-testid="login-page"]').dataset.singleAccount).toBe('false');
     });
 
     it('recovers to the authenticated app after a successful retry', async () => {

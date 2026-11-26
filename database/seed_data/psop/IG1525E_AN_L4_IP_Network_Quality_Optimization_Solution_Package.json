@@ -11,8 +11,8 @@
         {
           "task_id": "314c81d9-5d69-4f8c-b43c-b219da59b7d3",
           "description": "Input IP network quality optimization intent from service layer quality optimization agent to network layer optimization agent",
-          "agent": "Energy Saving Intent Agent",
-          "skill": "Intent Delivery",
+          "agent": "IP Quality Intent Agent",
+          "skill": "IP Quality Intent Delivery",
           "status": "pending"
         }
       ],
@@ -78,8 +78,8 @@
         {
           "task_id": "5eac1f7f-845f-4194-8600-95cbbd807789",
           "description": "Report optimization results to intent manager to verify intent fulfillment",
-          "agent": "RAN Energy Saving Agent",
-          "skill": "RAN ES Intent Reporting",
+          "agent": "IP Quality Intent Agent",
+          "skill": "IP Quality Intent Fulfillment Reporting",
           "status": "pending"
         }
       ],
