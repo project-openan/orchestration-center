@@ -53,10 +53,11 @@ All three supported persistence modes import missing defaults idempotently.
 Existing workflow IDs are never overwritten by startup seeding. The solution
 package links are examples: their presence does not prove Agent readiness.
 
-Seven prebuilt workflows shipped with wrong-domain skill bindings. New installs
-receive corrected bindings, including distinct radio-service, IP-quality intent,
-and core-network analytics planning capabilities. Existing installations must
-not overwrite operator edits automatically. Preview the narrow migration:
+New installations receive 19 default PSOPs regenerated with a vision model.
+Solution packages retain their workflow IDs. Each example covers the actions
+that matched available skills. For example, IG1523B covers core network fault
+diagnosis. Existing installations can preview migration for the seven defaults
+with known predecessor fingerprints.
 
 ```powershell
 python -m scripts.migrate_default_psops

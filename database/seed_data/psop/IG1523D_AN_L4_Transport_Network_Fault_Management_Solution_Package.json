@@ -6,31 +6,23 @@
   "steps": [
     {
       "name": "step1",
-      "type": "AnySuccess",
+      "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "b1079331-28db-4046-9d6f-c5a7af3697ba",
-          "description": "Continuously monitor network performance metrics and alarm information in real-time",
+          "task_id": "297d612c-92a0-43df-8810-7407bd0bd95b",
+          "description": "Monitor transport network alarms and abnormal performance data to detect faults or potential risks",
           "agent": "Transport Network Fault Management Agent",
           "skill": "Transport Network Fault Identification",
-          "status": "pending"
-        },
-        {
-          "task_id": "72bf7447-d55e-44aa-8086-432132391c16",
-          "description": "Receive a complaint or troubleshooting ticket",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Fault Incident Receiving and Distribution",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step2",
-          "condition": "Anomaly detected by monitoring"
-        },
-        {
-          "step": "step6",
-          "condition": "Complaint/ticket received"
+          "condition": ""
         }
       ],
       "layer": 0,
@@ -41,11 +33,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "41652e58-babd-4a16-8905-b799444de3eb",
-          "description": "Automatically identify faults and potential network anomalies, diagnose root causes and locations, generate corresponding repair solutions, automatically execute and verify the result based on collected data",
+          "task_id": "94c722dc-120f-44ff-8254-22867f8715e4",
+          "description": "Perform end-to-end path analysis and root cause localization for the detected transport network anomaly",
           "agent": "Transport Network Fault Management Agent",
-          "skill": "Transport Network Fault Handling",
-          "status": "pending"
+          "skill": "Transport Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -62,17 +57,20 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "c67d817b-a46b-406a-b3b6-d34fac6a47f1",
-          "description": "Report identified anomaly details (including root causes and locations) to the cross-domain OSS system's Fault Agent for oversight",
+          "task_id": "7f719f96-2817-4bb8-87d5-622ad95bc6a2",
+          "description": "Execute automatic protection switching and in-domain repair, then verify the recovery result",
           "agent": "Transport Network Fault Management Agent",
-          "skill": "Transport Network Fault Diagnosis",
-          "status": "pending"
+          "skill": "Transport Network Fault Handling",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step4",
-          "condition": ""
+          "condition": "anomaly not fully repaired, fault persists or requires cross-domain coordination"
         }
       ],
       "layer": 0,
@@ -83,11 +81,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "0af09929-2306-4de9-b290-31c44749872f",
-          "description": "Submit the completed anomaly resolution case to the OSS system's Fault Agent for archiving and future reference",
-          "agent": "Transport Network Fault Management Agent",
-          "skill": "Transport Network Fault Handling",
-          "status": "pending"
+          "task_id": "7c0a7866-c358-491d-8275-24d8bc8b4b24",
+          "description": "Report anomaly root cause, location and repair record to the cross-domain fault agent for registration and deduplication",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Fault Incident Receiving and Distribution",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -104,17 +105,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "a7529c17-fbff-4e2c-8110-6548c78a0d9d",
-          "description": "Receive both resolved and unresolved anomaly records, then dispatch field technicians to verify the identified anomaly on-site and implement the prescribed repair measures",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Dispatch",
-          "status": "pending"
+          "task_id": "2f357099-2210-4400-8d7e-f5af8241381a",
+          "description": "Perform cross-domain demarcation and decide the optimal repair path: remote repair or field dispatch",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Cross-Domain Fault Demarcation and Location",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step11",
-          "condition": ""
+          "step": "step6",
+          "condition": "not remotely repairable, hardware fault or fiber interruption, field dispatch required"
+        },
+        {
+          "step": "step10",
+          "condition": "remotely repairable, assign remote repair to single-domain agent"
         }
       ],
       "layer": 0,
@@ -125,94 +133,17 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "4cf51099-038d-42aa-bddc-533461fe20b8",
-          "description": "Receive performance data, alarm information, and anomaly report from the single-domain fault agent; automatically correlate tickets and anomaly report; if anomaly is recovered, trigger to close the ticket",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Correlation Analysis",
-          "status": "pending"
+          "task_id": "fb6c9ee8-45fc-47a5-9e0e-6bd77f21a585",
+          "description": "Create and dispatch a field work order to FME for on-site verification and repair, and track order acceptance",
+          "agent": "Work Order Management Agent",
+          "skill": "Work Order Dispatch",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "end",
-          "condition": "Anomaly recovered / ticket closed"
-        },
-        {
-          "step": "step7",
-          "condition": "Fault persists or solution requires optimization"
-        },
-        {
-          "step": "step8",
-          "condition": "Solution accepted without optimization"
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step7",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "641a28e1-529b-42e3-926d-d243e88feb6b",
-          "description": "If the repair solution requires optimization or the fault persists after solution execution, instruct the single-domain agent to initiate a new round of in-depth fault diagnosis and share relevant contextual information to assist in the diagnosis",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Coordination and Repair",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step8",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step8",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "3ea79d39-24e5-4d57-b1b9-fa05a358183f",
-          "description": "Based on the fault repair solution from the Single-domain Fault Agent, make a decision and choose an optimal fault repair solution",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Coordination and Repair",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step9",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step9",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "1b091b6c-a6c7-4436-8879-a86851651d73",
-          "description": "Assign the repair task to execute: for faults that cannot be remotely repaired, dispatch front-line personnel via a work order system to execute on-site fault resolution; otherwise, assign repair operation to the single-domain agent",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Coordination and Repair",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step10",
-          "condition": "Remote repair assigned to single-domain agent"
-        },
-        {
-          "step": "step11",
-          "condition": "On-site repair dispatched to field personnel"
-        }
-      ],
+      "next": [],
       "layer": 0,
       "context_from": null
     },
@@ -221,50 +152,24 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "01b5f254-9225-4cd1-bd00-b56f7f1206be",
-          "description": "Automatically execute the corresponding network operations according to the fault repair solution, verify the results, and report to the cross-domain agent",
-          "agent": "Transport Network Fault Management Agent",
-          "skill": "Transport Network Fault Handling",
-          "status": "pending"
+          "task_id": "0c8f0e70-9caf-43d6-abc1-c5da9621095a",
+          "description": "Coordinate the single-domain transport agent to execute the assigned remote repair and track progress until verified",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Cross-Domain Fault Coordination and Repair",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
       "context_from": null
-    },
-    {
-      "name": "step11",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "1a71a17e-708d-4af7-ad2f-4674327b9f5c",
-          "description": "During on-site handling, interact with the service operations layer Copilot and network operations layer Copilot via an app to obtain natural language-based repair guidance",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Copilot Collaboration",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": [
-        "*"
-      ]
     }
   ],
-  "related_preflow": "82dd4bb0-3894-48d4-8c40-e99503980ffa",
-  "user_intent": "# 5. Interaction Flow\n\nThe management of transport network faults involves an end-to-end process that includes the perception, diagnosis, repair, and verification testing of anomalies (including fault",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

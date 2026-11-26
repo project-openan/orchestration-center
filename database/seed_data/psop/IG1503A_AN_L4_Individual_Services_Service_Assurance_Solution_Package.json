@@ -9,11 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "09fbf1d0-f0bf-4899-9efb-eb929452fabc",
-          "description": "Report performance KPIs and QoE indicators to the Service Assurance Agent",
-          "agent": "Live Streaming Agent",
-          "skill": "KQI Monitoring",
-          "status": "pending"
+          "task_id": "a1052502-0ca6-4995-b99e-33b319045eca",
+          "description": "Collect periodic service and network KPI/QoE reports from the access network and identify quality-degraded users and services",
+          "agent": "Service Assurance Agent",
+          "skill": "Service Quality Monitoring",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -30,11 +33,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "70d70f24-fe8d-43b3-9bcf-1a44bea3d504",
-          "description": "Identify poor QoE",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
+          "task_id": "ad92f44f-1d09-4a54-9a1e-e8d459ae5022",
+          "description": "Evaluate QoE degradation and perform root-cause diagnosis on correlated radio access network KPIs and faults, generating optimization solutions",
+          "agent": "Mobile Network Fault Management Agent",
+          "skill": "Mobile Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -44,60 +50,54 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step1"
+      ]
     },
     {
       "name": "step3",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "954c963b-0b3d-46ef-842b-bab385cafc90",
-          "description": "Correlate relevant KPIs and faults",
+          "task_id": "4a101a98-a3d9-40e0-93b2-a3edf8ebd595",
+          "description": "Correlate diagnosis and optimization recommendations to identify service degradation and root cause, and decide to trigger corrective action to restore service quality",
           "agent": "Service Assurance Agent",
           "skill": "Service Assurance Root Cause Analysis",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step4",
           "condition": ""
+        },
+        {
+          "step": "step5",
+          "condition": ""
         }
       ],
-      "layer": 0,
-      "context_from": null
+      "layer": 1,
+      "context_from": [
+        "step1",
+        "step2"
+      ]
     },
     {
       "name": "step4",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "4dadd1fa-5eff-4eb6-8371-41334f1cda9d",
-          "description": "Perform automated diagnosis to generate potential optimization solutions",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Root Cause Analysis",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step5",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step5",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "b35f2647-99c1-487b-bfe5-fa9aeea1af46",
-          "description": "Formulate recommendations with associated KPIs and root cause information",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Reporting",
-          "status": "pending"
+          "task_id": "f14da529-87e5-437e-85df-07680e482cc1",
+          "description": "Record the identified root cause and remediation context in a ticket for traceability and audit",
+          "agent": "Work Order Management Agent",
+          "skill": "Work Order Creation",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -107,18 +107,49 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step3"
+      ]
+    },
+    {
+      "name": "step5",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "de9c6a70-626c-4541-95a7-fdc358f00ee5",
+          "description": "Execute the recommended corrective solution on the access network element via controlled network change",
+          "agent": "Network Change Management Agent",
+          "skill": "Change Implementation",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [
+        {
+          "step": "step6",
+          "condition": ""
+        }
+      ],
+      "layer": 0,
+      "context_from": [
+        "step3"
+      ]
     },
     {
       "name": "step6",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "ba2ccbea-ae0d-44f4-83cd-111c9b8337e1",
-          "description": "Report recommendations to the orchestration layer and ticket management systems for traceability",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Reporting",
-          "status": "pending"
+          "task_id": "5ac7d41d-0dd7-4c20-a013-e231dda1090b",
+          "description": "Verify service restoration by observing post-change KPIs and execute rollback if the change fails or degradation persists",
+          "agent": "Network Change Management Agent",
+          "skill": "Change Verification and Rollback",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -128,39 +159,23 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step5"
+      ]
     },
     {
       "name": "step7",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "7061bc23-bccd-4994-a983-d03edf89f56f",
-          "description": "Trigger corrective actions",
+          "task_id": "16b01dfe-e68d-4571-b2f5-f69db2fc28f1",
+          "description": "Aggregate assurance results, verify closed-loop service quality restoration, and produce the assurance report with attainment evaluation for audit and orchestration traceability",
           "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Remediation",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step8",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step8",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "f72cc762-17ea-4279-abcf-43bb1f0c86d2",
-          "description": "Execute network changes on NE via network change agent",
-          "agent": "Network Change Management Agent",
-          "skill": "Change Implementation",
-          "status": "pending"
+          "skill": "Service Assurance Reporting",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -169,14 +184,15 @@
           "condition": ""
         }
       ],
-      "layer": 0,
-      "context_from": null
+      "layer": 1,
+      "context_from": [
+        "*"
+      ]
     }
   ],
-  "related_preflow": "7c05428e-1959-4a26-903b-c90bf2278d3f",
-  "user_intent": "# 5. Interaction Flow\n\nThe interaction flow for Individual Service Assurance follows the IAADE sequence (Perception, Analysis, Decision, Execution). Functional modules exchange KPIs, events, and recom",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

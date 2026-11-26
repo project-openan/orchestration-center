@@ -9,32 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "666f0040-5524-4aff-97db-27642fc26118",
-          "description": "Define experience-related indicators",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
-        },
-        {
-          "task_id": "459a6720-78e0-451f-a841-1ac1ad41088e",
-          "description": "Synchronize existing access network resource data to support planning and design of reusing network resources",
+          "task_id": "t1",
+          "description": "Analyze planning intent, existing resource data and ARPU, and generate the FTTX rollout plan and design request",
           "agent": "Network Planning and Design Agent",
           "skill": "Network Planning Requirements Analysis",
-          "status": "pending"
-        },
-        {
-          "task_id": "1da58c86-8f20-4f6a-a296-50b6f1894aab",
-          "description": "Synchronize planning and design of access address information",
-          "agent": "Network Planning and Design Agent",
-          "skill": "Fixed Access Network Planning and Design",
-          "status": "pending"
-        },
-        {
-          "task_id": "d214f4b3-5ce7-46c2-ac23-6eec01e4b93f",
-          "description": "Synchronize planning and design of access site information",
-          "agent": "Network Planning and Design Agent",
-          "skill": "Fixed Access Network Planning and Design",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -51,18 +33,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "a8ae41fa-f120-42a0-9a8a-542e8da3df9e",
-          "description": "Identify poor QoE based on KPIs",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
-        },
-        {
-          "task_id": "09a44065-aa8d-4fca-9768-b748b249af91",
-          "description": "Perform automatic planning",
-          "agent": "Network Planning and Design Agent",
-          "skill": "Fixed Access Network Planning and Design",
-          "status": "pending"
+          "task_id": "t2",
+          "description": "Assist the field engineer with AR-based on-site survey using planning and inventory data, and return the survey result",
+          "agent": "Fixed Access Survey Copilot",
+          "skill": "Fixed Access Field Survey Assistance",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -79,18 +57,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "e5357518-9bd0-4ca6-8606-2c4e0eaa7d4d",
-          "description": "Generate remediable solutions",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Remediation",
-          "status": "pending"
-        },
-        {
-          "task_id": "cdd14417-c302-4d9c-87ce-046d453f7fba",
-          "description": "Perform AI design (HLD/LLD)",
+          "task_id": "t3",
+          "description": "Adjust the HLD/LLD design based on the on-site survey result and construction feedback",
           "agent": "Network Planning and Design Agent",
-          "skill": "Fixed Access Network Planning and Design",
-          "status": "pending"
+          "skill": "Fixed Access Survey-Based Design",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -100,32 +74,23 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step2"
+      ]
     },
     {
       "name": "step4",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "0911d934-5f01-4945-b238-584a0bc7288a",
-          "description": "Execute remedy operation within a single domain",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Remediation",
-          "status": "pending"
-        },
-        {
-          "task_id": "c50779d1-3211-4016-a535-db4797e602bf",
-          "description": "Perform 3D digital twin surveying",
-          "agent": "Network Planning and Design Agent",
-          "skill": "Network Planning Requirements Analysis",
-          "status": "pending"
-        },
-        {
-          "task_id": "72f8c22d-d806-43a8-9541-b468d5fafa89",
-          "description": "Automatically synchronize designed data to comprehensive resource management system",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "General Orchestration Support",
-          "status": "pending"
+          "task_id": "t4",
+          "description": "Guide field engineers through ODN construction per the adjusted design, record deviations, and support as-built photo/3D capture",
+          "agent": "Fixed Access Construction Copilot",
+          "skill": "Fixed Access Construction Assistance",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -135,32 +100,23 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step3"
+      ]
     },
     {
       "name": "step5",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "3dd271fd-1c91-4a52-a1e2-b1ad3853f7e8",
-          "description": "Automatically report to OSS/cross-domain the list of users requiring on-site repairs",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Reporting",
-          "status": "pending"
-        },
-        {
-          "task_id": "fde302ab-c978-4bb4-8e78-41a1c187ea5b",
-          "description": "Perform construction",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Dispatch",
-          "status": "pending"
-        },
-        {
-          "task_id": "299405b8-fa55-46b9-8b93-1fc89a0644f3",
-          "description": "Report issue",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Assurance Reporting",
-          "status": "pending"
+          "task_id": "t5",
+          "description": "Perform project acceptance via image QC and 3D documentary evidence, and submit accepted as-built data",
+          "agent": "Fixed Access Acceptance Agent",
+          "skill": "Fixed Access Construction Acceptance",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -170,25 +126,23 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step4"
+      ]
     },
     {
       "name": "step6",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "916f8593-e6bd-4a29-80c7-dcfcc4525e2c",
-          "description": "Provide repair recommendations for each user",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Fault Knowledge Retrieval",
-          "status": "pending"
-        },
-        {
-          "task_id": "30fa3217-022f-4d94-bc24-ebc3983b97fd",
-          "description": "Perform automatic synchronization",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "General Orchestration Support",
-          "status": "pending"
+          "task_id": "t6",
+          "description": "Synchronize accepted as-built resource data to the Resource Inventory Management system, verify consistency, and archive the results",
+          "agent": "Fixed Access Inventory Synchronization Agent",
+          "skill": "Fixed Access Inventory Synchronization",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -198,13 +152,14 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step5"
+      ]
     }
   ],
-  "related_preflow": "8dec5e8c-5e89-4577-b0d4-5baf962ec3bd",
-  "user_intent": "# 5. Interaction Flow\n\n## 5.1. Overall Flow\n\nFor L4, the typical integrated model for home broadband service assurance is depicted in the following figure. Which involves the network autonomous domain",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

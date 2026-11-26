@@ -9,28 +9,20 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task1",
-          "description": "Fault identification",
+          "task_id": "c72ee193-7fb0-4689-aa33-bbacedfa39cc",
+          "description": "Automatically identify the IP network port fault using ms-level optical power/OTDR telemetry and SNMP/NETCONF alarms, KPIs and logs",
           "agent": "IP Network Fault Management Agent",
           "skill": "IP Network Fault Identification",
-          "status": "pending"
-        },
-        {
-          "task_id": "task2",
-          "description": "Automatic diagnosis",
-          "agent": "IP Network Fault Management Agent",
-          "skill": "IP Network Fault Diagnosis",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step2",
-          "condition": "Fault can be automatically repaired"
-        },
-        {
-          "step": "step3",
-          "condition": "On-site repair required"
+          "condition": ""
         }
       ],
       "layer": 0,
@@ -41,11 +33,42 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task3",
-          "description": "Automatic repair",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Cross-Domain Fault Coordination and Repair",
-          "status": "pending"
+          "task_id": "523d7c8f-2ae6-4882-a320-13725bea61f2",
+          "description": "Perform automatic root cause diagnosis and demarcation/location of the identified IP network fault",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [
+        {
+          "step": "step3",
+          "condition": "Fault is remotely repairable, software or configuration issue"
+        },
+        {
+          "step": "step5",
+          "condition": "Fault requires on-site repair, hardware or component issue"
+        }
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "step3",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "aa9d8712-f6e9-47b4-8ce2-fd33a2796eab",
+          "description": "Execute automatic remote repair of the software/configuration fault and verify the repair result with traffic switchover validation",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Handling",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -58,36 +81,44 @@
       "context_from": null
     },
     {
-      "name": "step3",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task6",
-          "description": "Automatically generate repair solution",
-          "agent": "IP Network Fault Management Agent",
-          "skill": "IP Network Fault Diagnosis",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step5",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
       "name": "step4",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task4",
-          "description": "Report fault incident and handling results to service layer's fault management center",
+          "task_id": "b345a3bf-f980-42db-b3e2-06a2db37b4eb",
+          "description": "Receive the fault incident and repair result report, register the fault clearance and archive the record in the fault management center",
           "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Fault Management Summary Report",
-          "status": "pending"
+          "skill": "Fault Incident Receiving and Distribution",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [
+        {
+          "step": "end",
+          "condition": ""
+        }
+      ],
+      "layer": 1,
+      "context_from": [
+        "step3"
+      ]
+    },
+    {
+      "name": "step5",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "ee5f9a4a-ae9e-4109-a773-f9258c860305",
+          "description": "Generate on-site repair solution and handling suggestions based on the root cause diagnosis",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -97,18 +128,23 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step2"
+      ]
     },
     {
-      "name": "step5",
+      "name": "step6",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task7",
-          "description": "Send fault incident and automatically generated handling recommendations to service layer fault center",
-          "agent": "IP Network Fault Management Agent",
-          "skill": "IP Network Fault Handling",
-          "status": "pending"
+          "task_id": "b1017562-1940-4113-a43f-8be53afdf34a",
+          "description": "Report the fault self-diagnosis result including demarcation, location and handling suggestions as a fault update message",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Fault Incident Receiving and Distribution",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -118,39 +154,23 @@
         }
       ],
       "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step6",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "task5",
-          "description": "Archive the information",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "General Orchestration Support",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step5"
+      ]
     },
     {
       "name": "step7",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task8",
-          "description": "Initiate work order system",
+          "task_id": "cc39470b-2031-4a6b-b42b-67e3b28c0a0d",
+          "description": "Create a work order for on-site repair based on the fault update message and handling suggestions",
           "agent": "Work Order Management Agent",
           "skill": "Work Order Creation",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -160,18 +180,23 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step6"
+      ]
     },
     {
       "name": "step8",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task9",
-          "description": "Dispatch work order to FME",
+          "task_id": "d1862e52-37ef-4cd5-85ba-bfbf5fc8bdc6",
+          "description": "Dispatch the work order to the field maintenance engineer (FME) and track order acceptance",
           "agent": "Work Order Management Agent",
           "skill": "Work Order Dispatch",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -181,34 +206,61 @@
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step7"
+      ]
     },
     {
       "name": "step9",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "task10",
-          "description": "Interact with service layer Copilot and resource layer Copilot via an app to obtain natural language-based repair guidance",
+          "task_id": "ecdcc6eb-2e4a-4234-8f7e-6d8f98b4dfa9",
+          "description": "Answer the FME's natural-language queries on fault device asset info, board status and power/fault status via the mobile app",
           "agent": "Field Maintenance Copilot Agent",
-          "skill": "Copilot Collaboration",
-          "status": "pending"
+          "skill": "Device Information Query",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "end",
+          "step": "step10",
           "condition": ""
         }
       ],
       "layer": 0,
-      "context_from": null
+      "context_from": [
+        "step8"
+      ]
+    },
+    {
+      "name": "step10",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "4558eebc-ac06-4c02-b523-168460e81130",
+          "description": "Retrieve fault knowledge and provide natural-language on-site repair guidance to the FME, coordinating across service-layer and resource-layer Copilots",
+          "agent": "Field Maintenance Copilot Agent",
+          "skill": "Natural Language Operational Guidance",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [],
+      "layer": 0,
+      "context_from": [
+        "step9"
+      ]
     }
   ],
-  "related_preflow": "cc34fd2b-2062-4c06-ae5a-81cd5b30a7dc",
-  "user_intent": "# 5. Interaction Flow\n\nBased on the above functional architecture and the integration model of Agent/Copilot, this chapter focuses on how to achieve end-to-end processing of the IP Network single-doma",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

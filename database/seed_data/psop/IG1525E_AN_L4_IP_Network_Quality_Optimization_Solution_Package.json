@@ -9,11 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "314c81d9-5d69-4f8c-b43c-b219da59b7d3",
-          "description": "Input IP network quality optimization intent from service layer quality optimization agent to network layer optimization agent",
+          "task_id": "32f50a2a-97fc-40af-9718-6d6ab4da1ccf",
+          "description": "Deliver the IP quality optimization intent from the service layer to the network-layer IP optimization agent",
           "agent": "IP Quality Intent Agent",
           "skill": "IP Quality Intent Delivery",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -30,11 +33,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "f919ab08-37ec-49ad-9f43-076edecebdd4",
-          "description": "Identify quality degradation using network data from NEs",
-          "agent": "Service Assurance Agent",
-          "skill": "Service Quality Monitoring",
-          "status": "pending"
+          "task_id": "f3740729-a30f-498f-856d-bf9d4a4a3eac",
+          "description": "Collect IP NE status, availability, latency, packet loss and configuration data to identify and demarcate quality degradation",
+          "agent": "Network Optimization Agent",
+          "skill": "IP Network Quality Degradation Detection",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -44,70 +50,68 @@
         }
       ],
       "layer": 0,
-      "context_from": [
-        "step1"
-      ]
+      "context_from": null
     },
     {
       "name": "step3",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "6c79a709-9c6a-475a-b4f9-cbf1b52f2d16",
-          "description": "Perform automatic demarcation and root cause analysis, generate and execute path adjustment optimization, and provide capacity expansion solution with simulation results if network resources are insufficient",
-          "agent": "Network Optimization Agent",
-          "skill": "IP Network Quality Optimization",
-          "status": "pending"
+          "task_id": "8597ff31-ba2d-4897-924a-03d5b213811e",
+          "description": "Perform demarcation and root cause analysis to locate the faulty IP node or link",
+          "agent": "IP Network Fault Management Agent",
+          "skill": "IP Network Fault Diagnosis",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
           "step": "step4",
-          "condition": ""
+          "condition": "Network resources sufficient for path adjustment"
+        },
+        {
+          "step": "step5",
+          "condition": "Network resources insufficient, capacity expansion required"
         }
       ],
       "layer": 0,
-      "context_from": [
-        "step2"
-      ]
+      "context_from": null
     },
     {
       "name": "step4",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "5eac1f7f-845f-4194-8600-95cbbd807789",
-          "description": "Report optimization results to intent manager to verify intent fulfillment",
-          "agent": "IP Quality Intent Agent",
-          "skill": "IP Quality Intent Fulfillment Reporting",
-          "status": "pending"
+          "task_id": "3375e9de-6109-48ff-9562-a6051de9d09d",
+          "description": "Generate and execute the path-adjustment solution and verify its effect",
+          "agent": "Network Optimization Agent",
+          "skill": "IP Network Quality Optimization",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step5",
-          "condition": "Capacity expansion essential"
-        },
-        {
-          "step": "end",
-          "condition": "No capacity expansion required"
-        }
-      ],
-      "layer": 1,
-      "context_from": [
-        "step3"
-      ]
+      "next": [],
+      "layer": 0,
+      "context_from": null
     },
     {
       "name": "step5",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "d7f61560-85d1-46b3-8919-79c9ea55d373",
-          "description": "Input capacity expansion intent from intent manager to network planning system",
-          "agent": "Network Planning and Design Agent",
-          "skill": "Network Planning Requirements Analysis",
-          "status": "pending"
+          "task_id": "6517f102-44d5-471d-aac3-fb80bc691ee8",
+          "description": "Generate the capacity expansion proposal with supporting simulation results",
+          "agent": "Network Optimization Agent",
+          "skill": "IP Capacity Expansion Proposal",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -117,61 +121,31 @@
         }
       ],
       "layer": 0,
-      "context_from": [
-        "step4"
-      ]
+      "context_from": null
     },
     {
       "name": "step6",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "dac26da5-6d8a-4b4e-9292-6e1c50357e59",
-          "description": "Query required information through NOE copilot during capacity expansion implementation",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Device Information Query",
-          "status": "pending"
+          "task_id": "57c6a6ac-0a16-41ac-b1f3-460fd9d33c32",
+          "description": "Submit the capacity expansion intent, verified by the intent manager, to the network planning system",
+          "agent": "IP Quality Intent Agent",
+          "skill": "IP Capacity Expansion Intent Submission",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
-      "next": [
-        {
-          "step": "step7",
-          "condition": ""
-        }
-      ],
+      "next": [],
       "layer": 0,
-      "context_from": [
-        "step5"
-      ]
-    },
-    {
-      "name": "step7",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "10002ff7-336a-4cec-b15f-a1cb1bc8f3be",
-          "description": "Dispatch IP related queries and tasks from service layer NOE copilot to network layer NOE copilot",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Copilot Collaboration",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": [
-        "step6"
-      ]
+      "context_from": null
     }
   ],
-  "related_preflow": "be285a9a-6bc1-4ebf-bc1f-543a26ea004f",
-  "user_intent": "# 5. Interaction Flow\n\nFollowing the layered architecture defined in the previous chapter, the following picture demonstrates the interaction flow that provides an abstract overview of how a task is e",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }

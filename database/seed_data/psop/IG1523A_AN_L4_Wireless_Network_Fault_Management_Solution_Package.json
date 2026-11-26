@@ -9,11 +9,14 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "de8557ba-5086-48bd-a44d-4fcbae6c8bbb",
-          "description": "Fault identification",
+          "task_id": "3628d131-8c9b-4fac-836d-1de29e595b47",
+          "description": "Identify the wireless base station fault from the fault occurrence event (alarm and performance data)",
           "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Identification",
-          "status": "pending"
+          "skill": "Wireless Network Fault Management",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -30,41 +33,47 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "90287df4-1a19-4ea6-a3ad-ef6ff1116636",
-          "description": "Automatic diagnosis",
+          "task_id": "ff402600-2546-4167-8e4b-6e7a45e59b97",
+          "description": "Perform automatic root cause diagnosis on the identified wireless fault and output diagnosis with handling suggestions",
           "agent": "Mobile Network Fault Management Agent",
           "skill": "Mobile Network Fault Diagnosis",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step3_auto_repair",
-          "condition": "Fault is automatically repairable"
+          "step": "step3",
+          "condition": "software or configuration fault, remotely recoverable"
         },
         {
-          "step": "step3_on_site_solution",
-          "condition": "On-site repair required"
+          "step": "step4",
+          "condition": "hardware component fault, on-site repair required"
         }
       ],
       "layer": 0,
       "context_from": null
     },
     {
-      "name": "step3_auto_repair",
+      "name": "step3",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "2f0a53bb-58fd-44c5-8023-43f021e0d714",
-          "description": "Automatic repair",
+          "task_id": "12b408f4-334a-4043-ae1d-67f1c9a9a2cc",
+          "description": "Execute automatic repair and verification of the software/configuration fault",
           "agent": "Mobile Network Fault Management Agent",
           "skill": "Mobile Network Fault Handling",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step4_auto_report",
+          "step": "step7",
           "condition": ""
         }
       ],
@@ -72,20 +81,23 @@
       "context_from": null
     },
     {
-      "name": "step4_auto_report",
+      "name": "step4",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "211d8d7c-dfba-4a36-a504-a34d8bfaefac",
-          "description": "Report fault and handling results to service layer's fault management center",
+          "task_id": "14a48bdf-e0da-472c-ad99-572b82508344",
+          "description": "Report the hardware fault and repair recommendation to the fault management center via the intelligent fault interface",
           "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "Fault Management Summary Report",
-          "status": "pending"
+          "skill": "Fault Incident Receiving and Distribution",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step5_auto_archive",
+          "step": "step5",
           "condition": ""
         }
       ],
@@ -93,104 +105,23 @@
       "context_from": null
     },
     {
-      "name": "step5_auto_archive",
+      "name": "step5",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "ea4c9181-6cf5-4795-a8ef-300c71c469fa",
-          "description": "Archive fault and handling results",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Tracking and Closure",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "end",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step3_on_site_solution",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "9c141755-f37c-406f-a64a-c4bb2e41fb65",
-          "description": "Generate repair solution",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Fault Knowledge Retrieval",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step4_on_site_send",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step4_on_site_send",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "5a8671dd-ced6-4188-ab94-fc59f91b54e4",
-          "description": "Send fault and automatically generated handling recommendations to service layer fault center",
-          "agent": "AN L4 Cross-Domain Fault Management Agent",
-          "skill": "General Orchestration Support",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step5_on_site_ticket",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step5_on_site_ticket",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "392e5137-270b-43fa-b8db-661cefd646a1",
-          "description": "Initiate trouble ticket system",
-          "agent": "Work Order Management Agent",
-          "skill": "Work Order Creation",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step6_on_site_dispatch",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step6_on_site_dispatch",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "48c37873-ec93-4f6d-a3f6-b9820f593c0f",
-          "description": "Dispatch trouble ticket to FME",
+          "task_id": "ccd6d4b8-3b50-4630-96ee-8de634538255",
+          "description": "Create a trouble ticket for the on-site repair and dispatch it to the FME via the work-order system",
           "agent": "Work Order Management Agent",
           "skill": "Work Order Dispatch",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
         {
-          "step": "step7_on_site_interact",
+          "step": "step6",
           "condition": ""
         }
       ],
@@ -198,36 +129,37 @@
       "context_from": null
     },
     {
-      "name": "step7_on_site_interact",
+      "name": "step6",
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "7b731aac-89ae-431f-9a21-990295505881",
-          "description": "Interact with service layer Copilot and resource layer Copilot via app",
-          "agent": "Field Maintenance Copilot Agent",
-          "skill": "Copilot Collaboration",
-          "status": "pending"
-        }
-      ],
-      "next": [
-        {
-          "step": "step8_on_site_guidance",
-          "condition": ""
-        }
-      ],
-      "layer": 0,
-      "context_from": null
-    },
-    {
-      "name": "step8_on_site_guidance",
-      "type": "AllSuccess",
-      "subtasks": [
-        {
-          "task_id": "9f99caf0-3e7a-4326-b29e-6ba5be5c5c5c",
-          "description": "Obtain natural language-based repair guidance",
+          "task_id": "17ab09cd-3dec-469b-b291-ef635b52a924",
+          "description": "FME queries device power/fault status via mobile app and obtains natural-language repair guidance from the FME Copilot",
           "agent": "Field Maintenance Copilot Agent",
           "skill": "Natural Language Operational Guidance",
-          "status": "pending"
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
+        }
+      ],
+      "next": [],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "step7",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "f5318eb0-d8f3-49ad-8685-7db88f17efce",
+          "description": "Report fault and handling result to the fault management center and archive the record",
+          "agent": "AN L4 Cross-Domain Fault Management Agent",
+          "skill": "Fault Management Summary Report",
+          "status": "pending",
+          "binding": "instance",
+          "role_version": null,
+          "binding_group": null
         }
       ],
       "next": [
@@ -240,10 +172,9 @@
       "context_from": null
     }
   ],
-  "related_preflow": "f9a15827-a76b-4c59-9516-1c84a819cae7",
-  "user_intent": "# 5. Interaction Flow\n\nBased on the above functional architecture and the integration model of Agent/Copilot, this chapter focuses on how to achieve end-to-end processing of the Wireless network singl",
   "tags": [
     "spg",
     "solution-package"
-  ]
+  ],
+  "source": "solution_package"
 }
