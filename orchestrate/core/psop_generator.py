@@ -43,6 +43,11 @@ from orchestrate.core.model.preflow import PreFlow
 from orchestrate.core.model.psop import PSOP
 from orchestrate.core.prompts import get_generate_psop_prompt, get_choose_skill_prompt, \
      get_preprocess_input_prompt
+from orchestrate.core.prompts import get_role_generation_prompt, get_role_action_match_prompt
+from orchestrate.core.role_generation import (
+    generation_context, ask_role_json, assemble_role_workflow, role_actions, match_role_actions,
+    generation_stage,
+)
 
 class WorkflowGeneratorError(Exception):
     """Custom exception for PSOP workflow generation failures.
@@ -53,9 +58,8 @@ class WorkflowGeneratorError(Exception):
     pass
 
 
-# Skill used as deterministic fallback for actions that the LLM cannot match
-# to any specific capability ("none"). Declared in the AgentCard catalog as
-# "General Orchestration Support" so every SPG flow stays orchestratable.
+# Sample skill name; a caller must explicitly opt into its own fallback policy.
+# Default generation fails closed when a business capability is unavailable.
 FALLBACK_SKILL_NAME = "General Orchestration Support"
 
 
@@ -72,9 +76,10 @@ class PsopGenerator:
         _llm: LLM instance for natural language processing tasks
     """
 
-    def __init__(self):
+    def __init__(self, *, fallback_skill: Optional[str] = None):
         """Initialize the PSOP generator with an LLM instance."""
         self._llm = get_llm_instance()
+        self._fallback_skill = fallback_skill
 
     def _parse_json_response(self, text, model=None):
         """Backward-compat wrapper delegating to parse_llm_json_response."""
@@ -192,7 +197,8 @@ class PsopGenerator:
     def generate_psop_workflow(
             self,
             preflow: PreFlow,
-            agent_cards: List[AgentCard]
+            agent_cards: List[AgentCard] | None = None,
+            *, binding: str = "instance", role_context=None,
     ) -> PSOP:
         """Generate complete PSOP workflow from PreFlow and agent cards.
 
@@ -214,6 +220,10 @@ class PsopGenerator:
         """
         if not preflow.steps_md or not preflow.steps_md.strip():
             raise WorkflowGeneratorError("Preflow steps_md cannot be empty")
+        context = generation_context(binding, role_context)
+        if context is not None:
+            with generation_stage(context, "generate_preflow"):
+                return self._generate_role_workflow(preflow, context)
         if not agent_cards:
             raise WorkflowGeneratorError("agent_cards cannot be empty")
 
@@ -231,21 +241,20 @@ class PsopGenerator:
             step_list = []
             missing_skills = []
             unmatched_actions = []
-            fallback_agent = skill_dict.get(FALLBACK_SKILL_NAME)
+            fallback_agent = skill_dict.get(self._fallback_skill) if self._fallback_skill else None
             for action, skill_name in action_skill_pair.items():
                 if skill_name not in skill_dict:
                     if skill_name == "none" and fallback_agent is not None:
-                        # Deterministic fallback: route unmatchable helper tasks
-                        # to the generic orchestration-support skill so that
-                        # every SPG flow can still be orchestrated end to end.
+                        # Use only the fallback explicitly selected by the
+                        # embedding application's business policy.
                         logger.warning(
                             f"Action '{action}' matched no skill; "
-                            f"falling back to '{FALLBACK_SKILL_NAME}' "
+                            f"falling back to '{self._fallback_skill}' "
                             f"(agent '{fallback_agent}')"
                         )
                         step_list.append({
                             'task': action,
-                            'skill': FALLBACK_SKILL_NAME,
+                            'skill': self._fallback_skill,
                             'agent': fallback_agent
                         })
                         continue
@@ -272,6 +281,10 @@ class PsopGenerator:
                 raise WorkflowGeneratorError("No valid tasks generated from PSOP")
 
             psop: PSOP = self.build_psop_structure(preflow, step_list)
+            for step in psop.steps:
+                for task in step.subtasks:
+                    if task.skill not in skill_dict:
+                        raise WorkflowGeneratorError(f"Generated workflow references an unknown skill: {task.skill}")
             self._normalize_subtask_agents(psop, skill_dict)
             psop.name = preflow.name
             psop.related_preflow = preflow.id
@@ -282,6 +295,19 @@ class PsopGenerator:
         except Exception as e:
             logger.error(f"Unexpected error during PSOP generation: {e}")
             raise WorkflowGeneratorError(f"Unexpected error: {e}") from e
+
+    def _generate_role_workflow(self, preflow, context) -> PSOP:
+        extracted = ask_role_json(self._llm, get_preprocess_input_prompt(preflow.steps_md), context, "extract")
+        actions = role_actions(extracted)
+        matching = ask_role_json(self._llm, get_role_action_match_prompt(actions, context.projection()), context, "match")
+        tasks = match_role_actions(matching, actions, context)
+        prompt = get_role_generation_prompt(preflow.steps_md, context.projection(),
+                                            json.dumps(PSOP.model_json_schema()), tasks=tasks)
+        payload = ask_role_json(self._llm, prompt, context, "structure")
+        workflow = assemble_role_workflow(payload, context, expected_tasks=tasks)
+        workflow.name = preflow.name
+        workflow.related_preflow = preflow.id
+        return assemble_role_workflow(workflow.model_dump(mode="json"), context, expected_tasks=tasks)
 
     @staticmethod
     def _normalize_subtask_agents(psop: PSOP, skill_dict: Dict[str, str]) -> None:

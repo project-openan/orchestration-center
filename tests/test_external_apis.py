@@ -24,6 +24,8 @@
   1. 注册中心：python -m agent_registry.start   (默认 http://127.0.0.1:5000)
   2. 编排中心：python -m orchestrate.start       (默认 http://127.0.0.1:5001)
   3. 确保注册中心已注册至少一个 Agent
+  4. 对外 API 启用鉴权（server.conf 配置 access_password）时，
+     需提供账号凭据获取 Bearer 令牌；未提供凭据时测试跳过
 
 用法：
   pytest tests/test_external_apis.py -v -s
@@ -34,6 +36,9 @@
   ORCHESTRATE_BASE_URL   编排中心地址，默认 http://127.0.0.1:5001
   TEST_PDF_FILE          测试用 PDF SOP 文件路径（可选，用于文件上传测试）
   TEST_TXT_FILE          测试用 TXT/MD SOP 文件路径（可选，用于 TXT 上传测试）
+  ORCH_TEST_TOKEN        已有的会话令牌，直接作为 Authorization: Bearer 使用
+  ORCH_TEST_USERNAME     登录用户名（与 ORCH_TEST_PASSWORD 配套，优先级低于 ORCH_TEST_TOKEN）
+  ORCH_TEST_PASSWORD     登录密码（内部登录接口签发 session_token，作为 Bearer 令牌）
 """
 
 import json
@@ -53,9 +58,14 @@ TIMEOUT = 60
 SSE_TIMEOUT = 180
 
 _ORCHESTRATE_REACHABLE = False
+_AUTH_GATE_STATUS = None
 try:
-    requests.get(f"{ORCHESTRATE_BASE}/api/v1/executions/{uuid.uuid4()}", timeout=3)
+    _probe = requests.get(f"{ORCHESTRATE_BASE}/api/v1/executions/{uuid.uuid4()}", timeout=3)
     _ORCHESTRATE_REACHABLE = True
+    if _probe.status_code == 401 or (
+            _probe.status_code == 503
+            and "authentication is not configured" in _probe.text.lower()):
+        _AUTH_GATE_STATUS = _probe.status_code
 except requests.ConnectionError:
     pass
 
@@ -63,11 +73,43 @@ def _skip_if_unreachable():
     """Skip all external API tests when orchestration service is not running."""
     if not _ORCHESTRATE_REACHABLE:
         pytest.skip("Orchestration service not reachable at " + ORCHESTRATE_BASE)
+    if _AUTH_GATE_STATUS and not _AUTH_HEADERS:
+        pytest.skip(
+            f"Public API rejected anonymous access (status={_AUTH_GATE_STATUS}); "
+            "set ORCH_TEST_USERNAME + ORCH_TEST_PASSWORD (or ORCH_TEST_TOKEN) to authenticate")
 
 # ──── 工具函数 ─────────────────────────────────────────────────────────────────
 
 def _log(level: str, msg: str):
     print(f"[{level:>5}] {msg}", file=sys.stderr, flush=True)
+
+def _authenticate() -> dict:
+    """构建对外 API 的 Authorization 头。
+
+    对外 API 使用内部登录接口签发的会话令牌（Set-Cookie: session_token），
+    同一令牌以 Authorization: Bearer 形式提供给对外 API。
+    """
+    token = os.environ.get("ORCH_TEST_TOKEN", "").strip()
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    username = os.environ.get("ORCH_TEST_USERNAME", "").strip()
+    password = os.environ.get("ORCH_TEST_PASSWORD", "")
+    if not (username and password):
+        return {}
+    try:
+        resp = requests.post(
+            f"{ORCHESTRATE_BASE}/rest/v1/orchestrate/auth/login",
+            json={"username": username, "password": password}, timeout=5)
+        token = resp.cookies.get("session_token")
+        if resp.status_code == 200 and token:
+            return {"Authorization": f"Bearer {token}"}
+        _log("warn", f"login failed for ORCH_TEST_USERNAME={username}: "
+                     f"status={resp.status_code}")
+    except requests.RequestException as exc:
+        _log("warn", f"login request failed: {exc}")
+    return {}
+
+_AUTH_HEADERS = _authenticate() if _ORCHESTRATE_REACHABLE else {}
 
 def _check_status(resp: requests.Response, expected: int, label: str):
     if resp.status_code != expected:
@@ -152,7 +194,8 @@ def test_sop_json():
         ),
         "name": f"test-sop-json-{uuid.uuid4().hex[:8]}"
     }
-    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop", json=payload, timeout=TIMEOUT)
+    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop",
+                         json=payload, headers=_AUTH_HEADERS, timeout=TIMEOUT)
     _check_status(resp, 201, label)
     body = _check_envelope(resp, label)
     data = body["data"]
@@ -183,7 +226,8 @@ def test_sop_empty_content():
     """
     label = "POST /api/v1/orchestrate/sop (空内容)"
     payload = {"sop_content": "   "}
-    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop", json=payload, timeout=TIMEOUT)
+    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop",
+                         json=payload, headers=_AUTH_HEADERS, timeout=TIMEOUT)
     assert resp.status_code == 400, f"{label}: expected 400, got {resp.status_code}"
     _check_error(resp, 400, label)
 
@@ -196,7 +240,8 @@ def test_sop_missing_field():
     """
     label = "POST /api/v1/orchestrate/sop (缺少 sop_content)"
     resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop",
-                         headers={"Content-Type": "application/json"}, data="{}", timeout=TIMEOUT)
+                         headers={**_AUTH_HEADERS, "Content-Type": "application/json"},
+                         data="{}", timeout=TIMEOUT)
     assert resp.status_code in (400, 422, 500), f"{label}: expected 400/422/500, got {resp.status_code}"
     _log("ok", f"{label}: status={resp.status_code}")
 
@@ -218,6 +263,7 @@ def test_sop_txt_upload():
             f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop",
             files={"file": (os.path.basename(TEST_TXT_FILE), f, "text/plain")},
             data={"name": f"test-txt-{uuid.uuid4().hex[:8]}"},
+            headers=_AUTH_HEADERS,
             timeout=TIMEOUT
         )
     if resp.status_code == 201:
@@ -247,6 +293,7 @@ def test_sop_pdf_upload():
             f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop",
             files={"file": (os.path.basename(TEST_PDF_FILE), f, "application/pdf")},
             data={"name": f"test-pdf-{uuid.uuid4().hex[:8]}"},
+            headers=_AUTH_HEADERS,
             timeout=TIMEOUT
         )
     if resp.status_code == 201:
@@ -273,7 +320,8 @@ def test_intent():
         "intent": "分析网络性能并生成汇总报告",
         "name": f"test-intent-{uuid.uuid4().hex[:8]}"
     }
-    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/intent", json=payload, timeout=TIMEOUT)
+    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/intent",
+                         json=payload, headers=_AUTH_HEADERS, timeout=TIMEOUT)
     _check_status(resp, 201, label)
     body = _check_envelope(resp, label)
     data = body["data"]
@@ -292,7 +340,7 @@ def test_intent_empty():
     """
     label = "POST /api/v1/orchestrate/intent (空意图)"
     resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/intent",
-                         json={"intent": ""}, timeout=TIMEOUT)
+                         json={"intent": ""}, headers=_AUTH_HEADERS, timeout=TIMEOUT)
     assert resp.status_code == 422, f"{label}: expected Pydantic 422, got {resp.status_code}"
     body = resp.json()
     # 自定义异常处理器将 422 包装为 {code, message, status, data} 信封
@@ -311,7 +359,8 @@ def test_search():
     """
     label = "POST /api/v1/orchestrate/search"
     payload = {"intent": "网络故障诊断"}
-    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/search", json=payload, timeout=TIMEOUT)
+    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/search",
+                         json=payload, headers=_AUTH_HEADERS, timeout=TIMEOUT)
     _check_status(resp, 200, label)
     body = _check_envelope(resp, label)
     data = body["data"]
@@ -343,7 +392,8 @@ def test_search_top_n():
     """
     label = "POST /api/v1/orchestrate/search (top_n=2)"
     payload = {"intent": "网络", "top_n": 2}
-    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/search", json=payload, timeout=TIMEOUT)
+    resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/search",
+                         json=payload, headers=_AUTH_HEADERS, timeout=TIMEOUT)
     _check_status(resp, 200, label)
     body = _check_envelope(resp, label)
     assert len(body["data"]) <= 2, f"{label}: 返回 {len(body['data'])} 条, 应 <=2"
@@ -365,7 +415,7 @@ def test_execute_auto_sse():
     try:
         resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/execute",
                              json=payload, stream=True, timeout=SSE_TIMEOUT,
-                             headers={"Accept": "text/event-stream"})
+                             headers={**_AUTH_HEADERS, "Accept": "text/event-stream"})
         _check_status(resp, 200, label)
         events = _read_sse(resp, label, max_events=30)
         _log("ok", f"{label}: 收到 {len(events)} 个事件")
@@ -417,7 +467,7 @@ def test_execute_by_id_sse():
         "name": f"test-exec-by-id-{uuid.uuid4().hex[:8]}"
     }
     resp = requests.post(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/sop",
-                         json=create_payload, timeout=TIMEOUT)
+                         json=create_payload, headers=_AUTH_HEADERS, timeout=TIMEOUT)
     if resp.status_code != 201:
         _log("skip", f"{label} (创建): SOP 失败 status={resp.status_code}, 跳过")
         return
@@ -427,7 +477,7 @@ def test_execute_by_id_sse():
     resp2 = requests.get(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/execute/{psop_id}",
                          params={"user_intent": "早上8点检查华为园区网络健康状态"},
                          stream=True, timeout=SSE_TIMEOUT,
-                         headers={"Accept": "text/event-stream"})
+                         headers={**_AUTH_HEADERS, "Accept": "text/event-stream"})
     _check_status(resp2, 200, f"{label} (执行)")
     events = _read_sse(resp2, label, max_events=30)
     _log("ok", f"{label}: SSE 事件数={len(events)}, types={[e.get('type') for e in events]}")
@@ -440,7 +490,8 @@ def test_execute_nonexistent_psop():
     文档 §5 错误码：不存在的 PSOP → 404
     """
     label = "GET /api/v1/orchestrate/execute/{nonexistent}"
-    resp = requests.get(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/execute/{uuid.uuid4()}", timeout=TIMEOUT)
+    resp = requests.get(f"{ORCHESTRATE_BASE}/api/v1/orchestrate/execute/{uuid.uuid4()}",
+                        headers=_AUTH_HEADERS, timeout=TIMEOUT)
     assert resp.status_code in (404, 422), f"{label}: expected 404/422, got {resp.status_code}"
     _log("ok", f"{label}: status={resp.status_code}")
 
@@ -455,7 +506,8 @@ def test_get_execution():
     """
     label = "GET /api/v1/executions/{id}"
     fake_id = str(uuid.uuid4())
-    resp = requests.get(f"{ORCHESTRATE_BASE}/api/v1/executions/{fake_id}", timeout=TIMEOUT)
+    resp = requests.get(f"{ORCHESTRATE_BASE}/api/v1/executions/{fake_id}",
+                        headers=_AUTH_HEADERS, timeout=TIMEOUT)
     assert resp.status_code == 404, f"{label}: expected 404, got {resp.status_code}"
     _check_error(resp, 404, label)
 
@@ -468,7 +520,8 @@ def test_orchestrate_reachable():
     """
     label = "编排中心可达性"
     try:
-        resp = requests.get(f"{ORCHESTRATE_BASE}/api/v1/executions/{uuid.uuid4()}", timeout=5)
+        resp = requests.get(f"{ORCHESTRATE_BASE}/api/v1/executions/{uuid.uuid4()}",
+                            headers=_AUTH_HEADERS, timeout=5)
         _log("ok", f"{label}: 服务响应 status={resp.status_code}")
     except requests.ConnectionError:
         _log("fail", f"{label}: 无法连接 {ORCHESTRATE_BASE}")
@@ -513,6 +566,8 @@ if __name__ == "__main__":
         except AssertionError as e:
             results[name] = "FAIL"
             _log("fail", str(e))
+        except pytest.skip.Exception:
+            results[name] = "SKIP"
         except requests.ConnectionError as e:
             results[name] = "SKIP (无法连接)"
             _log("skip", str(e))

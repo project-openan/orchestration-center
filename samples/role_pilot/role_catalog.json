@@ -1,0 +1,125 @@
+{
+  "catalog_version": "pilot-wireless-v1",
+  "roles": [
+    {
+      "role_id": "ran-energy-coordinator",
+      "role_version": "1.0.0",
+      "name": "RAN节能意图与效果评估",
+      "description": "为不同RAN域制定、下发和调整节能意图，结合履约报告与KPI评估效果。",
+      "source": {
+        "package": "IG1526A",
+        "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+        "pdf_pages": [13]
+      },
+      "skills": [
+        {
+          "skill_id": "formulate-energy-intent",
+          "name": "制定与调整节能意图",
+          "description": "根据业务节能要求和域侧探索结果制定、下发并调整节能与吞吐目标。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [13, 16, 17]
+          },
+          "review_status": "draft",
+          "input_summary": "业务节能要求、节能意图探索报告及后续履约/效果信息。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [13, 16]
+          },
+          "output_summary": "按时段、频段和RAT设置或调整的RAN节能意图。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [13, 16]
+          }
+        },
+        {
+          "skill_id": "evaluate-energy-effect",
+          "name": "评估节能效果",
+          "description": "根据各域意图履约报告和KPI评估目标达成情况。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [13, 16, 17]
+          },
+          "review_status": "draft",
+          "input_summary": "各RAN域的意图履约报告和KPI。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [13, 16]
+          },
+          "output_summary": "RAN节能效果评估结果，可用于调整节能意图。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [16]
+          }
+        }
+      ],
+      "review_status": "draft"
+    },
+    {
+      "role_id": "ran-energy-optimizer",
+      "role_version": "1.0.0",
+      "name": "单域RAN节能优化",
+      "description": "在单个RAN域内以小时级闭环处理节能意图：探索节能收益及业务性能影响，将意图转为节能策略，执行网元配置并评估履约效果。域内数据采集、分析和策略选择属于内部职责。",
+      "source": {
+        "package": "IG1526A",
+        "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+        "pdf_pages": [13, 14]
+      },
+      "skills": [
+        {
+          "skill_id": "explore-energy-intent",
+          "name": "节能意图探索",
+          "description": "接收节能与UE吞吐目标，评估单域可实现的目标值，返回探索报告；预评估阶段不修改现网。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [13, 16, 17]
+          },
+          "review_status": "draft",
+          "input_summary": "RAN能耗目标和UE吞吐目标的探索请求。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [16, 17]
+          },
+          "output_summary": "节能意图探索报告，包含请求目标可实现的最佳值。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [16, 17]
+          }
+        },
+        {
+          "skill_id": "fulfill-energy-intent",
+          "name": "节能意图履约与反馈",
+          "description": "接收并履行RAN节能意图，执行节能策略，提供包含履约状态、实际达成值等信息的履约报告。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [14, 16, 17]
+          },
+          "review_status": "draft",
+          "input_summary": "下发的RAN节能意图，包括目标及适用时段、频段或RAT等上下文。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [13, 16, 17]
+          },
+          "output_summary": "意图履约报告，可包含履约状态、目标达成值、建议值和网元配置修改信息。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [16, 17]
+          }
+        }
+      ],
+      "review_status": "draft"
+    }
+  ]
+}

@@ -169,7 +169,30 @@ class TestNormalizeSubtaskAgents:
 
 
 class TestSkillFallbackRouting:
+    def test_generic_support_does_not_silently_replace_missing_business_skill(self, generator, mock_llm):
+        mock_llm.ask_llm.side_effect = [
+            ('', '```json\n["IP diagnosis"]\n```'),
+            ('', '```json\n{"IP diagnosis":"none"}\n```'),
+        ]
+        cards = [_card('Support', [_skill('General Orchestration Support')])]
+        preflow = SimpleNamespace(steps_md='IP diagnosis', name='WF', id='pf-1')
+        with pytest.raises(WorkflowGeneratorError, match='No matching agent'):
+            generator.generate_psop_workflow(preflow, cards)
+
+    def test_structure_builder_cannot_introduce_an_unknown_skill(self, generator, mock_llm):
+        data = json.loads(_psop_structure_json())
+        data['steps'][0]['subtasks'][0]['skill'] = 'Invented skill'
+        mock_llm.ask_llm.side_effect = [
+            ('', '```json\n["Action A"]\n```'),
+            ('', '```json\n{"Action A":"Skill X"}\n```'),
+            ('', '```json\n'+json.dumps(data)+'\n```'),
+        ]
+        with pytest.raises(WorkflowGeneratorError, match='unknown skill'):
+            generator.generate_psop_workflow(SimpleNamespace(steps_md='Action A', name='WF', id='pf-1'),
+                                             [_card('Owner', [_skill('Skill X')])])
+
     def test_none_action_falls_back_to_generic_skill(self, generator, mock_llm):
+        generator = PsopGenerator(fallback_skill="General Orchestration Support")
         mock_llm.ask_llm.side_effect = [
             ("req_id", '```json\n["Action A", "Helper chore"]\n```'),
             ("req_id", '```json\n{"Action A": "Skill X", "Helper chore": "none"}\n```'),

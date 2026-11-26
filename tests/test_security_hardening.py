@@ -138,6 +138,29 @@ def test_auth_check_matches_registration_gate(client, monkeypatch):
         assert client.get("/rest/v1/orchestrate/auth/check").json()["data"]["registration_enabled"] is True
 
 
+@pytest.mark.parametrize("has_users", [False, True])
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_auth_check_reports_account_mode_independent_of_registration(
+    client, monkeypatch, account_session, has_users, authenticated
+):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        "orchestrate.server.frontend_support_server.current_context",
+        lambda: SimpleNamespace(has_users=has_users),
+    )
+    monkeypatch.setattr("orchestrate.server.frontend_support_server.get_conf", lambda: {})
+    response = client.get(
+        "/rest/v1/orchestrate/auth/check",
+        headers=account_session if authenticated else {},
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["single_account"] is (not has_users)
+    assert data["registration_enabled"] is False
+    assert data["authenticated"] is authenticated
+
+
 def test_register_works_when_enabled(client, monkeypatch):
     conf = {"auth.register.enabled": "true", "persistence_mode": "postgresql"}
     monkeypatch.setattr(

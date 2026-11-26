@@ -21,27 +21,20 @@ import { createWorkflow } from "@/service/api.js";
 import { createPortal } from "react-dom";
 import { transformReactFlowToPSOP } from "@/components/orchestration_center/workflow/utils/index.jsx";
 import SandboxDialog from "@/components/sandbox/SandboxDialog.jsx";
+import { hasRoleTasks, findInvalidRoleReferences, findRoleContractIssues, workflowBinding } from '../rolePolicy.js';
+import { generationErrorMessage } from '../../generationErrors.js';
 
-const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, onCancel, onClear, onFitView, isDark, onSaveSuccess }) => {
+const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, workflowMetadata = {}, protectedWorkflow = hasRoleTasks(workflowMetadata) || hasRoleTasks(nodes), roleMode = false, catalog = null, designSteps = null, onCancel, onClear, onFitView, isDark, onSaveSuccess }) => {
+    const roleWorkflow = roleMode || hasRoleTasks(workflowMetadata) || hasRoleTasks(nodes);
+    const fromCanvas = roleMode && !protectedWorkflow;
     const [showConfirm, setShowConfirm] = useState(false);
     const { t } = useTranslation();
     const [showExportModal, setShowExportModal] = useState(false);
     const [showSandboxDialog, setShowSandboxDialog] = useState(false);
     const [exportName, setExportName] = useState(workflowName || "");
     const [exportDesc, setExportDesc] = useState(workflowDescription || "");
+    const [exportTags, setExportTags] = useState(workflowMetadata.tags || []);
     const [toast, setToast] = useState({ show: false, msg: "", type: "error" });
-
-    useEffect(() => {
-        if (workflowName) {
-            setExportName(workflowName);
-        }
-    }, [workflowName]);
-
-    useEffect(() => {
-        if (workflowDescription) {
-            setExportDesc(workflowDescription);
-        }
-    }, [workflowDescription]);
 
     useEffect(() => {
         if (toast.show) {
@@ -51,12 +44,20 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
     }, [toast.show]);
 
     const handleClearClick = () => {
+        if (protectedWorkflow) return;
         onClear();
         setShowConfirm(false);
     };
 
     // --- 0. Pre-validation ---
     const validateWorkflow = () => {
+        if (roleMode && !nodes.some(node => node.data?.subtasks?.some(task => task.binding === 'role'))) return t('workflow.roleCanvas.emptyWorkflow');
+        if (fromCanvas && (!catalog || !workflowMetadata.catalog_version)) return t('workflow.roleEditUnavailable');
+        if (fromCanvas && workflowBinding(nodes, 'role') !== 'role') return t('workflow.roleCanvas.mixed');
+        if (fromCanvas) {
+            const issues = findRoleContractIssues(nodes);
+            if (issues.length) return issues.map(issue => `${issue.code}: ${issue.node_id}/${issue.task_id || '-'}`).join(', ');
+        }
         if (nodes.length === 0) return t('workflow.validate.empty');
         if (!nodes.some(n => n.type === 'startNode')) {
             return t('workflow.validate.noStart');
@@ -72,10 +73,10 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
                 if (!node.data.subtasks || node.data.subtasks.length === 0) {
                     return t('workflow.validate.noSubtask', { id: node.id });
                 }
-                if (!node.data.agent) {
+                if (!roleWorkflow && !node.data.agent) {
                     return t('workflow.validate.invalidAgent', { id: node.id });
                 }
-                if (!node.data.skill) return t('workflow.validate.noSkill', { id: node.id });
+                if (!roleWorkflow && !node.data.skill) return t('workflow.validate.noSkill', { id: node.id });
             }
             const isEndNode = (node.type === 'endNode' || node.id === 'endNode');
             if (!isEndNode && !sourceEdgeIds.has(node.id)) {
@@ -102,6 +103,34 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
         return null;
     };
 
+    const serializeDesign = () => transformReactFlowToPSOP(nodes, edges, {
+        ...workflowMetadata,
+        // Content edits live in the design-steps snapshot, not in the original
+        // metadata; without this the role branch would save stale content.
+        ...(protectedWorkflow && Array.isArray(designSteps) && designSteps.length ? { steps: designSteps } : {}),
+        description: exportDesc === '' && workflowMetadata.description === null ? null : exportDesc,
+        id: workflowId || workflowMetadata.id,
+        name: exportName || workflowName,
+        tags: !exportTags.length && workflowMetadata.tags === null ? null : exportTags,
+    }, { fromCanvas });
+
+    const downloadDesign = () => {
+        try {
+            const blob = new Blob([JSON.stringify(serializeDesign(), null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            try {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `workflow-${String(workflowId || 'design').replace(/[^\w.-]/g, '_')}.json`;
+                link.click();
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        } catch {
+            setToast({ show: true, msg: t('workflow.export.failed'), type: 'error' });
+        }
+    };
+
     const executeExport = () => {
         const errorMsg = validateWorkflow();
         if (errorMsg) {
@@ -112,17 +141,41 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
             });
             return;
         }
-        const psopData = transformReactFlowToPSOP(nodes, edges, { description: exportDesc, id: workflowId, name: exportName || workflowName });
+        // Advisory only: the backend CatalogGate stays authoritative, but the
+        // obvious invalid (role, version, skill) references are caught here so
+        // the user can fix them before the server rejects the whole save.
+        const invalidReferences = findInvalidRoleReferences(nodes, catalog);
+        if (invalidReferences.length > 0) {
+            setToast({
+                show: true,
+                msg: t('workflow.validate.invalidRoleReference', {
+                    tasks: invalidReferences.map(issue => `${issue.node_label}/${issue.task_id}`).join(', '),
+                }),
+                type: 'error'
+            });
+            return;
+        }
         try {
+            const psopData = serializeDesign();
             createWorkflow(psopData).then(r => {
+                if (r?.status === 'error') throw new Error(generationErrorMessage({ response: { data: r } }));
                 setToast({ show: true, msg: t('workflow.export.success'), type: 'success' });
                 setShowExportModal(false);
-                if (onSaveSuccess) onSaveSuccess(r?.data?.workflow_id || workflowId || null);
+                // Execution-center previews of this template are now outdated;
+                // the confirm digest would reject them anyway (RESOLUTION_MISMATCH).
+                window.dispatchEvent(new CustomEvent('orchestrate:workflow-saved', {
+                    detail: { workflow_id: r?.data?.workflow_id || workflowId || null },
+                }));
+                if (onSaveSuccess) {
+                    const savedId = r?.data?.workflow_id || workflowId || null;
+                    if (fromCanvas) onSaveSuccess(savedId, psopData);
+                    else onSaveSuccess(savedId);
+                }
             }).catch(err => {
-                setToast({ show: true, msg: t('workflow.export.failed'), type: 'error' });
+                setToast({ show: true, msg: `${t('workflow.export.failed')}: ${generationErrorMessage(err)}`, type: 'error' });
             });
         } catch (e) {
-            console.error('Upload failed', e);
+            setToast({ show: true, msg: t('workflow.export.failed'), type: 'error' });
         }
     };
 
@@ -207,6 +260,23 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
                     />
                 </div>
 
+                <fieldset className="mb-6 space-y-2">
+                    <legend className="text-xs font-bold mb-2">{t('workflow.tagsLabel')}</legend>
+                    {exportTags.map((tag, index) => (
+                        <div className="flex gap-2" key={index}>
+                            <input aria-label={`${t('workflow.tagsLabel')} ${index + 1}`} value={tag}
+                                className={`flex-1 px-3 py-2 rounded-xl border ${theme.input}`}
+                                onChange={event => setExportTags(tags => tags.map((item, position) => position === index ? event.target.value : item))} />
+                            <button type="button" aria-label={t('workflow.removeTag')}
+                                onClick={() => setExportTags(tags => tags.filter((_, position) => position !== index))}>×</button>
+                        </div>
+                    ))}
+                    <button type="button" onClick={() => setExportTags(tags => [...tags, ''])}>{t('workflow.addTag')}</button>
+                </fieldset>
+
+                <button type="button" onClick={downloadDesign} className={`w-full mb-4 px-4 py-3 rounded-2xl border ${theme.input}`}>
+                    {t('workflow.downloadDesign')}
+                </button>
                 <div className="flex gap-4">
                     <button
                         onClick={() => setShowExportModal(false)}
@@ -263,7 +333,9 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
 
             {workflowId && (
                 <button
-                    onClick={() => setShowSandboxDialog(true)}
+                    onClick={() => { if (!roleWorkflow) setShowSandboxDialog(true); }}
+                    disabled={roleWorkflow}
+                    title={roleWorkflow ? t('workflow.roleSandboxUnsupported') : undefined}
                     className={`flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-xl transition-colors ${theme.secondaryBtn}`}
                 >
                     <FlaskConical className="w-4 h-4" />
@@ -273,6 +345,8 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
 
             <button
                 onClick={handleClearClick}
+                disabled={protectedWorkflow}
+                title={protectedWorkflow ? t('workflow.roleProtection') : undefined}
                 className={`flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-xl transition-colors ${theme.dangerBtn}`}
             >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -284,8 +358,9 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
 
             <button
                 onClick={() => {
-                    setExportName(prev => prev || workflowName || "");
-                    setExportDesc(prev => prev || workflowDescription || "");
+                    setExportName(workflowName ?? workflowMetadata.name ?? "");
+                    setExportDesc(workflowDescription ?? workflowMetadata.description ?? "");
+                    setExportTags(workflowMetadata.tags || []);
                     setShowExportModal(true);
                 }}
                 className={`ml-2 px-4 py-1.5 text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-1 ${theme.primaryBtn}`}
@@ -297,10 +372,11 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
                 {t('workflow.toolbar.export')}
             </button>
             {showExportModal && createPortal(ExportModal, document.body)}
-            {showSandboxDialog && (
+            {showSandboxDialog && !roleWorkflow && (
                 <SandboxDialog
                     workflowId={workflowId}
                     psop={transformReactFlowToPSOP(nodes, edges, {
+                        ...workflowMetadata,
                         id: workflowId || undefined,
                         name: workflowName,
                         description: workflowDescription,

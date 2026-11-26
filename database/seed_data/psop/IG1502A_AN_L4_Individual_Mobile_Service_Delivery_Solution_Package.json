@@ -11,8 +11,8 @@
         {
           "task_id": "task1",
           "description": "Generate radio service intent template based on individual mobile service delivery intent",
-          "agent": "Energy Saving Intent Agent",
-          "skill": "Intent Generation",
+          "agent": "Mobile Service Intent Agent",
+          "skill": "Mobile Service Intent Generation",
           "status": "pending"
         }
       ],
@@ -32,8 +32,8 @@
         {
           "task_id": "task2",
           "description": "Configure radio service intent templates (including supported scene, supported service SLA targets, assurance time)",
-          "agent": "RAN Energy Saving Agent",
-          "skill": "RAN ES Intent Lifecycle Management",
+          "agent": "Radio Service Delivery Agent",
+          "skill": "Radio Service Intent Lifecycle Management",
           "status": "pending"
         }
       ],
@@ -53,8 +53,8 @@
         {
           "task_id": "task3",
           "description": "Perform radio service intent exploration to evaluate and determine the maximum number of UEs possible to subscribe and access the individual mobile service with expected SLAs",
-          "agent": "RAN Energy Saving Agent",
-          "skill": "RAN ES Intent Exploration",
+          "agent": "Radio Service Delivery Agent",
+          "skill": "Radio Service Feasibility Exploration",
           "status": "pending"
         }
       ],
@@ -74,8 +74,8 @@
         {
           "task_id": "task4",
           "description": "Obtain the radio service intent exploration report, including the maximum number of UEs possible to subscribe and access with expected SLAs",
-          "agent": "RAN Energy Saving Agent",
-          "skill": "RAN ES Intent Reporting",
+          "agent": "Radio Service Delivery Agent",
+          "skill": "Radio Service Feasibility Reporting",
           "status": "pending"
         }
       ],
@@ -95,8 +95,8 @@
         {
           "task_id": "task5",
           "description": "Query service capacity information usable for user subscription",
-          "agent": "RAN Agent",
-          "skill": "Analysis and Evaluation",
+          "agent": "Radio Service Delivery Agent",
+          "skill": "Radio Service Capacity Query",
           "status": "pending"
         }
       ],
@@ -137,8 +137,8 @@
         {
           "task_id": "task7",
           "description": "Request to check the feasibility of the user's subscription for the individual mobile service",
-          "agent": "Energy Saving Intent Agent",
-          "skill": "Intent Exploration Request",
+          "agent": "Mobile Service Intent Agent",
+          "skill": "Mobile Service Feasibility Request",
           "status": "pending"
         }
       ],
@@ -158,8 +158,8 @@
         {
           "task_id": "task8",
           "description": "Perform radio service intent feasibility check to determine whether the radio service at the specified geo coordinate is feasible for subscription and access",
-          "agent": "RAN Energy Saving Agent",
-          "skill": "RAN ES Intent Exploration",
+          "agent": "Radio Service Delivery Agent",
+          "skill": "Radio Service Feasibility Exploration",
           "status": "pending"
         }
       ],
@@ -179,8 +179,8 @@
         {
           "task_id": "task9",
           "description": "Obtain the radio service intent feasibility check report",
-          "agent": "RAN Energy Saving Agent",
-          "skill": "RAN ES Intent Reporting",
+          "agent": "Radio Service Delivery Agent",
+          "skill": "Radio Service Feasibility Reporting",
           "status": "pending"
         }
       ],

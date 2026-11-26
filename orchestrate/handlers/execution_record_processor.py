@@ -16,6 +16,7 @@
 #    under the License.
 
 import json
+from datetime import datetime
 
 from loguru import logger
 
@@ -81,6 +82,13 @@ def db_list_execution_records():
                 try:
                     content = json.loads(row[7])
                     summary["error"] = content.get("error")
+                    # The immutable snapshot retains the original offset even
+                    # for legacy PostgreSQL rows written in a session timezone.
+                    # Prefer it over the ambiguous timestamp scalar when present.
+                    for field in ("started_at", "completed_at"):
+                        if field in content:
+                            value = content[field]
+                            summary[field] = timestamp_iso(datetime.fromisoformat(value)) if value is not None else None
                 except (ValueError, TypeError, AttributeError) as exc:
                     raise StorageCorruptionError("Stored execution record is invalid") from exc
             result.append(summary)

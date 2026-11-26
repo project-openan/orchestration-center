@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -14,6 +14,7 @@ Covers:
 """
 
 import json
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -99,14 +100,20 @@ class TestDbSaveExecutionRecord:
         record.execution_id = "exec-1"
         record.psop_id = "psop-1"
         record.psop_name = "WF"
-        record.started_at = "2025-01-01T00:00:00Z"
-        record.completed_at = "2025-01-01T01:00:00Z"
+        record.started_at = datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc)
+        record.completed_at = datetime(2025, 1, 1, 1, 0, tzinfo=timezone.utc)
         record.status = "success"
         record.execution_history = []
         record.model_dump_json.return_value = '{"key":"val"}'
         with patch("orchestrate.handlers.execution_record_processor.create_connection", return_value=mock_conn):
             result = db_save_execution_record(record)
             assert result == "exec-1"
+            # The columns are timezone-less, so aware values must be bound as naive
+            # UTC; otherwise PostgreSQL converts through the session timezone.
+            bound = mock_cur.execute.call_args[0][1]
+            assert bound[3] == datetime(2025, 1, 1, 0, 0)
+            assert bound[3].tzinfo is None
+            assert bound[4] == datetime(2025, 1, 1, 1, 0)
             mock_conn.close.assert_called_once()
 
     def test_conn_none_raises(self):
@@ -185,8 +192,8 @@ class TestDbListExecutionRecords:
         mock_conn.cursor.return_value = mock_cur
         with patch("orchestrate.handlers.execution_record_processor.create_connection", return_value=mock_conn):
             result = db_list_execution_records()
-            assert result[0]["started_at"] == "2025-01-01T12:00:00"
-            assert result[0]["completed_at"] == "2025-01-01T12:00:00"
+            assert result[0]["started_at"] == "2025-01-01T12:00:00+00:00"
+            assert result[0]["completed_at"] == "2025-01-01T12:00:00+00:00"
 
     def test_invalid_json_content(self):
         from orchestrate.handlers.execution_record_processor import db_list_execution_records

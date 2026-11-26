@@ -16,6 +16,7 @@
 //    under the License.
 
 import { Share2 } from 'lucide-react';
+import packageInfo from './package.json';
 
 /**
  * OpenAN Portal plugin manifest for the Orchestration Center website.
@@ -28,7 +29,7 @@ import { Share2 } from 'lucide-react';
 export default {
     id: 'orchestration-center',
     name: 'Orchestration Center',
-    version: '0.2.0',
+    version: packageInfo.version,
     menu: [{
         id: 'orchestration',
         labelKey: 'orchestration-center:orchestration.title',

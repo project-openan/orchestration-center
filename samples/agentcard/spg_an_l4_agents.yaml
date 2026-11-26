@@ -18,9 +18,13 @@
 # service assurance, complaint handling, service delivery, change management,
 # network planning & design, and optimization (quality / energy efficiency).
 #
-# These cards give the PsopGenerator's skill matcher a matching skill for the
-# tasks extracted from SPG "Interaction Flow" chapters, so that every SPG can
-# be orchestrated into a PSOP workflow.
+# PLANNING CATALOG ONLY: these cards describe candidate business capabilities,
+# not deployed servers. Loopback URLs are placeholders, not runnable workers.
+# No Task-T capability is asserted for unimplemented business agents. Default
+# workflows are examples, not production-ready workflows. See
+# docs/en/SPG Import.md (docs/zh/SPG导入.md) for deployment and sandbox gates.
+# Register actual AgentCards, supported extensions, skills and credentials
+# before execution; sandbox protocol failures must not be bypassed.
 
 agents:
   - name: "AN L4 Cross-Domain Fault Management Agent"
@@ -500,3 +504,49 @@ agents:
       - protocolBinding: "HTTP+JSON"
         protocolVersion: "1.0"
         url: "http://127.0.0.1:9115"
+
+  - name: "Mobile Service Intent Agent"
+    description: "规划能力：个体移动业务订购意图的生成和可行性请求，不是节能意图。需外部实现。"
+    version: "1.0.0"
+    skills:
+      - { id: "mobile-service-intent-generation", name: "Mobile Service Intent Generation", description: "生成移动业务交付意图。", tags: ["service-delivery"] }
+      - { id: "mobile-service-feasibility-request", name: "Mobile Service Feasibility Request", description: "请求移动业务订购可行性评估。", tags: ["service-delivery"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9116" }]
+
+  - name: "Radio Service Delivery Agent"
+    description: "规划能力：无线业务SLA模板、容量与订购可行性管理，不是无线节能控制。需外部实现。"
+    version: "1.0.0"
+    skills:
+      - { id: "radio-service-intent-lifecycle", name: "Radio Service Intent Lifecycle Management", description: "配置无线业务意图模板与SLA。", tags: ["service-delivery"] }
+      - { id: "radio-service-feasibility", name: "Radio Service Feasibility Exploration", description: "评估无线业务订购与接入可行性。", tags: ["service-delivery"] }
+      - { id: "radio-service-feasibility-report", name: "Radio Service Feasibility Reporting", description: "报告无线业务容量与可行性。", tags: ["service-delivery"] }
+      - { id: "radio-service-capacity", name: "Radio Service Capacity Query", description: "查询用户可订购的无线业务容量。", tags: ["service-delivery"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9117" }]
+
+  - name: "IP Quality Intent Agent"
+    description: "规划能力：IP网络质量优化意图投递与达成验证，不是无线节能意图。需外部实现。"
+    version: "1.0.0"
+    skills:
+      - { id: "ip-quality-intent-delivery", name: "IP Quality Intent Delivery", description: "投递IP网络质量优化意图。", tags: ["ip-network", "quality"] }
+      - { id: "ip-quality-intent-report", name: "IP Quality Intent Fulfillment Reporting", description: "报告并验证IP质量优化意图达成情况。", tags: ["ip-network", "quality"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9118" }]
+
+  - name: "Core Network Analytics Agent"
+    description: "规划能力：核心网数字孪生、信令风暴与网元负载分析、流控优化。需外部实现。"
+    version: "1.0.0"
+    skills:
+      - { id: "core-network-digital-twin", name: "Core Network Digital Twin Analysis", description: "对核心网拓扑、负载与信令风暴进行仿真分析。", tags: ["core-network", "analytics"] }
+      - { id: "core-network-flow-control", name: "Core Network Flow Control Optimization", description: "生成核心网流控参数优化建议。", tags: ["core-network", "optimization"] }
+    capabilities: { streaming: false }
+    defaultInputModes: ["text"]
+    defaultOutputModes: ["text"]
+    supportedInterfaces: [{ protocolBinding: "HTTP+JSON", protocolVersion: "1.0", url: "http://127.0.0.1:9119" }]

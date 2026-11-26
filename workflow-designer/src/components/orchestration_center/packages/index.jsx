@@ -20,6 +20,20 @@ import { listSolutionPackages, deleteSolutionPackage } from '../../../service/ap
 
 const stem = (filename) => filename.replace(/\.pdf$/i, '');
 
+// Role-catalog and instance generations of the same package are linked in
+// separate slots; records created before the split only carry the latest id.
+const workflowLinks = (pkg, t) => {
+    const bindings = pkg.workflow_bindings || {};
+    const links = [
+        { id: bindings.role, label: t('orchestration.roleMode') },
+        { id: bindings.instance, label: t('orchestration.instanceMode') },
+    ].filter(link => link.id);
+    if (links.length === 0 && pkg.workflow_id) {
+        links.push({ id: pkg.workflow_id, label: null });
+    }
+    return links;
+};
+
 const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadingStatus, progress, t }) => {
     const fileInput = useRef(null);
     const [dragOver, setDragOver] = useState(false);
@@ -168,7 +182,7 @@ const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadin
                 ) : (
                     <div className="space-y-3">
                         {packages.map(pkg => {
-                            const workflowReady = Boolean(pkg.workflow_id);
+                            const links = workflowLinks(pkg, t);
                             return (
                                 <div
                                     key={pkg.pdf_filename}
@@ -196,17 +210,25 @@ const SolutionPackages = ({ onBack, onImportPdf, onViewWorkflow, loading, loadin
                                         </div>
 
                                         <div className="flex items-center gap-3 shrink-0 ml-4">
-                                            {workflowReady ? (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        onViewWorkflow(pkg.workflow_id);
-                                                    }}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white bg-blue-500 hover:bg-blue-600 shadow-sm shadow-blue-500/20 transition-all"
-                                                >
-                                                    <Link2 size={13} />
-                                                    Workflow
-                                                </button>
+                                            {links.length > 0 ? (
+                                                links.map(link => (
+                                                    <button
+                                                        key={link.id}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onViewWorkflow(link.id);
+                                                        }}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-white bg-blue-500 hover:bg-blue-600 shadow-sm shadow-blue-500/20 transition-all"
+                                                    >
+                                                        <Link2 size={13} />
+                                                        Workflow
+                                                        {link.label && (
+                                                            <span className="px-1.5 py-0.5 rounded-md bg-white/25 text-[10px] font-bold tracking-normal normal-case">
+                                                                {link.label}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ))
                                             ) : (
                                                 <span className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-zinc-800">
                                                     Workflow 未生成

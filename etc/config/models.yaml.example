@@ -8,6 +8,11 @@ models:
     api_key_env: LLM_CHAT_API_KEY
     timeout: 300
     verify_ssl: true
+    # Optional chat-only SSE. Premature EOF / length truncation are errors.
+    # stream: true
+    # stream_total_timeout: 600
+    # proxy: http://proxy.example:8080
+    # extra_body: {max_tokens: 8192}  # Additional options only; no model/messages/stream overrides.
   # embed:
   #   provider: openai_compatible
   #   model: your-embedding-model

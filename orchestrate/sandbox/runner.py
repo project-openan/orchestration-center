@@ -34,6 +34,7 @@ from orchestrate.sandbox.models import (
     StubTemplate,
 )
 from orchestrate.sandbox.stub_runtime import StubAgentRuntime
+from orchestrate.sandbox.validation import require_instance_workflow
 from orchestrate.validation.sandbox_validator import (
     SandboxCheckStatus,
     validate_sandbox_static,
@@ -166,6 +167,7 @@ async def run_sandbox(
     max_event_bytes: int = 1_000_000,
 ) -> SandboxRunReport:
     """Run static validation and Stub execution through the real workflow runner."""
+    require_instance_workflow(psop)
     if max_events < 1 or max_event_bytes < 1:
         raise ValueError("Sandbox event limits must be positive")
     scenario_value = _scenario(scenario)

@@ -42,6 +42,7 @@ etc/conf/db_config.json
 etc/conf/mysql_config.json
 *.token.md
 *token*.md
+*.local.md
 workflow-designer/dist-plugin/
 .agents
 reviews

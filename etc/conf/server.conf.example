@@ -33,6 +33,29 @@ public_scheme=
 forwarded_allow_ips=127.0.0.1
 
 persistence_mode=file
+
+# Role catalog release file (exact version, e.g. data/role_catalog/pilot-wireless-v1.json).
+# Workflows containing role-bound tasks can only be saved when this file authorizes
+# every reference; unset means role tasks are rejected as CATALOG_VERSION_UNAVAILABLE.
+role_catalog_path=
+# Dispatch-time role resolution (sub-requirement 4). Role workflows fail
+# closed with RESOLUTION_INPUT_INVALID when dispatched without these keys.
+# role_registry_path=data/role_registry/pilot.json
+# role_execution_scope=operator-a/city-a/ran-domain-a
+# role_authorized_instances=ran-energy-technical-a,ran-energy-technical-b
+# role_authorized_instances is the server-owned authorization ceiling. Requests
+# may only narrow it; an explicit empty list authorizes no instances. This is a
+# deployment-wide pilot policy, not per-user instance/object access control.
+# caller_id inputs are ignored; audit identity comes from authenticated middleware.
+# Role resolution supports mixed templates. To enable the technical pilot, set
+# the same ORCH_ROLE_DISPATCH_KEY process environment secret on center and Host
+# (at least 32 bytes). It is never read from this public config or sent as metadata.
+# Missing/short keys keep ROLE_EXECUTION_NOT_ENABLED; Host rejects changed or
+# expired proofs, snapshot mismatches, registry drift, and ambiguous selected names.
+# Contract, policy context, limitations and verification: docs/en/Role Binding Pilot.md
+# Role candidates may declare multiple interfaces, complete authentication and
+# required extensions; the registry endpoint pins the dispatch interface, the
+# Host enforces the extension and authentication policy at dispatch time.
 agent_registry_url=http://127.0.0.1:5000
 # Outbound authentication material is separate from the server's TLS identity.
 agent_registry.token_env=REGISTRY_ACCESS_TOKEN
@@ -40,3 +63,56 @@ agent_registry.ca_file=
 agent_registry.client_cert=
 agent_registry.client_key=
 agent_registry.client_key_password_env=REGISTRY_CLIENT_KEY_PASSWORD
+
+# ---------------------------------------------------------------------------
+# PSOP intent retrieval
+#
+# The PSOP catalog stays the source of truth; the embedding index is a derived
+# cache that may be deleted and rebuilt at any time.
+#
+# retrieval.vector.enabled=false keeps today's behaviour: the LLM reads the whole
+# catalog on every search. When enabled, the search recalls with embeddings,
+# optionally reranks, then lets the LLM choose among the recalled candidates.
+# ---------------------------------------------------------------------------
+retrieval.vector.enabled=false
+# Recall depth handed to the reranker and the final selection.
+retrieval.vector.top_k=5
+# Drop candidates below this cosine similarity; 0.0 keeps every candidate.
+retrieval.vector.min_score=0.0
+# Requires a working "rerank" model in etc/config/models.yaml.
+retrieval.vector.rerank=false
+# true: the LLM chooses the final answer among the recalled candidates.
+# false: return the vector (or rerank) order and skip the extra chat call.
+retrieval.vector.llm_final=true
+# true: fail the search when embeddings are unavailable instead of degrading to
+# the LLM-only path. Either way the catalog, never the index, answers the query.
+retrieval.vector.strict=false
+retrieval.vector.index_file=data/vector_index/psop_vectors.json
+# Selecting a PSOP is a classification task, and thinking dominates its latency:
+# a measured call over 22 candidates took 24 s with reasoning versus 1.2 s
+# without, for the same top-3 result. Set this to false only on gateways that
+# accept body {"thinking": {"type": "disabled"}}; others will reject the call.
+# Applies to catalog selection, vector final selection and failure fallback.
+# true keeps the model defaults; false overrides only retrieval calls.
+retrieval.llm.thinking=true
+
+# ---------------------------------------------------------------------------
+# Role execution admission (REQ74 technical pilot)
+# Role execution is DISABLED by default; the dispatch signature key
+# (ORCH_ROLE_DISPATCH_KEY) authenticates messages but never enables the
+# capability. role_execution_mode=pilot opens the controlled technical pilot
+# and is admitted only on an explicitly declared non-production environment:
+# technical_pilot, development or testing. production and unrecognized values
+# stay closed, and this release has no self-declared business-certified bypass.
+# ---------------------------------------------------------------------------
+role_execution_mode=disabled
+deployment_environment=production
+
+# Multi-instance execution (single remains the backward-compatible default).
+# cluster requires a shared SQL database and an explicit schema migration.
+deployment_mode=single
+execution_lease_seconds=30
+execution_max_active=16
+execution_deadline_seconds=3600
+# ORCH_DATA_DIR selects the absolute data root for file mode.
+# See docs/en/Storage and Multi-instance.md before enabling cluster.

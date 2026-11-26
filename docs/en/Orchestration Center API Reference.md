@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
   | Parameter | Type    | Description                                        |
   |-----------|---------|----------------------------------------------------|
   | code      | integer | HTTP status code (e.g. 400, 404, 422, 500)         |
-  | message   | string  | Error description                                  |
+  | message   | string or object | Error description; role generation uses `{code, message}` |
   | status    | string  | `"error"`                                          |
   | data      | object  | `null`                                             |
 
@@ -134,7 +134,7 @@ integrations are described in [transport configuration](../transport-runtime.md)
 
 - Description
 
-     Accepts PDF/TXT/MD files (PDF parses the "5. Interaction Flow" chapter, TXT/MD reads the full content) or JSON-formatted SOP step text, and combines them with the available Agent list to generate a PSOP workflow via LLM, which is then automatically saved.
+     Accepts PDF/TXT/MD files (PDF selects "5. Interaction Flow", also accepting numbering variants such as "6. Interaction Flow"; TXT/MD reads the full content) or JSON-formatted SOP step text, and combines them with the available Agent list to generate a PSOP workflow via LLM, which is then automatically saved.
 
 - Interface Constraints
 
@@ -160,6 +160,8 @@ integrations are described in [transport configuration](../transport-runtime.md)
     |-----------|----------|--------|--------------------|---------|--------------------------------|
     | file      | No       | file   | PDF/TXT/MD file    | -       | Solution package file to parse |
     | name      | No       | string | -                  | -       | Optional workflow name         |
+    | binding | No | string | `instance` or `role` | `instance` | Generation mode |
+    | catalog_version | No | string | Exact release | - | Only valid with `binding=role` |
 
     **Mode B: JSON Request Body (application/json)**
 
@@ -167,6 +169,8 @@ integrations are described in [transport configuration](../transport-runtime.md)
     |-------------|----------|--------|-------|---------|------------------------------------------------|
     | sop_content | Yes      | string | -     | -       | Natural language SOP steps (Markdown)           |
     | name        | No       | string | -     | -       | Optional workflow name                         |
+    | binding | No | string | `instance` or `role` | `instance` | Generation mode |
+    | catalog_version | No | string | Exact release | - | Only valid with `binding=role` |
 
     > **Priority**: If both a file and a JSON request body are provided, the file takes priority.
 
@@ -279,6 +283,8 @@ integrations are described in [transport configuration](../transport-runtime.md)
     |-----------|----------|--------|-------|---------|--------------------------------|
     | intent    | Yes      | string | -     | -       | Natural language task intent   |
     | name      | No       | string | -     | -       | Optional workflow name         |
+    | binding | No | string | `instance` or `role` | `instance` | Generation mode |
+    | catalog_version | No | string | Exact release | - | Only valid with `binding=role` |
 
 - Request Example
 
@@ -330,6 +336,41 @@ integrations are described in [transport configuration](../transport-runtime.md)
     | 503         | Concurrency limit reached, server busy                       |
 
 ---
+
+### Role generation contract for sections 1 and 2
+
+`binding=role` uses approved role/skill definitions and does not require any
+registered instances. `catalog_version` selects an exact configured release;
+omitting it selects the currently configured file for this new request only.
+No directory or instance fallback is performed. Explicit model conflicts,
+missing/duplicated actions and changed task identities fail validation.
+Generation and save validation share a fixed request snapshot; directory
+content changes before save cause a failed request rather than degraded success.
+
+For example, an intent request may contain:
+
+```json
+{"intent":"Analyze the service","binding":"role","catalog_version":"approved-release-v1"}
+```
+
+For SOP files, send the same options as multipart form fields. For SOP JSON,
+send them beside `sop_content`. Successful role PSOPs include `catalog_version`
+and task-level `binding`, `agent` (role ID), `role_version`, `skill` (skill ID)
+and `task_id`. Existing mixed role/instance templates can still be saved and
+executed, while new role generation produces role tasks only.
+
+Validation responses use HTTP 422 with a structured `message` in the normal
+envelope, for example:
+
+```json
+{"code":422,"status":"error","message":{"code":"INVALID_ROLE_SKILL","message":"Model selected an unapproved role/version/skill reference"},"data":null}
+```
+
+Generation codes are `CATALOG_VERSION_UNAVAILABLE`, `NO_APPROVED_ROLE_SKILL`,
+`INVALID_ROLE_SKILL` and `INVALID_GENERATED_WORKFLOW`. Invalid mode/version
+parameter combinations also return 422. Model/service failures remain server
+errors (500); they are not reported as generated-content validation failures.
+See [Role Binding Pilot](Role%20Binding%20Pilot.md) for configuration and limits.
 
 ## 3. Search Workflow Interface
 
@@ -483,6 +524,54 @@ integrations are described in [transport configuration](../transport-runtime.md)
    |-------------|---------------------------------|
    | 404         | Workflow with the specified ID not found |
    | 500         | Internal server error           |
+
+---
+
+## 3.6 Get Workflow in BPMN Format
+
+- Typical Scenario
+
+   When an existing workflow in the orchestration center must be imported into standard BPMN tooling (Camunda Modeler, bpmn.io, ...) for viewing or further modeling, fetch its BPMN 2.0 representation by ID.
+
+- Description
+
+   Queries the workflow by PSOP ID. Internally the PSOP is first retrieved through the same query path as section 3.5, then converted server-side into BPMN 2.0 XML (`orchestrate.core.bpmn_converter`); BPMN has no storage of its own. Mapping rules: each PSOP step becomes a `bpmn:task` (subtask agent/skill recorded in `documentation`), `next` jumps become `sequenceFlow` elements, multi-branch jumps get an exclusive gateway, and jump conditions become `conditionExpression` elements. The document includes a `BPMNDiagram` DI section so viewers can render it directly.
+
+- Interface Constraints
+
+   - Rate limit identifier: `get_workflow`. Rate is determined by the `FLOW_CTL_ONE_PSOP` configuration.
+   - The response is `application/xml` (a BPMN 2.0 document), not the JSON envelope of section 1.3.
+
+- Method
+
+   GET
+
+- URI
+
+   `/api/v1/orchestrate/psop/{psop_id}/bpmn`
+
+- Request Parameters
+
+   | Parameter | Type   | Required | Location | Description                |
+   |-----------|--------|----------|----------|----------------------------|
+   | psop_id   | string | Yes      | path     | PSOP workflow unique identifier |
+
+- Request Example
+
+   ```
+   GET /api/v1/orchestrate/psop/06cb53d9-de27-4adf-9898-2eae5afcf888/bpmn
+   ```
+
+- Response Parameters
+
+   The response body is the BPMN 2.0 XML document itself (`bpmn:definitions` root with `bpmn:process` and `bpmndi:BPMNDiagram`); `Content-Disposition` carries a suggested file name (ASCII fallback plus RFC 5987 `filename*=UTF-8''`, supporting Chinese workflow names).
+
+- Error Codes
+
+   | Status Code | Description                     |
+   |-------------|---------------------------------|
+   | 404         | Workflow with the specified ID not found |
+   | 500         | Conversion or internal server error |
 
 ---
 
@@ -928,5 +1017,8 @@ These routes use `/rest/v1/orchestrate`, not `/api/v1`. Browser sessions and per
 | GET / DELETE | `/solution-packages/{pdf_filename}` | Get/remove one stored package; missing filename returns 404 |
 | PUT / DELETE | `/agent-cards/{organization}/{name}` | Admin-only registry proxy; PUT card name/organization must match URL |
 | GET | `/dispatch` | Required `intent` and `agent_name`; optional `lang`; returns SSE for one registered Agent |
+| GET | `/role-catalog` | Optional exact `catalog_version`; approved role/skill display projection from the configured release |
+| POST | `/generate-from-intent` | `user_intent`, optional `workflow_name`, `binding` (default `instance`) and role-only `catalog_version` |
+| POST | `/generate-from-preflow` | `preflow`, the same generation options, and `agent_cards` required only for instance mode |
 
 Encode each path component (spaces included); never concatenate untrusted names into URLs. There is no DELETE-all `/solution-packages` route. Sandbox routes are documented in section 8.

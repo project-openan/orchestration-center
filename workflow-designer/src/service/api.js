@@ -59,7 +59,7 @@ export const getBaseUrl = () => {
 
 const ORCHESTRATE_BASE = () => `${getPortalAwareBaseUrl()}/rest/v1/orchestrate`;
 
-function getPortalAwareBaseUrl() {
+export function getPortalAwareBaseUrl() {
     // Portal plugin mode: ALWAYS use the gateway (relative path) regardless
     // of the serving port. The getBaseUrl() port heuristics (and any saved
     // direct-IP server config) describe the STANDALONE deployment; inside
@@ -124,7 +124,25 @@ export async function deleteAgentCard(name, organization) {
 // ──── Workflow CRUD ────
 
 export async function getWorkflow() {
-    return api.get(`${ORCHESTRATE_BASE()}/workflows`);
+    const workflows = new Map();
+    let offset = 0;
+    while (true) {
+        const response = await api.get(`${ORCHESTRATE_BASE()}/workflows?limit=100&offset=${offset}`);
+        if (response.status !== 'success' || !Array.isArray(response.data)) {
+            throw new Error('Invalid workflow list response');
+        }
+        const page = response.pagination;
+        if (page && page.offset !== offset) {
+            throw new Error('Workflow pagination offset mismatch');
+        }
+        const previousSize = workflows.size;
+        for (const workflow of response.data) workflows.set(workflow.workflow_id, workflow);
+        if (!page?.has_more) {
+            return { ...response, data: [...workflows.values()], pagination: { offset: 0, limit: workflows.size, has_more: false } };
+        }
+        if (workflows.size === previousSize) throw new Error('Workflow pagination made no progress');
+        offset += response.data.length;
+    }
 }
 
 export async function getWorkflowById(id) {
@@ -155,7 +173,10 @@ export async function importTemplate(templateId) {
 // flow) actually see a rejection instead of silently getting `undefined`.
 function unwrapEnvelope(body) {
     if (body.status === 'error') {
-        throw new Error(body.message || 'Request failed');
+        const detail = body.message;
+        const message = typeof detail === 'string' ? detail
+            : [detail?.code, detail?.message].filter(Boolean).join(': ');
+        throw new Error(message || 'Request failed');
     }
     return body.data;
 }
@@ -185,18 +206,37 @@ export async function deleteSolutionPackage(pdfFilename) {
 
 // 鈹€鈹€鈹€鈹€ Workflow Generation 鈹€鈹€鈹€鈹€
 
-export async function handlePlan(preflow, agentCards) {
+export async function getRoleCatalog(catalogVersion) {
+    return unwrapEnvelope(await api.get(`${ORCHESTRATE_BASE()}/role-catalog`, {
+        params: catalogVersion ? { catalog_version: catalogVersion } : {},
+    }));
+}
+
+// 鈹€鈹€鈹€ Role Execution Preview (REQ74) 鈹€鈹€鈹€
+
+export async function previewRoleExecution(payload) {
+    return unwrapEnvelope(await api.post(`${ORCHESTRATE_BASE()}/role-execution/preview`, payload));
+}
+
+const generationOptions = ({ binding, catalog_version }) => ({
+    ...(binding === undefined ? {} : { binding }),
+    ...(catalog_version === undefined ? {} : { catalog_version }),
+});
+
+export async function handlePlan(preflow, agentCards, options = {}) {
     const body = await api.post(`${ORCHESTRATE_BASE()}/generate-from-preflow`, {
         preflow: preflow,
-        agent_cards: agentCards
+        ...(agentCards === undefined ? {} : { agent_cards: agentCards }),
+        ...generationOptions(options),
     });
     return unwrapEnvelope(body);
 }
 
-export async function generateWorkflowFromIntent(intent, name = "Generated Workflow") {
+export async function generateWorkflowFromIntent(intent, name = "Generated Workflow", options = {}) {
     const body = await api.post(`${ORCHESTRATE_BASE()}/generate-from-intent`, {
         user_intent: intent,
-        workflow_name: name
+        workflow_name: name,
+        ...generationOptions(options),
     });
     return unwrapEnvelope(body) || body;
 }
@@ -228,7 +268,8 @@ export async function matchWorkflowsTopN(intent, topN = 3) {
         name: item.name,
         description: item.description,
         tags: item.tags || [],
-        score: item.score
+        score: item.score,
+        binding: item.binding || null
     }));
 }
 

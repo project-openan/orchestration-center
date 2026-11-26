@@ -128,6 +128,7 @@ def parse_rate_limit(interface_name: str, config):
         # New endpoint names mapped to existing config keys
         "list_workflows":(FLOW_CTL_ALL_PSOPS, 50),
         "get_workflow":(FLOW_CTL_ONE_PSOP, 50),
+        "role_catalog":(FLOW_CTL_ONE_PSOP, 50),
         "create_workflow":(FLOW_CTL_SAVE_PSOP, 50),
         "delete_workflow":(FLOW_CTL_DELETE_PSOP, 50),
         "list_agent_cards":(FLOW_CTL_AGENT_CARDS, 50),
@@ -147,6 +148,7 @@ def parse_rate_limit(interface_name: str, config):
         "list_agents":(FLOW_CTL_AGENT_CARDS, 50),
         "get_execution":(FLOW_CTL_ONE_PSOP, 50),
         "list_executions":(FLOW_CTL_ALL_PSOPS, 50),
+        "role_execution_preview":(FLOW_CTL_ONE_PSOP, 50),
         "start_process_stream":(FLOW_CTL_START_PROCESS_STREAM, 50),
     }
 

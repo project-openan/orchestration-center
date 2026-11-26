@@ -32,6 +32,7 @@ from common.util.cipher_util import DEFAULT_ENCODING
 from common.util.conf_util import get_conf_singleton, set_ssl_folder_permissions, load_cert_password
 from common.util.config_util import get_conf
 from common.util.persistence_mode import validate_storage_mode
+from orchestrate.core.psop_vector_index import validate_retrieval_config
 from orchestrate.persistence import build_context, configure_context, current_context
 from orchestrate.server.frontend_support_server import app
 from orchestrate.server.security_preflight import SecurityPreflightError, security_preflight, initial_admin_password
@@ -206,6 +207,11 @@ def main():
         sys.exit(str(e))
     for message in preflight.warnings:
         logger.warning(message)
+    try:
+        validate_retrieval_config(server_config)
+    except ValueError as e:
+        logger.error(str(e))
+        sys.exit(str(e))
     storage = initialize_storage(server_config)
     atexit.register(storage.close)
     if not is_enable_https:

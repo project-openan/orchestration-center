@@ -131,6 +131,7 @@ const AgentNode = ({ data, selected }) => {
             className={`
                 touch-none relative min-w-[200px] max-w-[400px] rounded-xl border transition-all duration-500
                 ${theme.bg} ${theme.border} ${theme.shadow} ${theme.textMain}
+                ${data.executionError || data.roleReferenceInvalid ? 'ring-2 ring-red-500' : ''}
                 backdrop-blur-sm overflow-hidden
                 ${selected ? 'ring-2 ring-blue-500/50 ring-offset-2 ' + (isDark ? 'ring-offset-zinc-950' : 'ring-offset-white') : ''}
             `}
@@ -138,6 +139,7 @@ const AgentNode = ({ data, selected }) => {
             <div className={`h-[4px] w-full transition-colors duration-500 ${isSelfLoop ? 'bg-amber-500/80' : (isAnySuccess ? 'bg-amber-500/70' : 'bg-blue-500/50')}`} />
 
             <div className="px-4 py-3 flex flex-col gap-2">
+                {data.executionError && <p role="alert" className="text-xs text-red-500 break-words">{data.executionError}</p>}
                 {/* Step Header: icon + name + status */}
                 <div className="flex items-center gap-2">
                     <span className={stepTypeColor}>
@@ -169,8 +171,10 @@ const AgentNode = ({ data, selected }) => {
                                 key={`${task.agent}-${task.skill}-${idx}`}
                                 type="button"
                                 onClick={(event) => {
-                                    event.stopPropagation();
-                                    data.onSubtaskClick?.(idx, task);
+                                    if (data.onSubtaskClick) {
+                                        event.stopPropagation();
+                                        data.onSubtaskClick(idx, task);
+                                    }
                                 }}
                                 className={`
                                     group/task relative p-2 px-3 rounded-lg border flex flex-col gap-0.5 transition-all text-left
@@ -180,12 +184,16 @@ const AgentNode = ({ data, selected }) => {
                             >
                                 <div className="flex justify-between items-center">
                                     <span className={`text-[9px] font-bold uppercase tracking-tight opacity-80 break-words whitespace-normal ${isDark ? agentTheme.dark : agentTheme.light}`}>
-                                        {task.agent || 'Agent'}
+                                        {task.roleName || task.agent || 'Agent'}
+                                        {task.roleName && <span className="ml-1 font-mono normal-case">({task.agent})</span>}
                                     </span>
                                     <div className={`h-1.5 w-1.5 rounded-full ${getStatusColor(task.status)} opacity-60`} />
                                 </div>
                                 <div className={`text-[11px] font-medium leading-[1.15] break-words whitespace-normal ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
-                                    {task.skill || t('node_label.no_skill')}
+                                    {task.skillName || task.skill || t('node_label.no_skill')}
+                                    {task.skillName && <span className="ml-1 font-mono">({task.skill})</span>}
+                                    {task.binding === 'role' && <span className="ml-2 text-[10px]">{t('workflow.roleIdentity')}: {task.role_version}</span>}
+                                    {task.runtimeInstance && <p className="mt-1 text-[10px] opacity-70">{t('workflow.resolvedInstance')}: {task.runtimeInstance} / {task.runtimeSkill}</p>}
                                 </div>
                             </button>
                         );

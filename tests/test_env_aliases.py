@@ -26,6 +26,37 @@ so a new key cannot regress into env-uninjectable again.
 from common.util.config_util import apply_env_overrides
 
 
+def test_all_retrieval_environment_aliases_override_file_settings(monkeypatch):
+    values = {"ENABLED": "true", "TOP_K": "7", "MIN_SCORE": "0.25", "RERANK": "true",
+              "LLM_FINAL": "false", "STRICT": "true", "INDEX_FILE": "data/custom/index.json"}
+    config = {"retrieval.vector.enabled": "false"}
+    for suffix, value in values.items():
+        monkeypatch.setenv("RETRIEVAL_VECTOR_" + suffix, value)
+    monkeypatch.setenv("RETRIEVAL_LLM_THINKING", "false")
+    apply_env_overrides(config)
+    from orchestrate.core.psop_vector_index import VectorSettings
+    settings = VectorSettings.from_config(config)
+    assert settings.enabled and settings.rerank and settings.strict
+    assert settings.top_k == 7 and settings.min_score == 0.25
+    assert not settings.llm_final and not settings.thinking
+    assert settings.index_file == "data/custom/index.json"
+
+
+def test_get_conf_retrieval_environment_has_highest_precedence(tmp_path, monkeypatch):
+    from common.util import config_util
+    conf = tmp_path / "etc/conf"
+    conf.mkdir(parents=True)
+    (conf / "server.conf").write_text("retrieval.vector.top_k=2\n")
+    (conf / "server.properties").write_text("retrieval.vector.top_k=3\n")
+    monkeypatch.setattr(config_util, "get_root_path", lambda: str(tmp_path))
+    monkeypatch.setenv("RETRIEVAL_VECTOR_TOP_K", "7")
+    config_util.get_conf.cache_clear()
+    try:
+        assert config_util.get_conf()["retrieval.vector.top_k"] == "7"
+    finally:
+        config_util.get_conf.cache_clear()
+
+
 def test_security_keys_have_env_aliases(monkeypatch):
     monkeypatch.setenv("ORCH_SSL_CRL_FILE", "etc/ssl/revocationlist.crl")
     monkeypatch.setenv("ORCH_ACCESS_TOKEN_TTL", "3600")

@@ -42,13 +42,14 @@ const globalName = '__OPENAN_PLUGIN__orchestration_center';
 // Parse plugin.manifest.js source as text to extract JSON-able metadata
 // (icons are functions and can't be JSON-serialized — the Portal falls back
 // to a default icon).
-function buildManifestJson() {
+export function buildManifestJson() {
     const src = readFileSync(path.resolve(root, 'plugin.manifest.js'), 'utf-8');
+    const { version } = JSON.parse(readFileSync(path.resolve(root, 'package.json'), 'utf-8'));
     const pick = (key, fallback) => src.match(new RegExp(`${key}:\\s*['"]([^'"]+)['"]`))?.[1] || fallback;
     return JSON.stringify({
         id: pick('id', 'orchestration-center'),
         name: pick('name', 'Orchestration Center'),
-        version: pick('version', '0.0.0'),
+        version,
         backend: src.includes('gateway:') ? { gateway: pick('gateway', '') } : undefined,
         menu: [{
             id: pick("id: '", 'orchestration'),

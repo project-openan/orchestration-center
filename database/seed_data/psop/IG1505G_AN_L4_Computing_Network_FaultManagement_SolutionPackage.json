@@ -60,8 +60,8 @@
         {
           "task_id": "9bc7024c-d4bc-4b86-b5a6-af88494966f0",
           "description": "Proactively perform identification and analysis",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Identification",
+          "agent": "Computing Network Fault Management Agent",
+          "skill": "Computing Network Fault Identification",
           "status": "pending"
         }
       ],
@@ -81,8 +81,8 @@
         {
           "task_id": "8e91bb38-f7a7-4522-a557-3ad34d989f55",
           "description": "Automatically extract fault characteristics",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
+          "agent": "Computing Network Fault Management Agent",
+          "skill": "Computing Network Fault Diagnosis",
           "status": "pending"
         },
         {
@@ -137,8 +137,8 @@
         {
           "task_id": "9b48fc43-3ecd-43ff-a8f2-383c3319e084",
           "description": "Execute self-diagnosis and return results and handling suggestions to cross-domain agent",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Diagnosis",
+          "agent": "Computing Network Fault Management Agent",
+          "skill": "Computing Network Fault Diagnosis",
           "status": "pending"
         }
       ],
@@ -162,15 +162,15 @@
         {
           "task_id": "744c62bc-dffb-4530-a56c-1c4ce52d2412",
           "description": "Complete repair and return result",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "Computing Network Fault Management Agent",
+          "skill": "Computing Network Fault Handling",
           "status": "pending"
         },
         {
           "task_id": "020a4a7e-946d-452f-be81-78f37ec8627e",
           "description": "Automatically identify, diagnose, and remediate faults within own domain",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Wireless Network Fault Management",
+          "agent": "Computing Network Fault Management Agent",
+          "skill": "Computing Network Fault Handling",
           "status": "pending"
         }
       ],
@@ -211,8 +211,8 @@
         {
           "task_id": "944a1a12-ad97-4344-a6b9-94e1da8c1a3b",
           "description": "Confirm automation is impossible",
-          "agent": "Mobile Network Fault Management Agent",
-          "skill": "Mobile Network Fault Handling",
+          "agent": "Computing Network Fault Management Agent",
+          "skill": "Computing Network Fault Handling",
           "status": "pending"
         }
       ],

@@ -54,6 +54,13 @@ class StorageContext:
         self._preflows = backend.preflows()
 
     @property
+    def documents(self):
+        return self._backend.documents()
+
+    def transaction(self):
+        return self.documents.transaction()
+
+    @property
     def backend(self) -> PersistenceBackend:
         """The configured backend, for lifecycle calls and diagnostics."""
         return self._backend
@@ -98,6 +105,9 @@ class StorageContext:
     def close(self) -> None:
         """Release pooled resources; registered as the shutdown hook."""
         self._backend.close()
+
+    def preflows_for(self, storage):
+        return self._backend.preflows_for(storage)
 
     def psops_for(self, storage) -> PsopRepository:
         """PSOP repository for a caller that owns its own file storage."""

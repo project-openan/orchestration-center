@@ -83,3 +83,53 @@ def test_delete_removes_stored_package(client):
 def test_delete_unknown_package_returns_404(client):
     resp = client.delete("/rest/v1/orchestrate/solution-packages/missing.pdf")
     assert resp.status_code == 404
+
+
+def _pdf(title='6. Interaction Flow'):
+    import fitz
+    doc = fitz.open()
+    doc.new_page().insert_text((72, 72), 'INTRO_MARKER')
+    doc.new_page().insert_text((72, 72), 'FINAL_FLOW_MARKER')
+    doc.set_toc([[1, '1. Introduction', 1], [1, title, 2]])
+    content = doc.tobytes()
+    doc.close()
+    return content
+
+
+@pytest.fixture
+def synthetic_llm(monkeypatch):
+    from unittest.mock import MagicMock
+    llm = MagicMock()
+    llm.ask_llm.return_value = ('', '# Synthetic steps\n1. Analyze')
+    monkeypatch.setattr('orchestrate.solution_package.parse_flow.get_llm_instance', lambda: llm)
+    return llm
+
+
+@pytest.mark.parametrize('title', ['5. Interaction Flow', '6. Interaction Flow'])
+def test_upload_accepts_flow_number_and_last_page(client, synthetic_llm, title):
+    response = client.post('/rest/v1/orchestrate/parse-pdf', files={'file': ('flow.pdf', _pdf(title), 'application/pdf')})
+    assert response.status_code == 200
+    assert response.json()['data']['steps_md'] == '# Synthetic steps\n1. Analyze'
+    prompts = [call.args[0] for call in synthetic_llm.ask_llm.call_args_list]
+    assert any('FINAL_FLOW_MARKER' in prompt for prompt in prompts)
+    package = frontend_support_server.solution_package_manager.retrieve_by_filename('flow.pdf')
+    assert title in package['chapters']
+
+
+def test_missing_flow_does_not_persist_a_partially_successful_import(client, synthetic_llm):
+    response = client.post('/rest/v1/orchestrate/parse-pdf', files={'file': ('missing.pdf', _pdf('2. Summary'), 'application/pdf')})
+    assert response.status_code == 400
+    assert frontend_support_server.solution_package_manager.retrieve_by_filename('missing.pdf') is None
+
+
+def test_failed_model_conversion_is_not_saved_as_markdown(client, synthetic_llm):
+    synthetic_llm.ask_llm.side_effect = RuntimeError('synthetic model error')
+    response = client.post('/rest/v1/orchestrate/parse-pdf', files={'file': ('failed.pdf', _pdf(), 'application/pdf')})
+    assert response.status_code == 500
+    assert frontend_support_server.solution_package_manager.retrieve_by_filename('failed.pdf') is None
+
+
+def test_failed_package_write_is_not_reported_as_success(client, synthetic_llm, monkeypatch):
+    monkeypatch.setattr(frontend_support_server.solution_package_manager, 'store_solution_package', lambda *_: False)
+    response = client.post('/rest/v1/orchestrate/parse-pdf', files={'file': ('write.pdf', _pdf(), 'application/pdf')})
+    assert response.status_code == 503

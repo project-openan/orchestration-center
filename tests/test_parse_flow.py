@@ -78,13 +78,13 @@ class TestFindChapterRange:
         """Test finding the last chapter"""
         start, end = SolutionPackageParser.find_chapter_range(mock_doc, "Chapter 3")
         assert start == 8
-        assert end == mock_doc.page_count  # End of document
+        assert end == mock_doc.page_count + 1  # Exclusive 1-based page boundary
 
     def test_find_nonexistent_chapter(self, mock_doc):
         """Test finding a nonexistent chapter"""
         start, end = SolutionPackageParser.find_chapter_range(mock_doc, "Nonexistent")
         assert start is None
-        assert end == mock_doc.page_count
+        assert end == mock_doc.page_count + 1
 
 
 class TestExtractText:
@@ -99,6 +99,22 @@ class TestExtractText:
         """Test extracting empty range"""
         text = SolutionPackageParser.extract_text(mock_doc, 5, 5)
         assert text == ""
+
+    def test_real_pdf_final_page_survives_single_chapter_paths(self, parser, tmp_path):
+        import fitz
+        path = tmp_path/'last.pdf'
+        doc = fitz.open()
+        doc.new_page().insert_text((72, 72), 'FINAL_PAGE_FACT')
+        doc.set_toc([[1, '6. Interaction Flow', 1]])
+        doc.save(path)
+        doc.close()
+        assert 'FINAL_PAGE_FACT' in parser.get_chapter_text(str(path), '5. Interaction Flow')
+        assert 'FINAL_PAGE_FACT' in parser.get_chapter_text(str(path), '6. Interaction Flow')
+
+    def test_number_normalization_does_not_remove_5g(self):
+        assert SolutionPackageParser._normalize_chapter_title('5G Network') == '5g network'
+        assert SolutionPackageParser._normalize_chapter_title('5.3. Interaction Flow') == 'interaction flow'
+        assert SolutionPackageParser._normalize_chapter_title('5 Interaction Flow') == 'interaction flow'
 
     def test_extract_out_of_bounds(self, mock_doc):
         """Test extracting pages out of bounds"""
@@ -261,9 +277,8 @@ class TestConvertChapterToMarkdown:
         mock_llm.ask_llm.side_effect = Exception("Conversion failed")
         parser.llm = mock_llm
 
-        title, content = parser.convert_chapter_to_markdown(("Ch1", "Text"))
-        assert title == "Ch1"
-        assert "Conversion failed" in content or "failed" in content.lower()
+        with pytest.raises(PDFParsingError, match="Chapter conversion failed"):
+            parser.convert_chapter_to_markdown(("Ch1", "Text"))
 
 
 class TestConvertAllChaptersToMarkdown:
@@ -425,7 +440,7 @@ class TestFindChapterRangeFuzzy:
         toc = [(1, "1. Overview", 2), (1, "6. Interaction Flow", 10)]
         start, end = SolutionPackageParser.find_chapter_range_fuzzy(
             _toc_doc(toc, page_count=18), "Interaction Flow")
-        assert (start, end) == (10, 18)
+        assert (start, end) == (10, 19)
 
     def test_no_match_returns_none(self):
         toc = [(1, "1. Overview", 2), (1, "2. Conclusion", 9)]

@@ -15,6 +15,15 @@
 //    License for the specific language governing permissions and limitations
 //    under the License.
 import dagre from 'dagre';
+import { hasRoleTasks } from '../rolePolicy.js';
+
+const copy = value => JSON.parse(JSON.stringify(value));
+const pick = (value, keys) => Object.fromEntries(keys.filter(key => value[key] !== undefined).map(key => [key, copy(value[key])]));
+const taskFields = ['task_id', 'description', 'agent', 'skill', 'status', 'binding', 'role_version', 'binding_group'];
+const stepFields = ['name', 'type', 'next', 'layer', 'context_from'];
+const metadataFields = ['id', 'name', 'description', 'catalog_version', 'related_preflow', 'user_intent', 'tags', 'source', 'created_at'];
+
+const designStep = step => ({ ...pick(step, stepFields), subtasks: (step.subtasks || []).map(task => pick(task, taskFields)) });
 
 /**
  * Backend standard state enumeration
@@ -116,13 +125,15 @@ export const getBestHandles = (sourceNode, targetNode) => {
  */
 export const transformWorkflowToReactFlow = (rawInput) => {
     // Compatible with the {data: {steps: []}} structure returned by the API
-    const data = rawInput?.data ? rawInput.data : rawInput;
+    const original = rawInput?.data ? rawInput.data : rawInput;
+    const data = original ? copy(original) : original;
 
     if (!data || (!data.steps && !Array.isArray(data))) {
         return { nodes: [], edges: [] };
     }
 
     const steps = Array.isArray(data) ? data : (data.steps || []);
+    const roleWorkflow = hasRoleTasks(steps);
     const nodes = [];
     const edges = [];
     const targetStepNames = new Set();
@@ -131,7 +142,7 @@ export const transformWorkflowToReactFlow = (rawInput) => {
         let nextSteps = [];
         if (step.next && Array.isArray(step.next) && step.next.length > 0) {
             nextSteps = step.next;
-        } else if (index < steps.length - 1) {
+        } else if (!roleWorkflow && index < steps.length - 1) {
             nextSteps = [{ step: steps[index + 1].name, condition: '' }];
         }
         nextSteps.forEach(link => {
@@ -169,6 +180,8 @@ export const transformWorkflowToReactFlow = (rawInput) => {
             height: 100 + Math.max(subtasks.length, 1) * 60,
             data: {
                 ...step,
+                _templateStep: designStep(step),
+                catalogVersion: data.catalog_version,
                 label: step.name,
                 description: subtasks[0]?.description || '',
                 agent: agents,
@@ -232,16 +245,28 @@ export const transformWorkflowToReactFlow = (rawInput) => {
 /**
  * 5. Export Conversion: React Flow Nodes/Edges -> PSOP JSON
  */
-export const transformReactFlowToPSOP = (nodes, edges, metadata = {}) => {
+export const transformReactFlowToPSOP = (nodes, edges, metadata = {}, { fromCanvas = false } = {}) => {
     const psopData = {
+        ...pick(metadata, metadataFields),
         name: metadata.name || metadata.description || "",
-        description: metadata.description || "",
+        description: metadata.description === undefined ? "" : metadata.description,
         steps: [],
-        tags: metadata.tags || []
+        tags: metadata.tags === undefined ? [] : copy(metadata.tags)
     };
 
     if (metadata.id) {
         psopData.id = metadata.id;
+    }
+
+    // Display/execution projections and protected mixed designs export their
+    // detached snapshot. The role authoring canvas explicitly selects the
+    // regular serializer so topology and content edits become authoritative.
+    const templateSteps = metadata.steps || nodes.filter(node => node.type === 'agentNode').map(node => node.data?._templateStep);
+    if (!fromCanvas && (hasRoleTasks(metadata) || hasRoleTasks(nodes) || hasRoleTasks(templateSteps.filter(Boolean)))) {
+        if (!templateSteps.length || !templateSteps.every(Boolean)) {
+            throw new Error('Role workflow design snapshot is unavailable');
+        }
+        return { ...psopData, steps: templateSteps.map(designStep) };
     }
 
     // Node id stays stable inside the editor, but the PSOP step name follows
@@ -264,7 +289,7 @@ export const transformReactFlowToPSOP = (nodes, edges, metadata = {}) => {
             let subtasks = [];
             if (data.subtasks && Array.isArray(data.subtasks)) {
                 subtasks = data.subtasks.map(t => ({
-                    ...t,
+                    ...pick(t, taskFields),
                     status: normalizeStatus(t.status)
                 }));
             } else {
@@ -295,7 +320,7 @@ export const transformReactFlowToPSOP = (nodes, edges, metadata = {}) => {
         const { source, target, label, data: edgeData } = edge;
         if (source === 'START_NODE' || !stepsMap[source]) return;
 
-        const targetId = (target === 'END_OF_WORKFLOW') ? 'end' : (idToName[target] || target);
+        const targetId = nodes.some(node => node.id === target && node.type === 'endNode') ? 'end' : (idToName[target] || target);
         stepsMap[source].next.push({
             step: targetId,
             condition: label || edgeData?.condition || ""

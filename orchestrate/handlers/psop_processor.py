@@ -25,7 +25,7 @@ from database.utils.sql_dialect import upsert_sql
 from database.utils.storage_errors import require_connection, raise_storage_error, close_resource
 from orchestrate.persistence.errors import StorageCorruptionError
 from orchestrate.core.model.psop import PSOP
-from orchestrate.core.task_summary import build_tasks_summary  # noqa: F401  re-exported for existing callers
+from orchestrate.core.task_summary import build_tasks_summary, generation_binding  # noqa: F401  re-exported for existing callers
 from orchestrate.core.workflow_search_result import WorkflowSearchResult
 
 
@@ -88,6 +88,7 @@ def get_all_psops():
                 user_intent=psop.user_intent,
                 related_preflow=psop.related_preflow,
                 tasks_summary=build_tasks_summary(psop),
+                binding=generation_binding(psop),
             ))
         logger.debug(f"[DB] Listed {len(result)} PSOP(s)")
         return result

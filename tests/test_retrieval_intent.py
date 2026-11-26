@@ -16,12 +16,22 @@ Covers:
 """
 
 import json
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from orchestrate.core.model.psop import PSOP
 from orchestrate.core.retrieval import WorkflowRetrieval, _detect_intent_lang
 from orchestrate.persistence.file_backend import FilePsopRepository
+from orchestrate.core.psop_vector_index import VectorSettings
+
+
+@pytest.fixture(autouse=True)
+def catalog_retrieval_settings():
+    """These tests exercise the catalog path, independently of deployment config."""
+    with patch("orchestrate.core.retrieval.vector_settings", return_value=VectorSettings()):
+        yield
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +320,134 @@ class TestRetrievePsopByIntentTopN:
         with patch.object(retrieval, "_retrieve_names_by_intent", side_effect=Exception("fail")):
             with pytest.raises(Exception, match="Failed to retrieve PSOP topN"):
                 retrieval.retrieve_psop_by_intent_topn("test")
+
+
+# ===========================================================================
+# role/instance generations of one package (shared PSOP name)
+# ===========================================================================
+
+SPG_NAME = "IG1526A_Solution_Package.pdf"
+
+
+def _binding_psop(pid, name, binding, created_at):
+    """A real PSOP of the given generation binding; role variants mirror
+    what generate-from-preflow stores for role-catalog generations."""
+    task = {
+        "task_id": f"{pid}-t1",
+        "description": "run the task",
+        "agent": "role-x" if binding == "role" else "agent-x",
+        "skill": "explore",
+        "status": "pending",
+    }
+    psop_kwargs = {
+        "id": pid,
+        "name": name,
+        "description": "variant",
+        "created_at": created_at,
+        "user_intent": "optimize energy",
+        "steps": [{"name": "explore", "type": "AllSuccess", "subtasks": [task], "next": []}],
+    }
+    if binding == "role":
+        task["binding"] = "role"
+        task["role_version"] = "1.0.0"
+        psop_kwargs["catalog_version"] = "generation-v1"
+    return PSOP(**psop_kwargs)
+
+
+def _variant_storage():
+    """One package with role + instance generations plus a superseded role gen,
+    and an unrelated workflow for contrast."""
+    return _make_storage([
+        _binding_psop("role-old", SPG_NAME, "role", datetime(2026, 1, 1, tzinfo=timezone.utc)),
+        _binding_psop("inst", SPG_NAME, "instance", datetime(2026, 1, 2, tzinfo=timezone.utc)),
+        _binding_psop("role", SPG_NAME, "role", datetime(2026, 1, 3, tzinfo=timezone.utc)),
+        _binding_psop("other", "Other Workflow", "instance", datetime(2026, 1, 1, tzinfo=timezone.utc)),
+    ])
+
+
+def _retrieval_with_variants():
+    storage = _variant_storage()
+    ctx = MagicMock()
+    ctx.psops_for.return_value = FilePsopRepository(storage)
+    patcher = patch("orchestrate.core.retrieval.current_context", return_value=ctx)
+    patcher.start()
+    try:
+        return WorkflowRetrieval(storage), patcher
+    except Exception:
+        patcher.stop()
+        raise
+
+
+class TestRoleInstanceGenerations:
+    def test_binding_projects_into_summaries(self):
+        retrieval, patcher = _retrieval_with_variants()
+        try:
+            summaries = {s.workflow_id: s for s in retrieval._list_psop_summaries()}
+            assert summaries["role"].binding == "role"
+            assert summaries["inst"].binding == "instance"
+            assert summaries["other"].binding == "instance"
+        finally:
+            patcher.stop()
+
+    def test_topn_returns_role_and_instance_as_distinct_results(self):
+        retrieval, patcher = _retrieval_with_variants()
+        try:
+            with patch.object(retrieval, "_retrieve_names_by_intent", return_value=[SPG_NAME]):
+                results = retrieval.retrieve_psop_by_intent_topn("test", top_n=3)
+            # Distinct workflow ids, newest generation first per binding;
+            # the superseded role generation is never offered.
+            assert [r.workflow_id for r in results] == ["role", "inst"]
+            assert {r.binding for r in results} == {"role", "instance"}
+        finally:
+            patcher.stop()
+
+    def test_topn_dedupes_repeated_names(self):
+        """The LLM may repeat a duplicated catalog name; the same workflow
+        must not come back twice with an identical id."""
+        retrieval, patcher = _retrieval_with_variants()
+        try:
+            with patch.object(retrieval, "_retrieve_names_by_intent", return_value=[SPG_NAME, SPG_NAME]):
+                results = retrieval.retrieve_psop_by_intent_topn("test", top_n=3)
+            assert [r.workflow_id for r in results] == ["role", "inst"]
+        finally:
+            patcher.stop()
+
+    def test_topn_truncation_keeps_the_newest_generation(self):
+        retrieval, patcher = _retrieval_with_variants()
+        try:
+            with patch.object(retrieval, "_retrieve_names_by_intent", return_value=[SPG_NAME]):
+                results = retrieval.retrieve_psop_by_intent_topn("test", top_n=1)
+            assert [r.workflow_id for r in results] == ["role"]
+        finally:
+            patcher.stop()
+
+    def test_single_retrieval_picks_the_newest_generation(self):
+        retrieval, patcher = _retrieval_with_variants()
+        try:
+            with patch.object(retrieval, "_retrieve_names_by_intent", return_value=[SPG_NAME]):
+                result = retrieval.retrieve_psop_by_intent("test")
+            assert result.id == "role"
+        finally:
+            patcher.stop()
+
+    def test_catalog_only_offers_live_generations_with_binding(self):
+        retrieval, patcher = _retrieval_with_variants()
+        try:
+            with patch("orchestrate.core.retrieval.get_llm_instance") as mock_llm_fn, \
+                 patch("orchestrate.core.retrieval.get_retrieve_psop_prompt") as mock_prompt_fn, \
+                 patch("orchestrate.core.retrieval.parse_llm_json_response", return_value=[]):
+                mock_llm = MagicMock()
+                mock_llm.ask_llm.return_value = (None, "[]")
+                mock_llm_fn.return_value = mock_llm
+                mock_prompt_fn.return_value = "prompt"
+                retrieval._retrieve_names_by_intent("test", top_n=3)
+            rows = json.loads(mock_prompt_fn.call_args[0][1])
+            by_id = {row["id"]: row for row in rows}
+            assert set(by_id) == {"role", "inst", "other"}
+            assert by_id["role"]["binding"] == "role"
+            assert by_id["inst"]["binding"] == "instance"
+        finally:
+            patcher.stop()
 
 
 # ===========================================================================

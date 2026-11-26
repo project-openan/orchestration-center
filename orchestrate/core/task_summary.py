@@ -33,6 +33,19 @@ MAX_SUBTASKS = 3
 MAX_TASKS = 12
 
 
+def generation_binding(psop: PSOP) -> str:
+    """Return the generation binding of a PSOP: "role" or "instance".
+
+    Role-catalog generations carry ``binding="role"`` subtasks; everything
+    else (including workflows stored before the binding split) projects as
+    "instance". Shared by both persistence backends so search results can
+    label same-named role/instance generations of one solution package.
+    """
+    if any(task.binding == "role" for step in psop.steps for task in step.subtasks):
+        return "role"
+    return "instance"
+
+
 def build_tasks_summary(psop: PSOP) -> Optional[str]:
     """Return a compact ``[step] task`` summary of a PSOP, or ``None``."""
     task_descriptions = []

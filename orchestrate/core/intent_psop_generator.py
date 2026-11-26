@@ -39,7 +39,8 @@ from a2a.types import AgentCard
 from loguru import logger
 
 from orchestrate.core.model.psop import PSOP
-from orchestrate.core.prompts import get_intent_to_psop_prompt
+from orchestrate.core.prompts import get_intent_to_psop_prompt, get_role_generation_prompt
+from orchestrate.core.role_generation import ask_role_json, assemble_role_workflow, generation_context, generation_stage
 from orchestrate.core.psop_generator import PsopGenerator, WorkflowGeneratorError
 from common.util.json_utils import parse_llm_json_response
 
@@ -89,8 +90,9 @@ class IntentPsopGenerator(PsopGenerator):
     def generate_psop_from_intent(
             self,
             user_intent: str,
-            agent_cards: List[AgentCard],
-            workflow_name: Optional[str] = None
+            agent_cards: List[AgentCard] | None = None,
+            workflow_name: Optional[str] = None,
+            *, binding: str = "instance", role_context=None,
     ) -> PSOP:
         """Generate complete PSOP workflow directly from natural language intent.
 
@@ -111,6 +113,16 @@ class IntentPsopGenerator(PsopGenerator):
         """
         if not user_intent or not user_intent.strip():
             raise IntentWorkflowGeneratorError("User intent cannot be empty")
+        context = generation_context(binding, role_context)
+        if context is not None:
+            with generation_stage(context, "generate_intent"):
+                prompt = get_role_generation_prompt(user_intent, context.projection(), json.dumps(PSOP.model_json_schema()))
+                payload = ask_role_json(self._llm, prompt, context, "intent")
+                workflow = assemble_role_workflow(payload, context)
+                if workflow_name:
+                    workflow.name = workflow_name
+                workflow.user_intent = user_intent
+                return assemble_role_workflow(workflow.model_dump(mode="json"), context)
         if not agent_cards:
             raise IntentWorkflowGeneratorError("agent_cards cannot be empty")
 

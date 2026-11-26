@@ -116,6 +116,22 @@ def test_live_crud_unicode_upsert_large_records_and_utc(live_mysql, sample_psop_
     assert not psops.custom_delete_psop(psop.id)
 
 
+def test_live_default_seeds_are_idempotent_and_preserve_user_edits(live_mysql, monkeypatch):
+    from database.utils.seed_data import seed_default_psops
+    monkeypatch.delenv('TESTING', raising=False)
+    assert seed_default_psops() == 19
+    from database.utils.seed_data import SEED_DATA_DIR
+    for path in SEED_DATA_DIR.glob('*.json'):
+        expected = PSOP.model_validate_json(path.read_text(encoding='utf-8'))
+        assert psops.get_psop_by_id(expected.id) == expected
+    workflow = psops.get_psop_by_id(psops.get_all_psops()[0].workflow_id)
+    workflow.name = 'Operator edited default'
+    psops.custom_save_psop(workflow)
+    assert seed_default_psops() == 0
+    assert psops.get_psop_by_id(workflow.id).name == 'Operator edited default'
+    assert len(psops.get_all_psops()) == 19
+
+
 def test_live_users_legacy_migration_and_failure_rollback(live_mysql):
     from database.utils.query_execution import execute_query
     _, backend = live_mysql

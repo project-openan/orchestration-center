@@ -21,10 +21,12 @@ import {
     Plus, Upload, MessageSquare,
     ChevronRight, Sparkles, ChevronLeft, Code2, Trash2, Download, Eye, ArrowLeft, TriangleAlert
 } from 'lucide-react';
-import { getAgentCards, getWorkflow, getWorkflowById, handlePlan, parsePdf, generateWorkflowFromIntent, delWorkflowById, getTemplates, importTemplate } from "@/service/api.js";
+import { getRoleCatalog, getAgentCards, getWorkflow, getWorkflowById, handlePlan, parsePdf, generateWorkflowFromIntent, delWorkflowById, getTemplates, importTemplate } from "@/service/api.js";
 import { transformWorkflowToReactFlow } from "./workflow/utils/index.jsx";
 import UnifiedWorkflow from "../orchestration_center/workflow/index.jsx";
 import SolutionPackages from "./packages/index.jsx";
+import GenerationMode from './generationMode.jsx';
+import { generationErrorMessage } from './generationErrors.js';
 import { useTranslation } from 'react-i18next';
 
 
@@ -90,10 +92,13 @@ const OrchestrationCenter = ({ isDark }) => {
     const { t, i18n } = useTranslation();
     const [workflows, setWorkflows] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
+    const [openedFromPackage, setOpenedFromPackage] = useState(false);
     const [currentWf, setCurrentWf] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeView, setActiveView] = useState('welcome'); // 'welcome' | 'detail' | 'ai' | 'editor'
     const [aiPrompt, setAiPrompt] = useState("");
+    const [generationBinding, setGenerationBinding] = useState('role');
+    const [generationError, setGenerationError] = useState(null);
     const [showConfig, setShowConfig] = useState(false);
     const [browseMode, setBrowseMode] = useState('view');
     const [progress, setProgress] = useState(0);
@@ -155,20 +160,27 @@ const OrchestrationCenter = ({ isDark }) => {
         setLoading(true);
         setLoadingStatus(LOADING_STAGES.PARSING); // Phase 1
         try {
+            setGenerationError(null);
+            const catalog = generationBinding === 'role' ? await getRoleCatalog() : null;
             const contentData = await parsePdf(file);
-            const agentCards = await getAgentCards();
+            const agentCards = generationBinding === 'instance' ? await getAgentCards() : null;
             setLoadingStatus(LOADING_STAGES.PLANNING);
             const agentCardsList = agentCards?.data || agentCards || [];
-            const finalPlan = await handlePlan(contentData, agentCardsList);
+            const finalPlan = await handlePlan(contentData, generationBinding === 'instance' ? agentCardsList : undefined, {
+                binding: generationBinding, ...(catalog ? { catalog_version: catalog.catalog_version } : {}),
+            });
 
             setLoadingStatus(LOADING_STAGES.FINALIZING);
-            const { nodes: n, edges: e } = transformWorkflowToReactFlow(finalPlan);
+            const design = finalPlan?.data || finalPlan;
+            setCurrentWf({ id: design.id, name: design.name, rawText: design });
+            setSelectedId(design.id);
+            setSavedWorkflowId(null);
+            const { nodes: n, edges: e } = transformWorkflowToReactFlow(design);
             setNodes(n);
             setEdges(e);
             setActiveView('detail');
         } catch (error) {
-            const errorMsg = error.response?.data?.error || "Server response exception";
-            console.error("Upload failed:", errorMsg);
+            setGenerationError(generationErrorMessage(error));
         } finally {
             setLoading(false);
             setLoadingStatus(LOADING_STAGES.IDLE);
@@ -185,20 +197,27 @@ const OrchestrationCenter = ({ isDark }) => {
         setLoading(true);
         setLoadingStatus(LOADING_STAGES.PARSING);
         try {
+            setGenerationError(null);
+            const catalog = generationBinding === 'role' ? await getRoleCatalog() : null;
             const contentData = await parsePdf(file);
-            const agentCards = await getAgentCards();
+            const agentCards = generationBinding === 'instance' ? await getAgentCards() : null;
             setLoadingStatus(LOADING_STAGES.PLANNING);
             const agentCardsList = agentCards?.data || agentCards || [];
-            const finalPlan = await handlePlan(contentData, agentCardsList);
+            const finalPlan = await handlePlan(contentData, generationBinding === 'instance' ? agentCardsList : undefined, {
+                binding: generationBinding, ...(catalog ? { catalog_version: catalog.catalog_version } : {}),
+            });
 
             setLoadingStatus(LOADING_STAGES.FINALIZING);
-            const { nodes: n, edges: e } = transformWorkflowToReactFlow(finalPlan);
+            const design = finalPlan?.data || finalPlan;
+            setCurrentWf({ id: design.id, name: design.name, rawText: design });
+            setSelectedId(design.id);
+            setSavedWorkflowId(null);
+            const { nodes: n, edges: e } = transformWorkflowToReactFlow(design);
             setNodes(n);
             setEdges(e);
             setActiveView('detail');
         } catch (error) {
-            const errorMsg = error.response?.data?.error || "Server response exception";
-            console.error("Upload failed:", errorMsg);
+            setGenerationError(generationErrorMessage(error));
         } finally {
             setLoading(false);
             setLoadingStatus(LOADING_STAGES.IDLE);
@@ -251,6 +270,16 @@ const OrchestrationCenter = ({ isDark }) => {
             }
         } catch (e) {
             console.error("Failed to refresh workflow meta:", e);
+        }
+    };
+
+    const acceptCanvasSave = (savedId, design, graph) => {
+        if (design && graph) {
+            setCurrentWf({ id: savedId, name: design.name, rawText: { ...design, id: savedId } });
+            setNodes(graph.nodes);
+            setEdges(graph.edges);
+        } else if (savedId) {
+            refreshWorkflowMeta(savedId);
         }
     };
 
@@ -613,9 +642,10 @@ const OrchestrationCenter = ({ isDark }) => {
                                                 workflowId={selectedId}
                                                 workflowName={currentWf?.name}
                                                 workflowDescription={currentWf?.rawText?.description}
+                                                workflowMetadata={currentWf?.rawText}
                                                 onCancel={() => setBrowseMode('view')}
-                                                onSaveSuccess={(savedId) => {
-                                                    if (savedId && savedId === selectedId) refreshWorkflowMeta(savedId);
+                                                onSaveSuccess={(savedId, design, graph) => {
+                                                    if (savedId && savedId === selectedId) acceptCanvasSave(savedId, design, graph);
                                                     fetchWorkflows();
                                                 }}
                                             />
@@ -638,6 +668,7 @@ const OrchestrationCenter = ({ isDark }) => {
                         onBack={() => setActiveView('welcome')}
                         onImportPdf={handleImportPdfFromPackage}
                         onViewWorkflow={(wfId) => {
+                            setOpenedFromPackage(true);
                             setSelectedId(wfId);
                         }}
                         loading={loading && loadingStatus !== LOADING_STAGES.IDLE}
@@ -688,7 +719,8 @@ const OrchestrationCenter = ({ isDark }) => {
                                             setLoading(true);
                                             setLoadingStatus(LOADING_STAGES.GENERATING);
                                             try {
-                                                const result = await generateWorkflowFromIntent(aiPrompt);
+                                                setGenerationError(null);
+                                                const result = await generateWorkflowFromIntent(aiPrompt, undefined, { binding: generationBinding });
                                                 const { nodes: n, edges: e } = transformWorkflowToReactFlow(result);
                                                 setNodes(n);
                                                 setEdges(e);
@@ -698,7 +730,7 @@ const OrchestrationCenter = ({ isDark }) => {
                                                 setSavedWorkflowId(null);
                                                 setActiveView('editor');
                                             } catch (err) {
-                                                console.error("Generate failed:", err);
+                                                setGenerationError(generationErrorMessage(err));
                                             } finally {
                                                 setLoading(false);
                                                 setLoadingStatus(LOADING_STAGES.IDLE);
@@ -769,6 +801,7 @@ const OrchestrationCenter = ({ isDark }) => {
                             </button>
                             <UnifiedWorkflow
                                 mode={activeView === 'detail' ? 'view' : 'edit'}
+                                newWorkflowBinding={generationBinding}
                                 isDark={isDark}
                                 // Props for View mode
                                 nodes={nodes}
@@ -779,6 +812,7 @@ const OrchestrationCenter = ({ isDark }) => {
                                 workflowId={selectedId || currentWf?.id || savedWorkflowId}
                                 workflowName={currentWf?.name}
                                 workflowDescription={currentWf?.rawText?.description}
+                                workflowMetadata={currentWf?.rawText}
                                 onCancel={() => {
                                     if (selectedId) {
                                         setActiveView('detail');
@@ -788,9 +822,9 @@ const OrchestrationCenter = ({ isDark }) => {
                                         setActiveView('welcome');
                                     }
                                 }}
-                                onSaveSuccess={(savedId) => {
+                                onSaveSuccess={(savedId, design, graph) => {
                                     if (savedId && !selectedId) setSavedWorkflowId(savedId);
-                                    if (savedId) refreshWorkflowMeta(savedId);
+                                    acceptCanvasSave(savedId, design, graph);
                                     fetchWorkflows();
                                 }}
                                 onDirtyChange={setEditorDirty}
@@ -811,6 +845,20 @@ const OrchestrationCenter = ({ isDark }) => {
                 <div
                     className="px-10 py-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center  bg-white dark:bg-zinc-900 backdrop-blur-md shrink-0">
                     <div className="flex items-center gap-4">
+                        {activeView === 'detail' && openedFromPackage && (
+                            <button
+                                onClick={() => {
+                                    setActiveView('packages');
+                                    setSelectedId(null);
+                                    setCurrentWf(null);
+                                    setOpenedFromPackage(false);
+                                }}
+                                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                            >
+                                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                {t('orchestration.back_to_packages')}
+                            </button>
+                        )}
                         {(activeView === 'editor' || activeView === 'ai') && (
                             <button
                                 onClick={() => {
@@ -852,6 +900,10 @@ const OrchestrationCenter = ({ isDark }) => {
                     </div>
                 </div>
 
+                {['welcome', 'ai', 'packages'].includes(activeView) && <div className="px-10 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                    <GenerationMode value={generationBinding} onChange={value => { setGenerationBinding(value); setGenerationError(null); }} disabled={loading} />
+                </div>}
+                {generationError && <p role="alert" className="px-10 py-3 text-sm text-rose-600">{generationError}</p>}
                 <div className="flex-1 relative overflow-hidden">
                     {renderContent()}
                 </div>

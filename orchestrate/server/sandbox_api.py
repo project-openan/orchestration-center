@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # All Rights Reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -31,9 +31,14 @@ from orchestrate.sandbox.control_point import SandboxControlPoint
 from orchestrate.sandbox.models import StubScenario
 from orchestrate.sandbox.service import SandboxService
 from orchestrate.sandbox.store import SandboxStore
+from orchestrate.sandbox.validation import ROLE_SANDBOX_NOT_SUPPORTED, require_instance_workflow
 from orchestrate.server.middleware import RateLimiter
 from orchestrate.server.response_utils import created, get_agent_cards, ok
 from orchestrate.core.shared_handlers import SharedHandlers
+from orchestrate.server.durable_api import principal_for_request, _identity_snapshot
+from orchestrate.persistence.errors import StorageError
+from orchestrate.server.storage_error_response import storage_http_exception
+import asyncio
 
 config = get_conf()
 sandbox_service = SandboxService(
@@ -57,6 +62,7 @@ class SandboxRunRequest(BaseModel):
 async def start_sandbox_run(
     workflow_id: str,
     body: SandboxRunRequest,
+    request: Request,
     _: Any = Depends(RateLimiter(config, "ext_execute_by_id")),
 ):
     """Start an isolated Stub-based workflow verification."""
@@ -71,6 +77,14 @@ async def start_sandbox_run(
             if not psop:
                 raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
         try:
+            require_instance_workflow(psop)
+        except ValueError as exc:
+            logger.warning("[Sandbox] rejected workflow_id={} code={}", psop.id, ROLE_SANDBOX_NOT_SUPPORTED)
+            raise HTTPException(status_code=422, detail={
+                "code": ROLE_SANDBOX_NOT_SUPPORTED,
+                "message": "Role workflows are not supported by the instance sandbox",
+            }) from exc
+        try:
             templates = sandbox_service.validate_templates(body.templates)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -82,6 +96,9 @@ async def start_sandbox_run(
             runtime_intent=body.runtime_intent or psop.name or workflow_id,
             templates=templates,
             lang=body.lang,
+            principal=principal_for_request(request),
+            identity=_identity_snapshot(request),
+            idempotency_key=request.headers.get("Idempotency-Key"),
         )
         return created(
             data={"verification_id": verification_id, "status": "queued"},
@@ -89,6 +106,8 @@ async def start_sandbox_run(
         )
     except HTTPException:
         raise
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     except Exception as exc:
         logger.error(f"Failed to start sandbox: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to start sandbox verification") from exc
@@ -96,10 +115,13 @@ async def start_sandbox_run(
 
 @sandbox_router.get("/sandbox/verifications")
 async def list_sandbox_reports(
+    request: Request,
     _: Any = Depends(RateLimiter(config, "list_executions")),
 ):
     try:
-        return ok(data=sandbox_service.store.list_reports())
+        return ok(data=await asyncio.to_thread(sandbox_service.list_reports, principal_for_request(request)))
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     except Exception as exc:
         logger.error(f"Failed to list sandbox reports: {exc}")
         raise HTTPException(status_code=500, detail="Failed to list sandbox reports") from exc
@@ -108,18 +130,21 @@ async def list_sandbox_reports(
 @sandbox_router.get("/sandbox/verifications/{verification_id}")
 async def get_sandbox_report(
     verification_id: str,
+    request: Request,
     _: Any = Depends(RateLimiter(config, "get_execution")),
 ):
     try:
-        payload = sandbox_service.store.load_report(verification_id)
+        payload = await asyncio.to_thread(sandbox_service.report, verification_id, principal_for_request(request))
         if payload is None:
-            status = sandbox_service.status(verification_id)
+            status = await asyncio.to_thread(sandbox_service.status, verification_id, principal_for_request(request))
             if status is None:
                 raise HTTPException(status_code=404, detail="Sandbox verification not found")
             return ok(data=status)
         return ok(data=payload)
     except HTTPException:
         raise
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     except Exception as exc:
         logger.error(f"Failed to get sandbox report: {exc}")
         raise HTTPException(status_code=500, detail="Failed to get sandbox report") from exc
@@ -128,15 +153,18 @@ async def get_sandbox_report(
 @sandbox_router.delete("/sandbox/verifications/{verification_id}")
 async def delete_sandbox_report(
     verification_id: str,
+    request: Request,
     _: Any = Depends(RateLimiter(config, "get_execution")),
 ):
     try:
-        deleted = await sandbox_service.cancel_and_delete(verification_id)
+        deleted = await sandbox_service.cancel_and_delete(verification_id, principal_for_request(request))
         if not deleted:
             raise HTTPException(status_code=404, detail="Sandbox verification not found")
         return ok(data={"deleted": verification_id}, message="Sandbox report deleted")
     except HTTPException:
         raise
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     except Exception as exc:
         logger.error(f"Failed to delete sandbox report: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to delete sandbox report") from exc
@@ -145,17 +173,20 @@ async def delete_sandbox_report(
 @sandbox_router.get("/sandbox/verifications/{verification_id}/events")
 async def get_sandbox_events(
     verification_id: str,
+    request: Request,
     _: Any = Depends(RateLimiter(config, "get_execution")),
 ):
     try:
-        stored = sandbox_service.store.load_report(verification_id)
+        stored = await asyncio.to_thread(sandbox_service.report, verification_id, principal_for_request(request))
         if stored is not None:
             return ok(data=stored.get("events", []))
-        if sandbox_service.status(verification_id) is None:
+        if await asyncio.to_thread(sandbox_service.status, verification_id, principal_for_request(request)) is None:
             raise HTTPException(status_code=404, detail="Sandbox verification not found")
-        return ok(data=sandbox_service.events(verification_id))
+        return ok(data=await asyncio.to_thread(sandbox_service.events, verification_id, principal_for_request(request)))
     except HTTPException:
         raise
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     except Exception as exc:
         logger.error(f"Failed to get sandbox events: {exc}")
         raise HTTPException(status_code=500, detail="Failed to get sandbox events") from exc
@@ -167,8 +198,10 @@ async def get_sandbox_templates(
     _: Any = Depends(RateLimiter(config, "get_workflow")),
 ):
     try:
-        templates = sandbox_service.store.load_templates(workflow_id)
+        templates = await asyncio.to_thread(sandbox_service.store.load_templates, workflow_id)
         return ok(data=[template.model_dump() for template in templates])
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     except Exception as exc:
         logger.error(f"Failed to load sandbox templates: {exc}")
         raise HTTPException(status_code=500, detail="Failed to load sandbox templates") from exc
@@ -182,10 +215,12 @@ async def save_sandbox_templates(
 ):
     try:
         validated = sandbox_service.validate_templates(templates)
-        count = sandbox_service.store.save_templates(workflow_id, validated)
+        count = await asyncio.to_thread(sandbox_service.store.save_templates, workflow_id, validated)
         return ok(data={"template_count": count}, message="Sandbox templates saved")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except StorageError as exc:
+        raise storage_http_exception(exc) from exc
     except Exception as exc:
         logger.error(f"Failed to save sandbox templates: {exc}")
         raise HTTPException(status_code=500, detail="Failed to save sandbox templates") from exc

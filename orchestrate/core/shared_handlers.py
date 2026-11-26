@@ -22,6 +22,7 @@ engine and the API layer can share it without the runtime depending on the
 server package.
 """
 
+from orchestrate.core.catalog_gate import CatalogGate
 from orchestrate.handlers.dispatch import get_storage_handler
 from common.custom.interface_type import InterfaceType
 from orchestrate.core.retrieval import WorkflowRetrieval
@@ -36,7 +37,10 @@ class SharedHandlers:
     @classmethod
     def save_psop(cls):
         if cls._save_handle is None:
-            cls._save_handle = get_storage_handler(InterfaceType.SAVE_PSOP)
+            # Gate first: role-bound workflows must be authorized by an
+            # approved catalog release before they can become executable
+            # templates (sub-requirement 2).
+            cls._save_handle = CatalogGate(get_storage_handler(InterfaceType.SAVE_PSOP))
         return cls._save_handle
 
     @classmethod
