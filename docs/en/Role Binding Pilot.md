@@ -79,8 +79,10 @@ tests verify the technical path, not model quality or business capability.
 
 ## Configuration
 
-Configure the center with a reviewed, exact-version role catalog and an instance
-registry release. See the commented keys in `etc/conf/server.conf.example`:
+The default `spg-v1` authoring catalog covers 76 roles and 88 skills across 19 SPG packages.
+Select **Role binding** to design and save a workflow. Set `role_catalog_path` in
+`etc/conf/server.conf` to select another release or leave its value explicitly empty to disable authoring with roles.
+To dispatch a role workflow, configure matching instances and scope for that release. See the commented keys in `etc/conf/server.conf.example`:
 
 ```properties
 role_catalog_path=/protected/releases/catalog.json
@@ -104,7 +106,7 @@ value is excluded from the configuration's `repr`.
 
 Without a usable key, the center returns `ROLE_EXECUTION_NOT_ENABLED` before
 creating transport. This default is unchanged. Upgrade both center and Host
-together before enabling the pilot. The bundled role catalog remains draft and
+together before enabling the pilot. The separate wireless pilot sample catalog remains draft and
 does not authorize execution; tests use separate synthetic approved fixtures.
 
 Role candidates may declare multiple interfaces, a complete authentication

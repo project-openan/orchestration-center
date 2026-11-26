@@ -30,8 +30,8 @@ def get_root_path():
 
 @lru_cache(maxsize=1)
 def get_conf():
-    config = {}
     root_path = get_root_path()
+    config = {"role_catalog_path": os.path.join(root_path, "etc", "config", "role_catalog", "spg-v1.json")}
     base_config_path = os.path.join(root_path, "etc", "conf","server.conf")
     save_config_path = os.path.join(root_path, "etc", "conf","server.properties")
     load_configs(base_config_path, config)

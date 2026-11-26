@@ -71,6 +71,7 @@ COPY bin/ /opt/orchestration-center/bin/
 COPY etc/conf/server.conf.example /opt/orchestration-center/etc/conf/server.conf
 COPY etc/conf/server.properties etc/conf/log_config.conf /opt/orchestration-center/etc/conf/
 COPY etc/conf/db/ /opt/orchestration-center/etc/conf/db/
+COPY etc/config/role_catalog/spg-v1.json /opt/orchestration-center/etc/config/role_catalog/spg-v1.json
 COPY etc/config/models.yaml.example /opt/orchestration-center/etc/config/models.yaml.example
 COPY docker-entrypoint.sh /opt/orchestration-center/docker-entrypoint.sh
 

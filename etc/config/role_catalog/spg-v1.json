@@ -1,0 +1,3372 @@
+{
+  "catalog_version": "spg-v1",
+  "roles": [
+    {
+      "role_id": "ig1501-cross-domain-fault-management",
+      "role_version": "1.0.0",
+      "name": "跨域故障管理",
+      "description": "服务运营层；分析和定位跨自治域故障，协调单域故障 Agent 完成修复与验证。（原文 Agent：Cross-domain fault agent）",
+      "source": {
+        "package": "IG1501",
+        "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          19,
+          20
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-cross-domain-fault",
+          "name": "跨域故障诊断与协同处置",
+          "description": "接收或关联多域故障信息，定位跨域根因并协调单域处置与验证。",
+          "source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              19,
+              20,
+              24,
+              25,
+              26
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "单域上报的故障事件、用户投诉或上层故障驱动信息。",
+          "input_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              24,
+              25
+            ]
+          },
+          "output_summary": "跨域故障定界与定位信息；向单域发起诊断，并依据其返回的故障信息和处置建议协调修复。",
+          "output_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              25,
+              26
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501-cross-network-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "跨网络网管辅助",
+      "description": "服务运营层；面向 NOC 工程师提供跨网络知识问答、网络信息查询与复杂故障诊断辅助。（原文 Agent：NOC Copilot）",
+      "source": {
+        "package": "IG1501",
+        "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          19,
+          20
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-cross-network-fault-qa",
+          "name": "跨网络故障问答与诊断辅助",
+          "description": "响应网管工程师的网络知识、状态与故障诊断询问。",
+          "source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              20,
+              26,
+              27
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "运维人员的自然语言故障或网络问题。",
+          "input_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              27,
+              28
+            ]
+          },
+          "output_summary": "智能问答回复。",
+          "output_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              27,
+              28
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501-cross-network-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "跨网络现场维护辅助",
+      "description": "服务运营层；面向现场工程师提供跨域故障信息与维修指导，并与域级 Copilot 协同。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1501",
+        "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          19,
+          25,
+          26
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-cross-network-field-repair",
+          "name": "跨域现场维修指导",
+          "description": "响应现场工程师的故障信息查询和维修指导请求。",
+          "source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              19,
+              25,
+              26,
+              28
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员对故障设备信息及修复操作的查询。",
+          "input_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              25,
+              26
+            ]
+          },
+          "output_summary": "自然语言维修操作指导。",
+          "output_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              26
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501-single-domain-fault-management",
+      "role_version": "1.0.0",
+      "name": "单域故障管理",
+      "description": "网络运营层；在单个网络域感知、诊断和处理故障，并向上层反馈故障与处置结果。（原文 Agent：Single-domain Fault management agent）",
+      "source": {
+        "package": "IG1501",
+        "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          19,
+          20
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-single-domain-fault",
+          "name": "单域故障诊断与处置",
+          "description": "针对单域故障请求返回诊断和处置结果；自动闭环时上报故障信息。",
+          "source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              20,
+              21,
+              22,
+              24,
+              25,
+              26,
+              27
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "故障根因诊断请求，可包含告警序列号、告警名称、发生时间和故障描述。",
+          "input_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              26
+            ]
+          },
+          "output_summary": "根因诊断结果，包括故障定界、定位和处置建议；可报告故障清除信息。",
+          "output_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              26
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501-domain-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "单域现场维护辅助",
+      "description": "网络运营层；在移动网、IP 网或核心网域内向现场工程师提供专业故障问答与维修指导。（原文 Agent：Mobile/IP/Core network fault mgmt. FME Copilot）",
+      "source": {
+        "package": "IG1501",
+        "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          19
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-domain-field-repair-qa",
+          "name": "单域现场维修问答",
+          "description": "响应域内现场工程师关于故障信息和维修步骤的询问。",
+          "source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              19,
+              25,
+              26,
+              27,
+              28
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的自然语言问题。",
+          "input_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              27,
+              28
+            ]
+          },
+          "output_summary": "智能问答回复。",
+          "output_source": {
+            "package": "IG1501",
+            "pdf": "IG1501_AN_L4_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              27,
+              28
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501a-mobile-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "移动网故障管理",
+      "description": "网络运营层；检测诊断移动网故障及风险，远程处置可恢复故障并验证，向现场维修提供建议及结果核验。（原文 Agent：Mobile network Fault Management Agent）",
+      "source": {
+        "package": "IG1501A",
+        "pdf": "IG1501A_AN_L4_Mobile_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          11,
+          12
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-mobile-network-fault",
+          "name": "移动网故障诊断与处置",
+          "description": "针对移动网故障完成诊断；可远程恢复时执行处置与验证，否则提供现场维修建议。",
+          "source": {
+            "package": "IG1501A",
+            "pdf": "IG1501A_AN_L4_Mobile_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              12,
+              13,
+              14
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "故障/告警更新消息中的单域根因诊断结果、定位与处置建议；处理后可报告清除消息。",
+          "output_source": {
+            "package": "IG1501A",
+            "pdf": "IG1501A_AN_L4_Mobile_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501a-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "移动网现场维护辅助",
+      "description": "网络运营层；通过自然语言帮助现场工程师查询网络知识与信息、诊断故障及完成现场操作。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1501A",
+        "pdf": "IG1501A_AN_L4_Mobile_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          11,
+          12
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-field-repair",
+          "name": "现场故障问答与操作指导",
+          "description": "响应现场工程师的知识、网络信息和维修指导请求。",
+          "source": {
+            "package": "IG1501A",
+            "pdf": "IG1501A_AN_L4_Mobile_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              14
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的自然语言维修问题。",
+          "input_source": {
+            "package": "IG1501A",
+            "pdf": "IG1501A_AN_L4_Mobile_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          },
+          "output_summary": "自然语言维修指导或问答回复。",
+          "output_source": {
+            "package": "IG1501A",
+            "pdf": "IG1501A_AN_L4_Mobile_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501b-core-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "核心网故障管理",
+      "description": "网络运营层；检测诊断核心网故障及风险；远程恢复操作经人工批准后执行并验证。（原文 Agent：Core Network Fault Management Agent）",
+      "source": {
+        "package": "IG1501B",
+        "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          10,
+          11
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-core-network-fault",
+          "name": "核心网故障诊断",
+          "description": "诊断核心网故障或风险并反馈结果。",
+          "source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              10,
+              11,
+              12
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "向故障管理中心报告故障根因与处置建议；无法诊断时报告故障 ID 和描述。",
+          "output_source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              13
+            ]
+          }
+        },
+        {
+          "skill_id": "execute-approved-fault-recovery",
+          "name": "获批故障恢复与验证",
+          "description": "收到人工批准后执行可远程恢复操作并验证结果。",
+          "source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              12,
+              13
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "获批的故障修复请求，包含故障 ID。",
+          "input_source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              13
+            ]
+          },
+          "output_summary": "执行远程恢复并验证；具体返回字段未明确。",
+          "output_source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              12
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501b-cross-network-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "跨网络网管辅助",
+      "description": "服务运营层；面向 NOC 工程师提供跨网络知识问答、信息查询和诊断辅助。（原文 Agent：NOC Copilot）",
+      "source": {
+        "package": "IG1501B",
+        "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          10,
+          11
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-cross-network-fault-qa",
+          "name": "跨网络故障问答与诊断辅助",
+          "description": "响应网管工程师的网络知识、信息及故障诊断询问。",
+          "source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501b-core-network-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "核心网网管辅助",
+      "description": "网络运营层；面向核心网 NOC 工程师提供告警和网元知识、信令与运行状态查询及诊断辅助。（原文 Agent：Core-network NOC Copilot）",
+      "source": {
+        "package": "IG1501B",
+        "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          10,
+          11
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-core-network-knowledge-qa",
+          "name": "核心网知识与状态问答",
+          "description": "响应核心网告警、网元、信令、指标及日志的查询与诊断请求。",
+          "source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              14
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "核心网知识、告警、网元状态或性能等自然语言查询。",
+          "input_source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              13
+            ]
+          },
+          "output_summary": "知识问答、网络信息或状态查询回复。",
+          "output_source": {
+            "package": "IG1501B",
+            "pdf": "IG1501B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              13
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501c-ip-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "IP 网故障管理",
+      "description": "网络运营层；检测诊断 IP 网故障及风险，执行可远程恢复操作并验证，向现场维修提供建议及结果核验。（原文 Agent：IP Network Fault Management Agent）",
+      "source": {
+        "package": "IG1501C",
+        "pdf": "IG1501C_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          10,
+          11
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-ip-network-fault",
+          "name": "IP 网故障诊断与处置",
+          "description": "诊断 IP 网故障；可远程恢复时执行处置与验证，否则提供现场维修建议。",
+          "source": {
+            "package": "IG1501C",
+            "pdf": "IG1501C_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              10,
+              11,
+              12,
+              13
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "故障事件及单域根因诊断、定位、处置建议；可报告故障清除信息。",
+          "output_source": {
+            "package": "IG1501C",
+            "pdf": "IG1501C_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              13
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1501c-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "IP 网现场维护辅助",
+      "description": "网络运营层；面向现场工程师提供网络知识问答、信息查询和智能诊断辅助。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1501C",
+        "pdf": "IG1501C_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          10,
+          11
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-field-repair",
+          "name": "现场故障问答与操作指导",
+          "description": "响应现场工程师的知识、网络信息和维修指导请求。",
+          "source": {
+            "package": "IG1501C",
+            "pdf": "IG1501C_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              13
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的自然语言维修问题。",
+          "input_source": {
+            "package": "IG1501C",
+            "pdf": "IG1501C_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              13
+            ]
+          },
+          "output_summary": "自然语言维修操作指导。",
+          "output_source": {
+            "package": "IG1501C",
+            "pdf": "IG1501C_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              13
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1502a-individual-mobile-service-delivery",
+      "role_version": "1.0.0",
+      "name": "个人移动业务交付",
+      "description": "服务运营层；面向不同业务套餐制定并调整无线业务意图模板，维护可订购容量信息并评估交付效果。（原文 Agent：Individual Mobile Service Delivery Agent）",
+      "source": {
+        "package": "IG1502A",
+        "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+        "pdf_pages": [
+          12,
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "formulate-radio-intent-template",
+          "name": "无线业务意图模板制定",
+          "description": "根据个人移动业务交付意图生成无线业务意图模板并向域侧配置。",
+          "source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              14,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "个人移动业务交付意图，例如指定场馆的业务套餐需求。",
+          "input_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          },
+          "output_summary": "供无线域配置的无线业务意图模板。",
+          "output_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          }
+        },
+        {
+          "skill_id": "query-orderable-capacity",
+          "name": "可订购容量查询",
+          "description": "向业务层提供可用于用户订购的业务容量信息。",
+          "source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              13,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "可用于用户订购的业务容量查询。",
+          "input_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          },
+          "output_summary": "可订购业务容量信息。",
+          "output_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          }
+        },
+        {
+          "skill_id": "coordinate-order-feasibility",
+          "name": "订购可行性协调",
+          "description": "接收业务层订购可行性请求并协调 RAN 域检查。",
+          "source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              14,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "用户业务订购可行性检查请求。",
+          "input_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          },
+          "output_summary": "无线业务订购可行性检查报告。",
+          "output_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1502a-radio-service-handling",
+      "role_version": "1.0.0",
+      "name": "单域无线业务处理",
+      "description": "网络运营层；在单个 RAN 域配置无线业务意图模板，探索服务容量，检查指定位置的订购可行性并评估业务体验。（原文 Agent：Radio Service Handling Agent）",
+      "source": {
+        "package": "IG1502A",
+        "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "configure-radio-intent-template",
+          "name": "无线业务意图模板配置",
+          "description": "接收并维护业务套餐对应的无线业务意图模板及 SLA 目标。",
+          "source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              14,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "模板配置请求，包含支持场景、服务 SLA 目标与保障时间。",
+          "input_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              14,
+              15
+            ]
+          }
+        },
+        {
+          "skill_id": "explore-radio-service-capacity",
+          "name": "无线业务容量探索",
+          "description": "按指定区域和意图模板探索可支持的最大用户数并返回报告。",
+          "source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "指定区域和无线业务意图模板的容量探索请求。",
+          "input_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          },
+          "output_summary": "容量探索报告，包含满足预期 SLA 时可订购和接入的最大 UE 数。",
+          "output_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          }
+        },
+        {
+          "skill_id": "check-order-feasibility",
+          "name": "无线业务订购可行性检查",
+          "description": "检查指定地理位置的业务订购和接入可行性并返回报告。",
+          "source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "指定地理坐标的无线业务订购可行性检查请求。",
+          "input_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          },
+          "output_summary": "无线业务意图可行性检查报告。",
+          "output_source": {
+            "package": "IG1502A",
+            "pdf": "IG1502A_AN_L4_Individual_Mobile_Service_Delivery_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503a-individual-service-assurance",
+      "role_version": "1.0.0",
+      "name": "个人业务保障",
+      "description": "服务运营层；监测个人通信业务的质量与性能，诊断质差并协调服务优化和纠正动作。（原文 Agent：Service Assurance agent）",
+      "source": {
+        "package": "IG1503A",
+        "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          13,
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "assure-individual-service-quality",
+          "name": "个人业务质差诊断与保障",
+          "description": "针对个人业务质量问题形成诊断和保障建议并协调纠正动作。",
+          "source": {
+            "package": "IG1503A",
+            "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              15
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503a-single-domain-quality-optimization",
+      "role_version": "1.0.0",
+      "name": "单域质量优化",
+      "description": "网络运营层；发现单域网络质差和隐患，分析并执行优化方案，对外暴露意图式质量优化入口。（原文 Agent：Quality Optimization Agent）",
+      "source": {
+        "package": "IG1503A",
+        "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "optimize-single-domain-quality",
+          "name": "单域质量优化",
+          "description": "按质量优化意图分析并执行单域网络优化。",
+          "source": {
+            "package": "IG1503A",
+            "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              13
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503a-single-domain-fault-management",
+      "role_version": "1.0.0",
+      "name": "单域故障管理",
+      "description": "网络运营层；发现单域故障，执行诊断、影响分析和修复，对外暴露意图式故障入口。（原文 Agent：Fault Management Agent）",
+      "source": {
+        "package": "IG1503A",
+        "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "handle-single-domain-fault",
+          "name": "单域故障处理",
+          "description": "按故障处理意图完成单域诊断、影响分析与修复。",
+          "source": {
+            "package": "IG1503A",
+            "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              13
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503a-single-domain-network-change",
+      "role_version": "1.0.0",
+      "name": "单域网络变更",
+      "description": "网络运营层；分析并执行单域网络变更，对外提供意图式网络变更入口。（原文 Agent：Network Change Agent）",
+      "source": {
+        "package": "IG1503A",
+        "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "execute-single-domain-change",
+          "name": "单域网络变更实施",
+          "description": "按网络变更意图分析并执行单域变更。",
+          "source": {
+            "package": "IG1503A",
+            "pdf": "IG1503A_AN_L4_Individual_Services_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              15
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503b-cross-domain-hbb-assurance",
+      "role_version": "1.0.0",
+      "name": "跨域家宽业务保障",
+      "description": "服务运营层；对跨自治域家宽业务问题进行分析与定位，协调单域 Agent 完成修复及验证。（原文 Agent：Assurance agent）",
+      "source": {
+        "package": "IG1503B",
+        "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "coordinate-cross-domain-hbb-assurance",
+          "name": "跨域家宽保障协调",
+          "description": "针对跨域家宽问题定位根因并协调网络侧修复和验证。",
+          "source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              17,
+              18
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "单域上报的可远程解决问题与优化方案。",
+          "input_source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          },
+          "output_summary": "经影响评估后向家宽保障 Agent 下发的修复操作。",
+          "output_source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503b-cross-network-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "家宽跨网络现场维护辅助",
+      "description": "服务运营层；面向现场工程师提供跨网络知识问答、信息查询和智能诊断辅助。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1503B",
+        "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-cross-network-repair-qa",
+          "name": "跨网络现场维修问答",
+          "description": "响应现场工程师的家宽故障信息与维修指导请求。",
+          "source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              18
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的自然语言维修问题。",
+          "input_source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          },
+          "output_summary": "智能问答回复。",
+          "output_source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503b-hbb-assurance",
+      "role_version": "1.0.0",
+      "name": "家宽业务保障",
+      "description": "网络运营层；监测家宽体验、发现质差和接入风险，制定保障方案，执行自愈、远程处置或支撑上门维修。（原文 Agent：HBB Assurance Agent）",
+      "source": {
+        "package": "IG1503B",
+        "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "remedy-hbb-issue-remotely",
+          "name": "家宽问题远程处置与优化",
+          "description": "接收服务层待处理问题与建议操作，执行远程处置或优化；响应内容原文未明确。",
+          "source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              17,
+              18
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "待远程处理的问题及建议的优化操作。",
+          "input_source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503b-hbb-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "家宽现场维护辅助",
+      "description": "网络运营层；面向家宽现场工程师提供接入网知识、数据查询及智能诊断，辅助上门处理。（原文 Agent：HBB FME Copilot）",
+      "source": {
+        "package": "IG1503B",
+        "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-hbb-field-repair-qa",
+          "name": "家宽现场维修问答",
+          "description": "响应现场工程师对家宽问题、接入网数据和维修建议的询问。",
+          "source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              18
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场人员对维修建议或相关指标的查询。",
+          "input_source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          },
+          "output_summary": "维修建议及相关指标信息。",
+          "output_source": {
+            "package": "IG1503B",
+            "pdf": "IG1503B_AN_L4_Home_Broadband_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503d-cross-domain-pl-assurance",
+      "role_version": "1.0.0",
+      "name": "跨域专线业务保障",
+      "description": "服务运营层；负责企业专线跨域保障和端到端业务影响分析，协同网络层完成定位、修复与验证。（原文 Agent：Service Assurance Agent）",
+      "source": {
+        "package": "IG1503D",
+        "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "coordinate-cross-domain-pl-assurance",
+          "name": "跨域专线保障协调",
+          "description": "针对跨域专线故障或风险定位影响范围，协调网络层处置并验证。",
+          "source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              19,
+              20
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "专线域上报的问题描述、诊断结果和处置建议。",
+          "input_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              20
+            ]
+          },
+          "output_summary": "向单域下发远程处置指令，或经工单系统派发现场维修任务。",
+          "output_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              19,
+              20
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503d-enterprise-pl-assurance",
+      "role_version": "1.0.0",
+      "name": "企业专线业务保障",
+      "description": "网络/资源层；检测和诊断专线故障或风险，执行可远程修复操作及验证；现场维修或扩容时形成处置建议。（原文 Agent：Enterprise PL Service Assurance Agent）",
+      "source": {
+        "package": "IG1503D",
+        "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "remedy-pl-issue-remotely",
+          "name": "企业专线远程处置与验证",
+          "description": "接收服务层远程处置指令，执行全部或部分风险/故障修复并反馈结果。",
+          "source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              19,
+              20,
+              21
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "服务层发出的远程风险或故障处置指令。",
+          "input_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              19,
+              20
+            ]
+          },
+          "output_summary": "向上层报告问题描述与自动处理结果；具体验证返回字段未明确。",
+          "output_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              20
+            ]
+          }
+        },
+        {
+          "skill_id": "advise-pl-field-repair",
+          "name": "企业专线现场维修建议",
+          "description": "针对需现场处理或扩容的问题提供处置方案和指导。",
+          "source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "需现场处理的问题描述、诊断结果与处置建议。",
+          "output_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              20,
+              21
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503d-cross-network-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "专线跨网络现场维护辅助",
+      "description": "服务运营层；面向现场工程师提供跨网络知识、信息查询及故障诊断辅助。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1503D",
+        "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-cross-network-repair-qa",
+          "name": "跨网络现场维修问答",
+          "description": "响应现场工程师对专线故障信息和维修指导的询问。",
+          "source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的专线维修自然语言问题。",
+          "input_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20
+            ]
+          },
+          "output_summary": "跨网络维修问答回复。",
+          "output_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503d-cross-network-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "专线跨网络网管辅助",
+      "description": "服务运营层；面向网管工程师提供跨网络知识、信息查询和复杂故障诊断辅助。（原文 Agent：NOC Copilot）",
+      "source": {
+        "package": "IG1503D",
+        "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-cross-network-noc-qa",
+          "name": "跨网络网管问答",
+          "description": "响应网管工程师对专线故障、风险和网络状态的询问。",
+          "source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "网管人员的专线故障或风险自然语言问题。",
+          "input_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20
+            ]
+          },
+          "output_summary": "跨网络运维问答回复。",
+          "output_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503d-transport-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "传送网现场维护辅助",
+      "description": "网络运营层；为传送网现场工程师提供告警、链路和产品知识查询，以及分步排障指导。（原文 Agent：Transport Network FME Copilot）",
+      "source": {
+        "package": "IG1503D",
+        "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-transport-field-repair",
+          "name": "传送网现场维修指导",
+          "description": "响应传送域故障查询和分步维修指导请求。",
+          "source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20,
+              21
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的维修问答消息。",
+          "input_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              20,
+              21
+            ]
+          },
+          "output_summary": "现场操作指导的智能问答消息。",
+          "output_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              20,
+              21
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1503d-transport-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "传送网网管辅助",
+      "description": "网络运营层；为传送网网管工程师提供告警、网元状态、性能和日志查询及智能诊断。（原文 Agent：Transport Network NOC Copilot）",
+      "source": {
+        "package": "IG1503D",
+        "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+        "pdf_pages": [
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-transport-noc-qa",
+          "name": "传送网网管问答与诊断",
+          "description": "响应传送域知识、网络状态和故障诊断请求。",
+          "source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              20,
+              21
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "网管人员对特定业务故障或风险的自然语言查询。",
+          "input_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              20
+            ]
+          },
+          "output_summary": "智能问答消息。",
+          "output_source": {
+            "package": "IG1503D",
+            "pdf": "IG1503D_AN_L4_Enterprise_Private_Line_Service_Assurance_Solution_Package.pdf",
+            "pdf_pages": [
+              20
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1504a-complaint-handling",
+      "role_version": "1.0.0",
+      "name": "个人业务投诉处理",
+      "description": "服务运营层；解析个人业务投诉、划界问题，协调单域故障或优化 Agent 定位与处置并核验闭环。（原文 Agent：Complaint handling Agent）",
+      "source": {
+        "package": "IG1504A",
+        "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+        "pdf_pages": [
+          14,
+          17
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "analyze-complaint-coordinate-handling",
+          "name": "个人业务投诉分析与处置协调",
+          "description": "分析投诉问题并请求单域 Agent 诊断或优化，形成处理建议与结果。",
+          "source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              18,
+              19
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "客户投诉单。",
+          "input_source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              17
+            ]
+          },
+          "output_summary": "投诉原因定界、处置建议与处理结果报告。",
+          "output_source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              18,
+              19
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1504a-complaint-handling-copilot",
+      "role_version": "1.0.0",
+      "name": "个人业务投诉处理辅助",
+      "description": "服务运营层；辅助投诉处理人员提供沟通话术、提取用户信息、创建或流转投诉工单。（原文 Agent：Complaint handling Copilot）",
+      "source": {
+        "package": "IG1504A",
+        "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+        "pdf_pages": [
+          14,
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "assist-complaint-interaction",
+          "name": "投诉处理交互辅助",
+          "description": "响应投诉处理人员的话术、信息提取和工单处理请求。",
+          "source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              14,
+              15
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1504a-single-domain-fault-management",
+      "role_version": "1.0.0",
+      "name": "投诉场景单域故障管理",
+      "description": "网络运营层；分析单域故障数据、诊断根因并执行处置，为投诉划界提供专业诊断。（原文 Agent：Fault Management Agent）",
+      "source": {
+        "package": "IG1504A",
+        "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+        "pdf_pages": [
+          14,
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-complaint-fault",
+          "name": "投诉相关单域故障诊断",
+          "description": "针对投诉所涉网络域定位故障根因并反馈处置建议或结果。",
+          "source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              17,
+              18,
+              19
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "故障更新消息中的单域根因定位与处置建议，以及故障清除消息。",
+          "output_source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              19
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1504a-single-domain-quality-optimization",
+      "role_version": "1.0.0",
+      "name": "投诉场景单域质量优化",
+      "description": "网络运营层；分析单域网络性能和配置，形成优化建议并执行处置。（原文 Agent：Quality Optimization Agent）",
+      "source": {
+        "package": "IG1504A",
+        "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+        "pdf_pages": [
+          14,
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "optimize-complaint-quality",
+          "name": "投诉相关单域质量优化",
+          "description": "针对投诉所涉网络域诊断质差并反馈优化建议或结果。",
+          "source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              17,
+              18,
+              19
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "质量优化消息、单域根因分析与优化结果。",
+          "output_source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              19
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1504a-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "投诉场景现场维护辅助",
+      "description": "网络运营层；辅助现场工程师查询任务、性能指标、告警、日志并获取专业问答和维修指导。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1504A",
+        "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+        "pdf_pages": [
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-complaint-field-repair",
+          "name": "投诉现场维修指导",
+          "description": "响应现场工程师的故障信息查询和维修指导请求。",
+          "source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              18,
+              19
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员查询受影响基站的故障信息及操作指导。",
+          "input_source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          },
+          "output_summary": "自然语言维修操作指导。",
+          "output_source": {
+            "package": "IG1504A",
+            "pdf": "IG1504A_AN_L4_Individual_Service_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1504b-hbb-complaint-agent",
+      "role_version": "1.0.0",
+      "name": "家宽投诉受理辅助",
+      "description": "服务运营层；通过客服渠道收集家宽投诉信息；图中将 Agent 和 Copilot 合写，是否拆分尚不明确。（原文 Agent：Home Broadband Complaint Agent/Copilot）",
+      "source": {
+        "package": "IG1504B",
+        "pdf": "IG1504B_AN_L4_Home_Broadband_Complaint_Handling_Solution_Package.pdf",
+        "pdf_pages": [
+          14,
+          15
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "intake-hbb-complaint",
+          "name": "家宽投诉信息受理",
+          "description": "采集并解析家宽用户投诉信息，供后续投诉分析使用。",
+          "source": {
+            "package": "IG1504B",
+            "pdf": "IG1504B_AN_L4_Home_Broadband_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              14,
+              15,
+              16
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1504b-cross-domain-complaint-agent",
+      "role_version": "1.0.0",
+      "name": "跨域家宽投诉处理辅助",
+      "description": "服务运营层；跨家庭网、接入网和核心网协调投诉处理，分析网络问题并调用单域诊断或优化能力。（原文 Agent：Cross-Domain Complaint Agent/Copilot）",
+      "source": {
+        "package": "IG1504B",
+        "pdf": "IG1504B_AN_L4_Home_Broadband_Complaint_Handling_Solution_Package.pdf",
+        "pdf_pages": [
+          14,
+          15,
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "analyze-cross-domain-hbb-complaint",
+          "name": "跨域家宽投诉分析与协调",
+          "description": "分析家宽投诉、定位相关网络域并协调单域故障/优化处置。",
+          "source": {
+            "package": "IG1504B",
+            "pdf": "IG1504B_AN_L4_Home_Broadband_Complaint_Handling_Solution_Package.pdf",
+            "pdf_pages": [
+              14,
+              15,
+              16
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-cross-domain-computing-fault-management",
+      "role_version": "1.0.0",
+      "name": "算网跨域故障管理",
+      "description": "服务运营层；联合算力域与承载网络域定位故障、协调恢复，并依据业务影响分析识别跨域风险。（原文 Agent：Cross-domain Computing-Network Fault Agent）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          22
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-computing-cross-domain-fault",
+          "name": "算网跨域故障诊断与恢复协调",
+          "description": "对跨域异常进行联合定位并协调计算域和网络域执行恢复。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              22,
+              26,
+              30,
+              31
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "计算域、网络域及服务层上报的数据和故障事件，以及主动运维要求。",
+          "input_source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              31
+            ]
+          },
+          "output_summary": "跨域故障定界与定位结果；向单域下发诊断请求及修复建议。",
+          "output_source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              31
+            ]
+          }
+        },
+        {
+          "skill_id": "predict-computing-cross-domain-risk",
+          "name": "算网跨域风险预判",
+          "description": "结合业务影响与异常趋势识别潜在跨域风险，提供预防性处置建议。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              22
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-soc-copilot",
+      "role_version": "1.0.0",
+      "name": "算力业务运维辅助",
+      "description": "服务运营层；面向 SOC 工程师提供全局算力业务故障问答、信息查询和跨域告警解释。（原文 Agent：SOC Copilot）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          22
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-computing-service-fault-qa",
+          "name": "算力业务故障问答",
+          "description": "响应 SOC 工程师关于算力业务故障、状态和跨域告警的询问。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              22
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-cross-domain-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "算网跨域现场维护辅助",
+      "description": "服务运营层；提供跨域现场维修指导，与域级现场维护 Copilot 协同。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          22
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-computing-cross-domain-field-repair",
+          "name": "算网跨域现场维修指导",
+          "description": "响应现场工程师的跨域维修问答和操作辅助请求。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              22
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-computing-domain-fault-management",
+      "role_version": "1.0.0",
+      "name": "计算域故障管理",
+      "description": "资源运营层；感知计算资源状态，识别和诊断故障，执行任务迁移或容器重启等自愈措施并上报结果。（原文 Agent：Computing Domain Fault Management Agent）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          24
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-computing-domain-fault",
+          "name": "计算域故障诊断与自愈",
+          "description": "针对计算域故障形成诊断与自愈结果，并向服务层反馈。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              24,
+              26,
+              30,
+              31
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "跨域 Agent 下发的诊断请求和修复建议。",
+          "input_source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              31
+            ]
+          },
+          "output_summary": "单域诊断结果、处置建议；可自动修复时返回修复结果。",
+          "output_source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              31
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-carrying-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "算力承载网络故障管理",
+      "description": "资源运营层；感知算力承载网络状态，分析告警与根因，执行路径重选等隔离和恢复并上报结果。（原文 Agent：Network Domain Fault Management Agent）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          24
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-carrying-network-fault",
+          "name": "算力承载网络故障诊断与恢复",
+          "description": "针对承载网络故障形成诊断与恢复结果，并向服务层反馈。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              24,
+              26,
+              30,
+              31
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "跨域 Agent 下发的诊断请求和修复建议。",
+          "input_source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              31
+            ]
+          },
+          "output_summary": "单域诊断结果、处置建议；可自动修复时返回修复结果。",
+          "output_source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              31
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-coc-copilot",
+      "role_version": "1.0.0",
+      "name": "计算域运维辅助",
+      "description": "资源运营层；辅助计算/云运维中心进行语义故障关联、根因解释和假设分析。（原文 Agent：CoC Copilot）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          24
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-computing-domain-qa",
+          "name": "计算域故障问答与分析",
+          "description": "响应计算域工程师的故障关联、根因解释和假设分析请求。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              24
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "网络域运维辅助",
+      "description": "资源运营层；辅助网络运维中心进行语义故障关联、根因解释和假设分析。（原文 Agent：NoC Copilot）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          24
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-network-domain-qa",
+          "name": "网络域故障问答与分析",
+          "description": "响应网络域工程师的故障关联、根因解释和假设分析请求。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              24
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-computing-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "计算域现场维护辅助",
+      "description": "资源运营层；协助现场工程师维护服务器、存储、虚拟化和云原生组件，处理复杂故障。（原文 Agent：Computing Domain FME Copilot）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          24
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-computing-facility-repair",
+          "name": "计算设施现场维修指导",
+          "description": "响应计算设施现场维护与复杂故障修复指导请求。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              24
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1505g-network-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "网络域现场维护辅助",
+      "description": "资源运营层；协助现场工程师维护路由器、交换机、光传输和无损网络设备。（原文 Agent：Network Domain FME Copilot）",
+      "source": {
+        "package": "IG1505G",
+        "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+        "pdf_pages": [
+          24,
+          25
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-network-facility-repair",
+          "name": "网络设施现场维修指导",
+          "description": "响应物理网络设施现场维护与复杂故障修复指导请求。",
+          "source": {
+            "package": "IG1505G",
+            "pdf": "IG1505G_AN_L4_Computing_Network_FaultManagement_SolutionPackage.pdf",
+            "pdf_pages": [
+              24,
+              25
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-strategy-planning",
+      "role_version": "1.0.0",
+      "name": "固网战略规划",
+      "description": "服务运营层；分析未覆盖需求、竞争、社会经济、补贴、成本和投资组合，形成固网建设战略建议。（原文 Agent：Strategy Planning Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          27
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "plan-fixed-access-strategy",
+          "name": "固网建设战略规划",
+          "description": "综合需求、竞争、可行性和投资回报形成规划组合及战略架构建议。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              8,
+              9,
+              10,
+              11,
+              27
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-strategy-planning-copilot",
+      "role_version": "1.0.0",
+      "name": "固网战略规划辅助",
+      "description": "服务运营层；可视化规划结果，解释区域排序并支持规划人员进行交互式情景分析。（原文 Agent：Strategy Planning Copilot）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          27
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "explain-planning-scenario",
+          "name": "规划情景问答与解释",
+          "description": "响应规划人员对组合排序及假设情景的查询和调整请求。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              8,
+              10,
+              11,
+              27
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-survey-copilot",
+      "role_version": "1.0.0",
+      "name": "固网勘测辅助",
+      "description": "网络运营层；辅助现场工程师核验设计与实际环境差异，标注冲突并识别杆路、井盖等设施。（原文 Agent：Survey Copilot）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          27
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "survey-validate-design",
+          "name": "现场勘测与设计核验",
+          "description": "在勘测现场提供 AR 指引、设施识别和设计冲突报告。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              7,
+              11,
+              12,
+              27
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-network-design",
+      "role_version": "1.0.0",
+      "name": "固网设计",
+      "description": "服务运营层；将规划要求转为 HLD/LLD，优化光纤路径，设计机房、连接、分光和熔接方案。（原文 Agent：Network Design Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          27,
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "design-fixed-access-hld-lld",
+          "name": "固网 HLD/LLD 设计",
+          "description": "根据规划和勘测信息形成固网高低层设计及相关配置方案。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              7,
+              12,
+              13,
+              27,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-design-validation-documentation",
+      "role_version": "1.0.0",
+      "name": "固网设计校验与文档生成",
+      "description": "服务运营层；检查 HLD/LLD 合规性，形成物料清单和施工文档。（原文 Agent：Design Validation & Documentation Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "validate-design-generate-docs",
+          "name": "设计校验与施工文档生成",
+          "description": "核验设计包并生成 BOM、熔接报告、分配图和许可图等文档。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              7,
+              13,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-construction-copilot",
+      "role_version": "1.0.0",
+      "name": "固网施工辅助",
+      "description": "网络运营层；为现场施工团队提供 AR 核验、设备放置与布缆指导，辅助设计变更。（原文 Agent：Consutrction Copilot）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-field-construction",
+          "name": "现场施工指导",
+          "description": "通过移动端向施工人员提供 AR 安装指导和变更辅助。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              7,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-as-built-capture-copilot",
+      "role_version": "1.0.0",
+      "name": "固网竣工采集辅助",
+      "description": "网络运营层；指导现场工程师采集竣工三维扫描，形成点云与竣工文档。（原文 Agent：As-built Capture Copilot）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-as-built-capture",
+          "name": "竣工三维采集指导",
+          "description": "指导现场采集、核验竣工条件并形成三维记录。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              7,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-acceptance",
+      "role_version": "1.0.0",
+      "name": "固网施工验收",
+      "description": "服务运营层；自动检查竣工外观、光纤测试结果和验收材料，形成验收文档。（原文 Agent：Acceptance Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "perform-auto-acceptance",
+          "name": "固网施工自动验收",
+          "description": "核验竣工质量、OTDR 测试与现场材料并形成验收结果。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              8,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-synchronization-monitoring",
+      "role_version": "1.0.0",
+      "name": "固网资源同步与监测",
+      "description": "服务运营层；编排资源台账与数字孪生的数据同步，并执行同步后一致性校验。（原文 Agent：Synchronization & Monitoring Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "sync-resource-inventory",
+          "name": "资源台账同步与校验",
+          "description": "通过 Open API 同步资源记录并核对物理资产与数字记录一致性。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              8,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-market-analysis",
+      "role_version": "1.0.0",
+      "name": "固网市场分析",
+      "description": "数据与智能层；分析竞品覆盖、人口结构和市场潜力，为固网扩建规划提供依据。（原文 Agent：Market Analysis Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "analyze-market-opportunity",
+          "name": "固网市场机会分析",
+          "description": "根据需求和竞争信息形成扩建机会分析结果。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              8,
+              9,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-regulatory-subsidy-identification",
+      "role_version": "1.0.0",
+      "name": "固网法规与补贴识别",
+      "description": "数据与智能层；监测法规与补贴来源，提取政策信息并识别可能符合条件的建设区域。（原文 Agent：Regulatory & Subsidy Identification Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "identify-subsidy-opportunity",
+          "name": "补贴机会识别",
+          "description": "从法规和补贴材料识别适用区域及可能符合条件的项目。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              9,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-roi-optimization",
+      "role_version": "1.0.0",
+      "name": "固网投资回报优化",
+      "description": "数据与智能层；计算固网建设投资回报并优化项目投资策略。（原文 Agent：ROI Optimization Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "analyze-investment-roi",
+          "name": "建设投资回报分析",
+          "description": "对成本、采用率和收入假设进行投资回报分析与组合优化。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              10,
+              28
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-socio-economic-scoring",
+      "role_version": "1.0.0",
+      "name": "固网社会经济评分",
+      "description": "数据与智能层；结合人口经济信息与历史业务采用率，生成区域可行性和 ARPU 潜力评分。（原文 Agent：Socio-Economic Scoring Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          28,
+          29
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "score-area-feasibility",
+          "name": "区域可行性评分",
+          "description": "计算并解释目标区域的社会经济可行性与 ARPU 潜力。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              9,
+              28,
+              29
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1521c-rollout-monitoring-risk-prediction",
+      "role_version": "1.0.0",
+      "name": "固网建设风险监测",
+      "description": "服务运营层；监测建设项目进度，预测延误和风险并提供预警。（原文 Agent：Rollout Monitoring & Risk Prediction Agent）",
+      "source": {
+        "package": "IG1521C",
+        "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+        "pdf_pages": [
+          29
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "predict-rollout-risk",
+          "name": "建设进度与风险预测",
+          "description": "提供项目进度分析和延误、风险预测。",
+          "source": {
+            "package": "IG1521C",
+            "pdf": "IG1521C_AN_L4_Fixed_Access_Network_Planning_and_Design_Solution_Package.pdf",
+            "pdf_pages": [
+              29
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523a-wireless-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "无线网故障管理",
+      "description": "网络运营层；检测诊断无线网故障或风险，执行远程恢复及验证，向现场人员提供维修建议并核验结果。（原文 Agent：Wireless network Fault Management Agent）",
+      "source": {
+        "package": "IG1523A",
+        "pdf": "IG1523A_AN_L4_Wireless_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          16,
+          17
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-wireless-network-fault",
+          "name": "无线网故障诊断与处置",
+          "description": "针对无线网故障完成诊断；可远程恢复时执行处置与验证，否则提供现场维修建议。",
+          "source": {
+            "package": "IG1523A",
+            "pdf": "IG1523A_AN_L4_Wireless_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              17,
+              18,
+              19
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "故障/告警消息和单域根因诊断、定位、处置建议；可报告故障清除信息。",
+          "output_source": {
+            "package": "IG1523A",
+            "pdf": "IG1523A_AN_L4_Wireless_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              18,
+              19
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523a-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "无线网现场维护辅助",
+      "description": "网络运营层；面向现场工程师提供网络知识问答、信息查询和智能诊断辅助。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1523A",
+        "pdf": "IG1523A_AN_L4_Wireless_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          16,
+          17
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-field-repair",
+          "name": "现场故障问答与操作指导",
+          "description": "响应现场工程师的无线网故障信息及维修指导请求。",
+          "source": {
+            "package": "IG1523A",
+            "pdf": "IG1523A_AN_L4_Wireless_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              19
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的自然语言维修问题。",
+          "input_source": {
+            "package": "IG1523A",
+            "pdf": "IG1523A_AN_L4_Wireless_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              19
+            ]
+          },
+          "output_summary": "自然语言维修操作指导。",
+          "output_source": {
+            "package": "IG1523A",
+            "pdf": "IG1523A_AN_L4_Wireless_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              19
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523b-core-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "核心网故障管理",
+      "description": "网络运营层；检测诊断核心网故障或风险；可远程恢复操作经人工批准后执行并验证。（原文 Agent：Core Network Fault Management Agent）",
+      "source": {
+        "package": "IG1523B",
+        "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          16,
+          17
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-core-network-fault",
+          "name": "核心网故障诊断",
+          "description": "诊断核心网故障或风险并反馈结果。",
+          "source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              17,
+              18
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "向故障管理中心报告故障根因和处置建议；未完成诊断时报告故障 ID 与描述。",
+          "output_source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              19,
+              20
+            ]
+          }
+        },
+        {
+          "skill_id": "execute-approved-fault-recovery",
+          "name": "获批故障恢复与验证",
+          "description": "收到人工批准后执行远程恢复操作并验证结果。",
+          "source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              18,
+              19
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "获批的故障修复请求，包含故障 ID。",
+          "input_source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              19,
+              20
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523b-cross-network-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "跨网络网管辅助",
+      "description": "服务运营层；面向 NOC 工程师提供跨网络知识问答、信息查询和诊断辅助。（原文 Agent：NOC Copilot）",
+      "source": {
+        "package": "IG1523B",
+        "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          16,
+          17
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-cross-network-fault-qa",
+          "name": "跨网络故障问答与诊断辅助",
+          "description": "响应网管工程师的网络知识、信息和故障诊断询问。",
+          "source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              17
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523b-core-network-noc-copilot",
+      "role_version": "1.0.0",
+      "name": "核心网网管辅助",
+      "description": "网络运营层；面向核心网 NOC 工程师提供告警、网元、信令、指标和日志查询及诊断辅助。（原文 Agent：Core-network NOC Copilot）",
+      "source": {
+        "package": "IG1523B",
+        "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          16,
+          17
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-core-network-knowledge-qa",
+          "name": "核心网知识与状态问答",
+          "description": "响应核心网告警、网元、信令、指标及日志的查询与诊断请求。",
+          "source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              20
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "核心网知识或网络状态的自然语言查询。",
+          "input_source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              19
+            ]
+          },
+          "output_summary": "核心网知识与状态问答回复。",
+          "output_source": {
+            "package": "IG1523B",
+            "pdf": "IG1523B_AN_L4_Core_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              19
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523d-transport-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "传送网故障管理",
+      "description": "网络运营层；检测诊断传送网故障或风险，执行端口或板卡等远程恢复，提供现场维修建议并核验结果。（原文 Agent：Transport Network Fault Management Agent）",
+      "source": {
+        "package": "IG1523D",
+        "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          11
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-transport-network-fault",
+          "name": "传送网故障诊断与处置",
+          "description": "针对传送网故障形成诊断；可远程恢复时执行处置与验证，否则提供现场维修建议。",
+          "source": {
+            "package": "IG1523D",
+            "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              13,
+              14
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "跨域管理层的故障分析请求。",
+          "input_source": {
+            "package": "IG1523D",
+            "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              14
+            ]
+          },
+          "output_summary": "故障诊断结果和修复建议；主动闭环时上报异常根因、位置及处理案例。",
+          "output_source": {
+            "package": "IG1523D",
+            "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523d-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "传送网现场维护辅助",
+      "description": "服务运营层；面向现场工程师提供跨网络知识问答、信息查询和智能诊断辅助。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1523D",
+        "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          11,
+          12
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-field-repair",
+          "name": "现场故障问答与操作指导",
+          "description": "响应现场工程师的传送网故障信息及维修指导请求。",
+          "source": {
+            "package": "IG1523D",
+            "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              11,
+              12,
+              14
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的自然语言维修问题。",
+          "input_source": {
+            "package": "IG1523D",
+            "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          },
+          "output_summary": "自然语言维修操作指导。",
+          "output_source": {
+            "package": "IG1523D",
+            "pdf": "IG1523D_AN_L4_Transport_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523e-ip-network-fault-management",
+      "role_version": "1.0.0",
+      "name": "IP 网故障管理",
+      "description": "网络运营层；检测诊断 IP 网故障或风险，执行路由参数等远程恢复，提供现场维修建议并核验结果。（原文 Agent：IP Network Fault Management Agent）",
+      "source": {
+        "package": "IG1523E",
+        "pdf": "IG1523E_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          15,
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-ip-network-fault",
+          "name": "IP 网故障诊断与处置",
+          "description": "针对 IP 网故障形成诊断；可远程恢复时执行处置与验证，否则提供现场维修建议。",
+          "source": {
+            "package": "IG1523E",
+            "pdf": "IG1523E_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              16,
+              17,
+              18
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "故障事件及单域根因诊断、定位、处置建议；可报告故障清除信息。",
+          "output_source": {
+            "package": "IG1523E",
+            "pdf": "IG1523E_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              17,
+              18
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1523e-fme-copilot",
+      "role_version": "1.0.0",
+      "name": "IP 网现场维护辅助",
+      "description": "网络运营层；面向现场工程师提供网络知识问答、信息查询和智能诊断辅助。（原文 Agent：FME Copilot）",
+      "source": {
+        "package": "IG1523E",
+        "pdf": "IG1523E_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          15,
+          16
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "guide-field-repair",
+          "name": "现场故障问答与操作指导",
+          "description": "响应现场工程师的 IP 网故障信息及维修指导请求。",
+          "source": {
+            "package": "IG1523E",
+            "pdf": "IG1523E_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              18
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "现场维护人员的自然语言维修问题。",
+          "input_source": {
+            "package": "IG1523E",
+            "pdf": "IG1523E_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          },
+          "output_summary": "自然语言维修操作指导。",
+          "output_source": {
+            "package": "IG1523E",
+            "pdf": "IG1523E_AN_L4_IP_Network_Fault_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              18
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1524b-network-change-intent-parsing",
+      "role_version": "1.0.0",
+      "name": "网络变更意图解析",
+      "description": "服务运营层；在网络变更管理中心解析变更工单意图，将核心网变更需求转发至网络层。（原文 Agent：Network Change Management Agent）",
+      "source": {
+        "package": "IG1524B",
+        "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          12,
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "parse-change-intent",
+          "name": "变更意图解析与转发",
+          "description": "解析变更工单，形成并转发核心网变更需求。",
+          "source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              13
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1524b-core-network-change-management",
+      "role_version": "1.0.0",
+      "name": "核心网变更管理",
+      "description": "网络运营层；分析核心网变更需求与网元现状，形成并评估方案，实施变更前后校验、状态监测和异常处置。（原文 Agent：Core Network Change Management Agent）",
+      "source": {
+        "package": "IG1524B",
+        "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          12,
+          13,
+          14
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "generate-evaluate-change-plan",
+          "name": "核心网变更方案生成与评估",
+          "description": "接收目标网元与变更目标，形成变更方案和评估结果并上报。",
+          "source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              13,
+              14,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "目标网元与变更目标。",
+          "input_source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14
+            ]
+          },
+          "output_summary": "变更细节、建议方案与方案评估结果。",
+          "output_source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              14
+            ]
+          }
+        },
+        {
+          "skill_id": "execute-verify-core-change",
+          "name": "核心网变更实施与验证",
+          "description": "变更获批后完成实施前检查、方案执行、状态监测和业务验证并反馈结果。",
+          "source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              14,
+              15
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "已批准实施的核心网变更方案；异常时可能收到回滚或容灾指令。",
+          "input_source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              14,
+              15
+            ]
+          },
+          "output_summary": "变更期间的网络状态信息和变更后的业务验证结果。",
+          "output_source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              14,
+              15
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1524b-core-network-change-copilot",
+      "role_version": "1.0.0",
+      "name": "核心网变更辅助",
+      "description": "网络运营层；向工程师提供核心网知识问答，以及告警、信令、网元状态、性能和日志查询。（原文 Agent：Core Network Change Management Copilot）",
+      "source": {
+        "package": "IG1524B",
+        "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+        "pdf_pages": [
+          12
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-core-change-qa",
+          "name": "核心网变更知识与状态问答",
+          "description": "响应工程师对核心网变更知识和网络运行状态的询问。",
+          "source": {
+            "package": "IG1524B",
+            "pdf": "IG1524B_AN_L4_Core_Network_Change_Management_Solution_Package.pdf",
+            "pdf_pages": [
+              12
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1525e-cross-domain-quality-optimization",
+      "role_version": "1.0.0",
+      "name": "跨域质量优化",
+      "description": "服务运营层；识别跨域业务质差，基于服务意图向专业域下发优化策略，收集报告并评估效果与扩容建议。（原文 Agent：Quality Optimization Agent）",
+      "source": {
+        "package": "IG1525E",
+        "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+        "pdf_pages": [
+          12,
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "coordinate-cross-domain-quality-optimization",
+          "name": "跨域业务质量优化协调",
+          "description": "针对业务质差制定优化策略并协调专业域执行、收集效果报告。",
+          "source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              13,
+              15,
+              16
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "服务意图或业务质量下降问题。",
+          "input_source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              12
+            ]
+          },
+          "output_summary": "向相应网络域下发优化策略，并依据网络优化报告评估效果。",
+          "output_source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              12,
+              16
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1525e-cross-domain-noe-copilot",
+      "role_version": "1.0.0",
+      "name": "跨域网络优化辅助",
+      "description": "服务运营层；面向网络优化工程师提供通用优化知识问答，并转发专业域问题。（原文 Agent：NOE Copilot）",
+      "source": {
+        "package": "IG1525E",
+        "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-generic-optimization-qa",
+          "name": "通用网络优化问答",
+          "description": "响应工程师的通用网络优化询问并在需要时转至域级 Copilot。",
+          "source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13
+            ]
+          },
+          "review_status": "approved"
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1525e-ip-network-quality-optimization",
+      "role_version": "1.0.0",
+      "name": "IP 网质量优化",
+      "description": "网络运营层；诊断 IP 网质差和隐患，执行路径调整等远程优化与验证，形成容量扩建建议和仿真。（原文 Agent：IP Network Quality Optimization Agent）",
+      "source": {
+        "package": "IG1525E",
+        "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "diagnose-optimize-ip-quality",
+          "name": "IP 网质量诊断与优化",
+          "description": "针对 IP 网质差执行诊断、远程优化和效果验证。",
+          "source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              15,
+              16
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "服务层下发的 IP 网络质量优化意图。",
+          "input_source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          },
+          "output_summary": "质量优化结果，用于服务层核验意图履约。",
+          "output_source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              15,
+              16
+            ]
+          }
+        },
+        {
+          "skill_id": "advise-ip-capacity-expansion",
+          "name": "IP 网扩容建议",
+          "description": "针对需现场扩容的问题提供建议和仿真结果。",
+          "source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16
+            ]
+          },
+          "review_status": "approved",
+          "output_summary": "扩容方案及其模拟效果。",
+          "output_source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              15
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1525e-ip-network-noe-copilot",
+      "role_version": "1.0.0",
+      "name": "IP 网优化辅助",
+      "description": "网络运营层；面向 IP 网优化工程师提供专业问答、网络状态查询以及优化和扩容建议。（原文 Agent：NOE Copilot）",
+      "source": {
+        "package": "IG1525E",
+        "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "answer-ip-optimization-qa",
+          "name": "IP 网优化问答与建议",
+          "description": "响应工程师的 IP 网状态、优化和扩容方案询问。",
+          "source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "质量优化报告、扩容建议或模拟效果等自然语言查询。",
+          "input_source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              16
+            ]
+          },
+          "output_summary": "对应报告、建议或模拟效果的问答回复。",
+          "output_source": {
+            "package": "IG1525E",
+            "pdf": "IG1525E_AN_L4_IP_Network_Quality_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              16
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1526a-energy-intent-and-effect-evaluation",
+      "role_version": "1.0.0",
+      "name": "RAN 节能意图与效果评估",
+      "description": "服务运营层；为不同 RAN 域制定、下发和调整节能意图，结合履约报告与 KPI 评估效果。（原文 Agent：Energy Saving Intent setting and Effect evaluation Agent）",
+      "source": {
+        "package": "IG1526A",
+        "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+        "pdf_pages": [
+          13
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "formulate-energy-intent",
+          "name": "制定与调整节能意图",
+          "description": "根据业务节能要求和域侧探索结果制定、下发并调整节能与吞吐目标。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16,
+              17
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "业务节能要求、节能意图探索报告及后续履约/效果信息。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16
+            ]
+          },
+          "output_summary": "按时段、频段和 RAT 设置或调整的 RAN 节能意图。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16
+            ]
+          }
+        },
+        {
+          "skill_id": "evaluate-energy-effect",
+          "name": "评估节能效果",
+          "description": "根据各域意图履约报告和 KPI 评估目标达成情况。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16,
+              17
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "各 RAN 域的意图履约报告和 KPI。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16
+            ]
+          },
+          "output_summary": "RAN 节能效果评估结果，可用于调整节能意图。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              16
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    },
+    {
+      "role_id": "ig1526a-ran-energy-optimization",
+      "role_version": "1.0.0",
+      "name": "单域 RAN 节能优化",
+      "description": "网络运营层；在单个 RAN 域内以小时级闭环处理节能意图：探索节能收益及业务性能影响，将意图转为节能策略，执行网元配置并评估履约效果。域内数据采集、分析和策略选择属于内部职责。（原文 Agent：RAN Energy efficiency optimization Agent）",
+      "source": {
+        "package": "IG1526A",
+        "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+        "pdf_pages": [
+          13,
+          14
+        ]
+      },
+      "skills": [
+        {
+          "skill_id": "explore-energy-intent",
+          "name": "节能意图探索",
+          "description": "接收节能与 UE 吞吐目标，评估单域可实现的目标值，返回探索报告；预评估阶段不修改现网。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16,
+              17
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "RAN 能耗目标和 UE 吞吐目标的探索请求。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              17
+            ]
+          },
+          "output_summary": "节能意图探索报告，包含请求目标可实现的最佳值。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              17
+            ]
+          }
+        },
+        {
+          "skill_id": "fulfill-energy-intent",
+          "name": "节能意图履约与反馈",
+          "description": "接收并履行 RAN 节能意图，执行节能策略，提供包含履约状态、实际达成值等信息的履约报告。",
+          "source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              14,
+              16,
+              17
+            ]
+          },
+          "review_status": "approved",
+          "input_summary": "下发的 RAN 节能意图，包括目标及适用时段、频段或 RAT 等上下文。",
+          "input_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              13,
+              16,
+              17
+            ]
+          },
+          "output_summary": "意图履约报告，可包含履约状态、目标达成值、建议值和网元配置修改信息。",
+          "output_source": {
+            "package": "IG1526A",
+            "pdf": "IG1526A_AN_L4_Wireless_Energy_Efficiency_Optimization_Solution_Package.pdf",
+            "pdf_pages": [
+              16,
+              17
+            ]
+          }
+        }
+      ],
+      "review_status": "approved"
+    }
+  ]
+}
