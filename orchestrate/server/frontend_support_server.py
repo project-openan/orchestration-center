@@ -83,6 +83,7 @@ from orchestrate.server.middleware import ConnectionLimitMiddleware, TimeoutMidd
 from orchestrate.core.shared_handlers import SharedHandlers
 from orchestrate.solution_package.parse_flow import SolutionPackageParser
 from orchestrate.solution_package.manager import SolutionPackageManager
+from orchestrate.solution_package.vision_generation import FLOW_CHAPTER, parse_visual_chapter, vision_profile
 from orchestrate.server.auth import (
     is_auth_enabled,
     get_session_store,
@@ -743,12 +744,18 @@ async def parse_pdf(
 
         parser = SolutionPackageParser()
         # fitz 解析是 CPU 密集的同步调用,必须卸载到线程,否则阻塞事件循环
-        chapters_md = await anyio.to_thread.run_sync(
-            parser.parse_pdf_all_chapters, tmp_file_path, abandon_on_cancel=False,
-        )
+        visual = vision_profile() is not None
+        if visual:
+            chapter_title, pre_md = await anyio.to_thread.run_sync(parse_visual_chapter, tmp_file_path)
+            chapters_md = await anyio.to_thread.run_sync(parser.extract_all_chapters, tmp_file_path)
+            chapters_md[chapter_title] = pre_md
+        else:
+            chapters_md = await anyio.to_thread.run_sync(
+                parser.parse_pdf_all_chapters, tmp_file_path, abandon_on_cancel=False,
+            )
         if not chapters_md:
             raise HTTPException(status_code=400, detail="No chapters found in PDF")
-        chapter_title = SolutionPackageParser.select_chapter_title(chapters_md, "5. Interaction Flow")
+        chapter_title = SolutionPackageParser.select_chapter_title(chapters_md, FLOW_CHAPTER)
         pre_md = chapters_md.get(chapter_title)
         if not pre_md:
             raise HTTPException(status_code=400, detail="Chapter '5. Interaction Flow' not found in PDF")
@@ -765,7 +772,10 @@ async def parse_pdf(
             steps_md=pre_md
         )
         logger.info(f"PDF parsed: preflow_id={preflow.id}")
-        return ok(data=json.loads(preflow.model_dump_json()))
+        result = preflow.model_dump(mode="json")
+        if visual:
+            result["visual_spg"] = True
+        return ok(data=result)
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -829,15 +839,23 @@ async def generate_from_preflow(
 
         source_revision = await anyio.to_thread.run_sync(solution_package_manager.source_revision, preflow_name)
         generator = PsopGenerator()
+        options = role_arguments(context)
+        if request.preflow.get("visual_spg") is True and source_revision is not None and vision_profile():
+            package = await anyio.to_thread.run_sync(solution_package_manager.retrieve_by_filename, preflow_name)
+            chapters = package.get("chapters", {}) if package else {}
+            chapter_title = SolutionPackageParser.select_chapter_title(chapters, FLOW_CHAPTER)
+            if chapter_title and chapters[chapter_title] == preflow_steps_md:
+                options["visual_spg"] = True
         # 串行多次同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         workflow = await anyio.to_thread.run_sync(
             partial(generator.generate_psop_workflow,
                     PreFlow.model_validate(request.preflow),
                     [] if context else [Parse(json.dumps(card), AgentCard()) for card in request.agent_cards],
-                    **role_arguments(context)),
+                    **options),
             abandon_on_cancel=False,
         )
         workflow.source = "solution_package"
+        workflow.user_intent = None
         await anyio.to_thread.run_sync(validate_before_save, workflow, context)
         from orchestrate.persistence import current_context
         # Optimistic concurrency only applies to the document port, whose

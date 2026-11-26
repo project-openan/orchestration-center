@@ -34,6 +34,7 @@ class ModelConfig:
     stream: bool = False
     proxy: str = ""
     stream_total_timeout: float = 600.0
+    input_modalities: tuple[str, ...] = ("text",)
 
     @staticmethod
     def from_dict(key: str, raw: dict) -> "ModelConfig":
@@ -52,6 +53,7 @@ class ModelConfig:
             stream=bool(raw.get("stream", False)),
             proxy=raw.get("proxy", ""),
             stream_total_timeout=float(raw.get("stream_total_timeout", 600.0)),
+            input_modalities=tuple(raw.get("input_modalities", ("text",))),
         )
 
 class _ModelConfigHolder:

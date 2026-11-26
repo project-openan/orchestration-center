@@ -21,6 +21,12 @@
 `.env` 引用。存储通过 `persistence_mode` 选择 file、postgresql 或 mysql，数据库连接
 使用 `etc/conf/db/` 对应配置或环境别名；不要在命令或 PDF 中夹带凭据。
 
+支持图片输入的 chat 模型可配置 `input_modalities: [text, image]`。设计器、外部
+PDF API 和批量导入会用视觉模型结合流程图、相关架构页和全文生成 PreFlow，再按
+现有 PSOP 格式输出英文任务与跳转条件。能力目录无法承接的动作及其下游步骤
+会被省略，其余路径可继续生成。纯文本模型、文本上传和手工修改的 PreFlow
+沿用原有生成行为。
+
 ```powershell
 python -m scripts.batch_spg_to_psop --pdf-dir D:/spgs --export-dir data/spg_import --dry-run
 python -m scripts.batch_spg_to_psop --pdf-dir D:/spgs --export-dir data/spg_import

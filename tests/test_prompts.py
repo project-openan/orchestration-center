@@ -21,7 +21,7 @@ from orchestrate.core.prompts import (
     get_preprocess_input_prompt,
     get_choose_skill_prompt,
     get_generate_psop_prompt,
-    get_intent_to_psop_prompt,
+    build_psop_generation_prompt,
     get_retrieve_psop_prompt
 )
 from orchestrate.core.retrieval import _detect_intent_lang
@@ -80,17 +80,19 @@ class TestGeneratePsopPrompt:
         assert "json" in prompt.lower()
 
 
-class TestIntentToPsopPrompt:
+class TestPsopGenerationPrompt:
     def test_contains_user_intent(self):
-        prompt = get_intent_to_psop_prompt(
+        prompt = build_psop_generation_prompt(
             "save energy on RAN",
             '[{"name":"ES Agent"}]',
-            '{"type":"object"}'
+            '{"type":"object"}',
+            input_heading="User Intent",
+            input_name="user intent",
         )
-        assert "save energy on RAN" in prompt
+        assert "## User Intent\nsave energy on RAN" in prompt
 
     def test_contains_agent_cards(self):
-        prompt = get_intent_to_psop_prompt(
+        prompt = build_psop_generation_prompt(
             "intent",
             '[{"name":"Agent1","skills":[]}]',
             "{}"
@@ -98,20 +100,20 @@ class TestIntentToPsopPrompt:
         assert "Agent1" in prompt
 
     def test_rag_default_shows_none(self):
-        prompt = get_intent_to_psop_prompt("intent", "[]", "{}")
+        prompt = build_psop_generation_prompt("intent", "[]", "{}")
         assert "none" in prompt.lower()
 
     def test_rag_parameter_passed_through(self):
-        prompt = get_intent_to_psop_prompt("intent", "[]", "{}", rag="custom kg")
+        prompt = build_psop_generation_prompt("intent", "[]", "{}", rag="custom kg")
         assert "custom kg" in prompt
 
     def test_contains_cross_layer_rules(self):
-        prompt = get_intent_to_psop_prompt("intent", "[]", "{}")
+        prompt = build_psop_generation_prompt("intent", "[]", "{}")
         assert "layer" in prompt.lower()
         assert "context_from" in prompt
 
     def test_handle_special_characters(self):
-        prompt = get_intent_to_psop_prompt("test <>&\"' intent", "[]", "{}")
+        prompt = build_psop_generation_prompt("test <>&\"' intent", "[]", "{}")
         assert "test <>&\"' intent" in prompt
 
 

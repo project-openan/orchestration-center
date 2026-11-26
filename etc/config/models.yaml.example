@@ -8,6 +8,8 @@ models:
     api_key_env: LLM_CHAT_API_KEY
     timeout: 300
     verify_ssl: true
+    # Opt in only when this chat endpoint accepts OpenAI-compatible image inputs.
+    # input_modalities: [text, image]
     # Optional chat-only SSE. Premature EOF / length truncation are errors.
     # stream: true
     # stream_total_timeout: 600

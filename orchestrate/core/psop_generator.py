@@ -33,17 +33,21 @@ Key components:
 """
 
 import json
+import re
 from loguru import logger
 from typing import Optional, Dict, List, Any
 
 from a2a.types import AgentCard
+from workflow_engine.core.models import Workflow
+from workflow_engine.core.workflow_validator import find_workflow_errors
 from common.llm import get_llm_instance
 from common.util.json_utils import parse_llm_json_response
 from orchestrate.core.model.preflow import PreFlow
 from orchestrate.core.model.psop import PSOP
-from orchestrate.core.prompts import get_generate_psop_prompt, get_choose_skill_prompt, \
-     get_preprocess_input_prompt
-from orchestrate.core.prompts import get_role_generation_prompt, get_role_action_match_prompt
+from orchestrate.core.prompts import (
+    build_psop_generation_prompt, get_choose_skill_prompt, get_generate_psop_prompt,
+    get_preprocess_input_prompt, get_role_action_match_prompt, get_role_generation_prompt,
+)
 from orchestrate.core.role_generation import (
     generation_context, ask_role_json, assemble_role_workflow, role_actions, match_role_actions,
     generation_stage,
@@ -198,7 +202,7 @@ class PsopGenerator:
             self,
             preflow: PreFlow,
             agent_cards: List[AgentCard] | None = None,
-            *, binding: str = "instance", role_context=None,
+            *, binding: str = "instance", role_context=None, visual_spg: bool = False,
     ) -> PSOP:
         """Generate complete PSOP workflow from PreFlow and agent cards.
 
@@ -221,6 +225,8 @@ class PsopGenerator:
         if not preflow.steps_md or not preflow.steps_md.strip():
             raise WorkflowGeneratorError("Preflow steps_md cannot be empty")
         context = generation_context(binding, role_context)
+        if visual_spg:
+            return self._generate_visual_spg(preflow, agent_cards or [], context)
         if context is not None:
             with generation_stage(context, "generate_preflow"):
                 return self._generate_role_workflow(preflow, context)
@@ -295,6 +301,91 @@ class PsopGenerator:
         except Exception as e:
             logger.error(f"Unexpected error during PSOP generation: {e}")
             raise WorkflowGeneratorError(f"Unexpected error: {e}") from e
+
+    def _generate_visual_spg(self, preflow, cards, context) -> PSOP:
+        if context:
+            catalog = context.projection()
+            candidates = {(role["role_id"], skill["skill_id"]): role["role_version"]
+                          for role in catalog["roles"] for skill in role["skills"]}
+        else:
+            catalog = [{"agent": card.name, "description": card.description,
+                        "skills": [{"skill": skill.name, "description": skill.description} for skill in card.skills]}
+                       for card in cards]
+            candidates = {(card.name, skill.name): None for card in cards for skill in card.skills if skill.name}
+        if not candidates:
+            raise WorkflowGeneratorError("No available Agent or role skills")
+        schema = PSOP.model_json_schema()
+        schema["properties"].pop("user_intent", None)
+        spg_rules = """
+
+## Visual SPG rules
+Use the PreFlow as source material, retaining its branch direction and distinct actions. Use one
+task per step. A trigger and the return of an existing result are not tasks. Keep each approval,
+human action, external wait, or business action without a suitable skill as a step with
+agent="unmatched" and skill="unmatched"; preserve its outgoing dependencies so the server can
+omit that step and its dependent paths. Use an acyclic graph. Use named context_from only for
+required upstream results. For exact matches use the catalog's agent and skill names, or its
+role_id and skill_id. Omit binding, role_version, catalog_version and task status. Write every
+task description and non-empty jump condition in concise English, without SPG or page citations.
+At least one step should use a real catalog skill wherever the supplied process and catalog permit it.
+"""
+        prompt = build_psop_generation_prompt(
+            preflow.steps_md, json.dumps(catalog, ensure_ascii=False), json.dumps(schema),
+            input_heading="SPG PreFlow", input_name="SPG process", additional_rules=spg_rules,
+        )
+        base_prompt = prompt
+        for attempt in range(2):
+            try:
+                _, response = self._llm.ask_llm(prompt)
+                workflow = parse_llm_json_response(response, PSOP)
+                errors = find_workflow_errors(Workflow.from_dict(workflow.model_dump(mode="json")))
+                if errors:
+                    raise ValueError("; ".join(errors))
+                self._omit_unmatched_steps(workflow, candidates)
+                for step in workflow.steps:
+                    for task in step.subtasks:
+                        task.binding = "role" if context else "instance"
+                        task.role_version = candidates[task.agent, task.skill]
+                    texts = [task.description for task in step.subtasks]
+                    texts.extend(edge.condition for edge in step.next or [] if edge.condition.strip())
+                    if any(not re.search(r"[A-Za-z]", value) or re.search(r"[\u3400-\u9fff\uf900-\ufaff]", value)
+                           for value in texts):
+                        raise ValueError("Task descriptions and branch conditions must be in English")
+                errors = find_workflow_errors(Workflow.from_dict(workflow.model_dump(mode="json")))
+                if errors:
+                    raise ValueError("; ".join(errors))
+                workflow.name = preflow.name
+                workflow.related_preflow = preflow.id
+                workflow.source = "solution_package"
+                workflow.user_intent = None
+                if context:
+                    workflow.catalog_version = context.catalog_version
+                    return assemble_role_workflow(workflow.model_dump(mode="json"), context)
+                return workflow
+            except Exception as error:
+                if attempt:
+                    raise WorkflowGeneratorError(f"Visual SPG planning failed: {error}") from error
+                prompt = f"{base_prompt}\nCorrect the previous PSOP: {error}"
+
+    @staticmethod
+    def _omit_unmatched_steps(workflow, candidates):
+        steps = {step.name: step for step in workflow.steps}
+        omitted = {step.name for step in workflow.steps if not step.subtasks or any(
+            (task.agent, task.skill) not in candidates for task in step.subtasks)}
+        # Never connect through an omitted step: outputs and gates may be required downstream.
+        pending = list(omitted)
+        while pending:
+            source = pending.pop()
+            for edge in steps[source].next or []:
+                if edge.step in steps and edge.step not in omitted:
+                    omitted.add(edge.step)
+                    pending.append(edge.step)
+        workflow.steps = [step for step in workflow.steps if step.name not in omitted]
+        if not workflow.steps:
+            raise ValueError("No workflow steps remain after omitting unavailable capabilities")
+        for step in workflow.steps:
+            if step.next:
+                step.next = [edge for edge in step.next if edge.step not in omitted]
 
     def _generate_role_workflow(self, preflow, context) -> PSOP:
         extracted = ask_role_json(self._llm, get_preprocess_input_prompt(preflow.steps_md), context, "extract")
