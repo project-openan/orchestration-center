@@ -660,6 +660,23 @@ const OrchestrationCenter = ({ isDark, mode }) => {
                     </div>
                 );
 
+            case 'packages':
+                return (
+                    <SolutionPackages
+                        onBack={() => setActiveView('welcome')}
+                        onImportPdf={handleImportPdfFromPackage}
+                        onViewWorkflow={(wfId) => {
+                            setSelectedId(wfId);
+                            setBrowseMode('view');
+                            setActiveView('detail');
+                        }}
+                        loading={loading && loadingStatus !== LOADING_STAGES.IDLE}
+                        loadingStatus={loadingStatus}
+                        progress={progress}
+                        t={t}
+                    />
+                );
+
 case 'ai':
                 return (
                     <div
