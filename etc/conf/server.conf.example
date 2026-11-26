@@ -34,10 +34,9 @@ forwarded_allow_ips=127.0.0.1
 
 persistence_mode=file
 
-# Role catalog release file (exact version, e.g. data/role_catalog/pilot-wireless-v1.json).
-# Workflows containing role-bound tasks can only be saved when this file authorizes
-# every reference; unset means role tasks are rejected as CATALOG_VERSION_UNAVAILABLE.
-role_catalog_path=
+# Role catalog for workflow authoring (19 SPG packages, 76 roles).
+# Set an explicit empty value to disable the catalog, or point to another release.
+role_catalog_path=etc/config/role_catalog/spg-v1.json
 # Dispatch-time role resolution (sub-requirement 4). Role workflows fail
 # closed with RESOLUTION_INPUT_INVALID when dispatched without these keys.
 # role_registry_path=data/role_registry/pilot.json

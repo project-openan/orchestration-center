@@ -31,8 +31,13 @@ docs/config edit that doesn't touch this test file at all.
 import os
 
 import ssl
+from pathlib import Path
 
 from common.util.conf_obj import ConfObj
+from common.util.config_util import get_conf
+from orchestrate.core.catalog_gate import configured_catalog_path, ensure_role_references_authorized
+from orchestrate.core.model.psop import PSOP
+from orchestrate.core.role_generation import load_generation_context
 
 _SERVER_CONF_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "etc", "conf", "server.conf.example"
@@ -52,6 +57,27 @@ def _parse_conf_file(path):
 
 
 class TestShippedServerConfDefaults:
+    def test_default_catalog_authorizes_all_spg_role_skills(self, monkeypatch):
+        root = Path(_SERVER_CONF_PATH).parents[2]
+        template = _parse_conf_file(_SERVER_CONF_PATH)
+        # Read built-in defaults even when the developer has a local server.conf.
+        monkeypatch.setattr("common.util.config_util.load_configs", lambda path, config: None)
+        config = get_conf.__wrapped__()
+        monkeypatch.setattr("common.util.config_util.get_conf", lambda: config)
+        assert Path(configured_catalog_path()) == root / template["role_catalog_path"]
+        context = load_generation_context("spg-v1")
+        roles = context.projection()["roles"]
+        assert len(roles) == 76
+        assert len({role.source.package for role in context.catalog.roles}) == 19
+        tasks = [
+            dict(binding="role", agent=role["role_id"], role_version=role["role_version"],
+                 skill=skill["skill_id"], description=skill["name"])
+            for role in roles for skill in role["skills"]
+        ]
+        assert len(tasks) == 88
+        workflow = PSOP(name="SPG", catalog_version="spg-v1", steps=[dict(name="SPG", subtasks=tasks)])
+        ensure_role_references_authorized(workflow, configured_catalog_path())
+
     def test_verify_client_is_not_shipped_as_false(self):
         conf = _parse_conf_file(_SERVER_CONF_PATH)
         assert conf.get("verify_client", "").lower() != "false", (
