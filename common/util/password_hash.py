@@ -18,6 +18,8 @@
 """Versioned password hashing shared by database and file-mode auth."""
 
 import hashlib
+import secrets
+import threading
 
 import bcrypt
 
@@ -41,6 +43,32 @@ def verify_password(password: str, stored_hash: str) -> bool:
         return bcrypt.checkpw(_bcrypt_input(password), stored_hash.encode("ascii"))
     except (ValueError, UnicodeEncodeError):
         return False
+
+
+_dummy_hash: str | None = None
+_dummy_hash_lock = threading.Lock()
+
+
+def _get_dummy_hash() -> str:
+    global _dummy_hash
+    if _dummy_hash is None:
+        with _dummy_hash_lock:
+            if _dummy_hash is None:
+                # Same scheme and cost factor as real stored hashes, so a
+                # check against it costs exactly what a real check costs.
+                _dummy_hash = hash_password(secrets.token_urlsafe(32))
+    return _dummy_hash
+
+
+def burn_password_check(password: str) -> bool:
+    """Spend one full password verification on a failure path.
+
+    Call where a login fails before any stored hash was checked (unknown
+    account), so the response time doesn't reveal which accounts exist.
+    Always returns False.
+    """
+    verify_password(password if isinstance(password, str) else "", _get_dummy_hash())
+    return False
 
 
 def verify_legacy_bcrypt(password: str, stored_hash: str) -> bool:

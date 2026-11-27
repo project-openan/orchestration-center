@@ -34,10 +34,14 @@ def authenticate_account(username: str, password: str, *, conf: dict, storage) -
     """Verify one account; callers own session issuance and transport details."""
     if storage.has_users:
         user = storage.users.authenticate(username, password)
-    elif username == "admin" and verify_access_password(conf.get("access_password", ""), password):
-        user = {"username": "admin", "role": "admin", "must_change_password": False}
     else:
-        user = None
+        # Verify the password before looking at the username, so a wrong
+        # username costs the same as a wrong password (#205).
+        password_ok = verify_access_password(conf.get("access_password", ""), password)
+        if username == "admin" and password_ok:
+            user = {"username": "admin", "role": "admin", "must_change_password": False}
+        else:
+            user = None
     if user is None:
         # Preserve failure visibility without logging credentials or untrusted
         # account strings (which can contain newlines in a rejected request).
