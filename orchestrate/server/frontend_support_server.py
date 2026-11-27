@@ -17,7 +17,6 @@
 
 import os
 import tempfile
-import asyncio
 import threading
 import json
 import re
@@ -36,7 +35,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from google.protobuf.json_format import Parse, MessageToDict
 from loguru import logger
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from starlette import status
 from starlette.responses import Response
 
@@ -58,32 +57,24 @@ from orchestrate.agentcard_loader import _normalize_agent_dict
 from common.log.audit_logger import audit_logger, OperationObject, OperationName, LogLevel, OperationResult
 from common.util.config_util import get_conf
 from orchestrate.persistence import current_context
-from orchestrate.persistence.errors import RoleReferenceError, StorageError
+from orchestrate.persistence.errors import StorageError
 from orchestrate.server.storage_error_response import storage_http_exception
 from common.util.password_hash import FILE_HASH_PREFIX, hash_password
 from orchestrate.core.model.preflow import PreFlow
 from orchestrate.core.model.psop import PSOP
 from orchestrate.core.bpmn_converter import psop_to_bpmn, bpmn_content_disposition
 from orchestrate.core.persistence import WorkflowStorageError
-from orchestrate.runtime.instance_projection import ResolutionRequest, bind_resolution_identity
 from orchestrate.server.external_api import router as external_router
-from orchestrate.server.role_execution_api import (
-    resolution_request_from_query,
-    router as role_execution_router,
-)
 from orchestrate.server.account_api import router as account_router
 from orchestrate.server.account_auth import AccountLogin, authenticate_account, verify_access_password
 from orchestrate.server.sandbox_api import sandbox_router, sandbox_service
 from orchestrate.core.psop_generator import PsopGenerator, WorkflowGeneratorError
 from orchestrate.core.intent_psop_generator import IntentPsopGenerator
-from orchestrate.core.role_generation import GenerationOptions, RoleGenerationError, RoleGenerationServiceError, load_generation_context
-from orchestrate.server.generation_support import prepare_generation, role_arguments, validate_before_save, generation_http_exception
 from orchestrate.core.workflow_search_result import WorkflowSearchResult
 from orchestrate.server.middleware import ConnectionLimitMiddleware, TimeoutMiddleware, RateLimiter, LoginRateLimiter
 from orchestrate.core.shared_handlers import SharedHandlers
 from orchestrate.solution_package.parse_flow import SolutionPackageParser
 from orchestrate.solution_package.manager import SolutionPackageManager
-from orchestrate.solution_package.vision_generation import FLOW_CHAPTER, parse_visual_chapter, vision_profile
 from orchestrate.server.auth import (
     is_auth_enabled,
     get_session_store,
@@ -97,7 +88,7 @@ from orchestrate.server.auth import (
     clear_session_cookie,
 )
 
-solution_package_manager = SolutionPackageManager(seed_on_init=False)
+solution_package_manager = SolutionPackageManager()
 
 app = FastAPI(title="Workflow Orchestration API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -143,24 +134,6 @@ async def _setup_exception_handler():
             return
         loop.default_exception_handler(context)
     loop.set_exception_handler(_handler)
-    conf = get_conf()
-    deployment = str(conf.get("deployment_mode", "single")).lower()
-    if deployment not in {"single", "cluster"}:
-        raise RuntimeError("deployment_mode must be single or cluster")
-    if deployment == "cluster":
-        from orchestrate.persistence import current_context
-        context = current_context()
-        if context.mode not in {"mysql", "postgresql"}:
-            raise RuntimeError("Cluster deployment requires shared SQL storage")
-        await asyncio.to_thread(context.documents.check_ready)
-        from orchestrate.server.sql_sessions import check_auth_schema
-        await asyncio.to_thread(check_auth_schema, context.backend._provider)
-        from orchestrate.server.durable_api import get_run_coordinator
-        get_run_coordinator()
-        from orchestrate.server.sandbox_api import sandbox_service
-        sandbox_service.start_scheduler()
-    if os.environ.get("TESTING", "").lower() not in {"1", "true", "yes"}:
-        await asyncio.to_thread(solution_package_manager._seed_demo_packages)
 
 @app.on_event("shutdown")
 async def _cleanup_resources():
@@ -263,20 +236,14 @@ app.middleware("http")(auth_middleware)
 
 # ──── Request models ────
 
-class PlanRequest(GenerationOptions):
+class PlanRequest(BaseModel):
     preflow: dict = Field(..., description="PreFlow model JSON")
-    agent_cards: Optional[List[dict]] = Field(None, description="AgentCards, required only for instance generation")
-
-    @model_validator(mode="after")
-    def require_instance_cards(self):
-        if self.binding == "instance" and self.agent_cards is None:
-            raise ValueError("agent_cards is required for instance generation")
-        return self
+    agent_cards: List[dict] = Field(..., description="AgentCard list JSON")
 
 class SavePSOPRequest(BaseModel):
     psop: dict = Field(..., description="PSOP model JSON")
 
-class IntentRequest(GenerationOptions):
+class IntentRequest(BaseModel):
     user_intent: str = Field(..., min_length=1, max_length=10000, description="Natural language intent description")
     workflow_name: Optional[str] = Field(None, description="Optional workflow name")
 
@@ -285,17 +252,6 @@ class RetrieveIntentRequest(BaseModel):
 
 # ──── Router ────
 router = APIRouter(prefix="/rest/v1/orchestrate")
-
-
-@router.get("/role-catalog")
-async def role_catalog(catalog_version: str | None = Query(None, min_length=1, max_length=1024),
-                       _: Any = Depends(RateLimiter(config, "role_catalog"))):
-    """Read-only approved display projection from the same configured release."""
-    try:
-        context = await anyio.to_thread.run_sync(partial(load_generation_context, catalog_version, entry="catalog_display"))
-        return ok(data=context.projection())
-    except RoleGenerationError as error:
-        raise generation_http_exception(error) from error
 
 # ---- Access authentication ----
 
@@ -331,8 +287,7 @@ async def login(request: LoginRequest, response: Response, http_request: Request
         raise storage_http_exception(exc) from exc
     role = user.get("role", "user")
     must_change = user.get("must_change_password", False)
-    from orchestrate.server.auth import create_account_session
-    token, ttl = create_account_session(store, user, revision)
+    token, ttl = store.create(user["username"], role, login_revision=revision)
     if must_change:
         mark_must_change_password(user["username"])
     else:
@@ -354,10 +309,7 @@ async def register(request: RegisterRequest):
     if not _registration_enabled(conf):
         raise HTTPException(status_code=403, detail="Self-registration is disabled")
     if not re.fullmatch(r"^[a-zA-Z][a-zA-Z0-9_-]{2,63}$", request.username):
-        raise HTTPException(
-            status_code=400,
-            detail="Username must start with a letter and contain only letters, digits, "
-                   "underscores or hyphens (3-64 chars)")
+        raise HTTPException(status_code=400, detail="Username must start with a letter and contain only letters, digits, underscores or hyphens (3-64 chars)")
     from common.util.password_util import validate_password_complexity
     is_valid, reason = validate_password_complexity(request.password)
     if not is_valid:
@@ -381,22 +333,19 @@ async def logout(request: Request, response: Response):
 @router.get("/auth/check")
 async def auth_check(request: Request):
     conf = get_conf()
-    account_options = {
-        "registration_enabled": _registration_enabled(conf),
-        "single_account": not current_context().has_users,
-    }
+    registration_enabled = _registration_enabled(conf)
     if not is_auth_enabled():
-        return ok(data={"auth_required": False, **account_options})
+        return ok(data={"auth_required": False, "registration_enabled": registration_enabled})
     token = extract_token(request)
     if token and get_session_store().validate(token):
         username = get_session_store().get_username(token)
         return ok(data={
             "auth_required": True, "authenticated": True, "username": username,
             "role": get_session_store().get_role(token),
-            **account_options,
+            "registration_enabled": registration_enabled,
             "must_change_password": username_must_change_password(username),
         })
-    return ok(data={"auth_required": True, "authenticated": False, **account_options})
+    return ok(data={"auth_required": True, "authenticated": False, "registration_enabled": registration_enabled})
 
 @router.get("/auth/users")
 async def list_users_endpoint(_: Any = Depends(require_admin)):
@@ -416,8 +365,7 @@ async def delete_user_endpoint(username: str, _: Any = Depends(require_admin)):
 
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str = Field(..., min_length=1, max_length=256,
-                              description="Current password (plaintext, sent over TLS)")
+    old_password: str = Field(..., min_length=1, max_length=256, description="Current password (plaintext, sent over TLS)")
     new_password: str = Field(..., min_length=8, max_length=256, description="New password (plaintext, sent over TLS)")
 
 # Serializes file-mode password changes and makes the server.conf rewrite
@@ -480,12 +428,6 @@ async def change_password(request: ChangePasswordRequest, http_request: Request)
         is_valid, reason = validate_password_complexity(request.new_password)
         if not is_valid:
             raise HTTPException(status_code=400, detail=f"Password does not meet complexity requirements: {reason}")
-        from orchestrate.server.sql_sessions import SqlSessionStore
-        shared = get_session_store()
-        if isinstance(shared, SqlSessionStore):
-            if shared.change_password(username, request.old_password, request.new_password):
-                return ok(message="Password changed successfully")
-            raise HTTPException(status_code=409, detail="Account changed during password update")
         # Verify old password
         user = storage.users.authenticate(username, request.old_password)
         if user is None:
@@ -503,8 +445,7 @@ async def change_password(request: ChangePasswordRequest, http_request: Request)
     if not _verify_access_password(stored, request.old_password):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
     new_hash = _hash_access_password(request.new_password)
-    conf_path = os.path.join(os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.abspath(__file__)))), "etc", "conf", "server.conf")
+    conf_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "etc", "conf", "server.conf")
     if not os.path.exists(conf_path):
         logger.error(f"Cannot change password: {conf_path} does not exist")
         raise HTTPException(status_code=500, detail="server.conf not found")
@@ -523,7 +464,6 @@ all_psop_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_ALL_PSOPS,
 @router.get("/workflows")
 async def list_workflows(
     limit: int = Query(10, ge=1, le=100, description="Max workflows to return"),
-    offset: int = Query(0, ge=0, description="Number of workflows to skip"),
     _: Any = Depends(RateLimiter(config, "list_workflows"))
 ):
     acquired = False
@@ -531,10 +471,9 @@ async def list_workflows(
         all_psop_semaphore.acquire_nowait()
         acquired = True
         logger.info(f"Listing workflows: limit={limit}")
-        recent_workflows = SharedHandlers.retrieval().list_recent_workflows(limit=limit + 1, workflow_type='psop', offset=offset)
+        recent_workflows = SharedHandlers.retrieval().list_recent_workflows(limit=limit, workflow_type='psop')
         logger.info(f"Retrieved {len(recent_workflows)} workflows")
-        return {**ok(data=[wf.to_dict() for wf in recent_workflows[:limit]]),
-                "pagination": {"offset": offset, "limit": limit, "has_more": len(recent_workflows) > limit}}
+        return ok(data=[wf.to_dict() for wf in recent_workflows])
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -744,25 +683,17 @@ async def parse_pdf(
 
         parser = SolutionPackageParser()
         # fitz 解析是 CPU 密集的同步调用,必须卸载到线程,否则阻塞事件循环
-        visual = vision_profile() is not None
-        if visual:
-            chapter_title, pre_md = await anyio.to_thread.run_sync(parse_visual_chapter, tmp_file_path)
-            chapters_md = await anyio.to_thread.run_sync(parser.extract_all_chapters, tmp_file_path)
-            chapters_md[chapter_title] = pre_md
-        else:
-            chapters_md = await anyio.to_thread.run_sync(
-                parser.parse_pdf_all_chapters, tmp_file_path, abandon_on_cancel=False,
-            )
+        chapters_md = await anyio.to_thread.run_sync(
+            parser.parse_pdf_all_chapters, tmp_file_path, abandon_on_cancel=False,
+        )
         if not chapters_md:
             raise HTTPException(status_code=400, detail="No chapters found in PDF")
-        chapter_title = SolutionPackageParser.select_chapter_title(chapters_md, FLOW_CHAPTER)
-        pre_md = chapters_md.get(chapter_title)
+        # 全量章节落库,供解决方案中心列表/详情使用
+        if not solution_package_manager.store_solution_package(filename, chapters_md):
+            logger.warning(f"Failed to store solution package for {filename}")
+        pre_md = chapters_md.get("5. Interaction Flow")
         if not pre_md:
             raise HTTPException(status_code=400, detail="Chapter '5. Interaction Flow' not found in PDF")
-
-        # Validate the required chapter before producing persistent side effects.
-        if not solution_package_manager.store_solution_package(filename, chapters_md):
-            raise HTTPException(status_code=503, detail="Failed to store solution package")
 
         logger.info(f"PDF chapter extracted (markdown, {len(pre_md)} chars):\n{pre_md}")
 
@@ -772,10 +703,7 @@ async def parse_pdf(
             steps_md=pre_md
         )
         logger.info(f"PDF parsed: preflow_id={preflow.id}")
-        result = preflow.model_dump(mode="json")
-        if visual:
-            result["visual_spg"] = True
-        return ok(data=result)
+        return ok(data=json.loads(preflow.model_dump_json()))
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -834,74 +762,25 @@ async def generate_from_preflow(
         acquired = True
         preflow_name = request.preflow.get("name", "unknown")
         preflow_steps_md = request.preflow.get("steps_md", "")
-        context = await anyio.to_thread.run_sync(partial(prepare_generation, request, "internal_preflow"))
-        logger.info("Generating PSOP from PreFlow binding={} steps_chars={}", request.binding, len(preflow_steps_md))
+        logger.info(f"Generating PSOP from PreFlow: {preflow_name}, agents={len(request.agent_cards)}")
+        logger.info(f"PreFlow steps_md ({len(preflow_steps_md)} chars):\n{preflow_steps_md}")
 
-        source_revision = await anyio.to_thread.run_sync(solution_package_manager.source_revision, preflow_name)
         generator = PsopGenerator()
-        options = role_arguments(context)
-        if request.preflow.get("visual_spg") is True and source_revision is not None and vision_profile():
-            package = await anyio.to_thread.run_sync(solution_package_manager.retrieve_by_filename, preflow_name)
-            chapters = package.get("chapters", {}) if package else {}
-            chapter_title = SolutionPackageParser.select_chapter_title(chapters, FLOW_CHAPTER)
-            if chapter_title and chapters[chapter_title] == preflow_steps_md:
-                options["visual_spg"] = True
         # 串行多次同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         workflow = await anyio.to_thread.run_sync(
-            partial(generator.generate_psop_workflow,
-                    PreFlow.model_validate(request.preflow),
-                    [] if context else [Parse(json.dumps(card), AgentCard()) for card in request.agent_cards],
-                    **options),
+            generator.generate_psop_workflow,
+            PreFlow.model_validate(request.preflow),
+            [Parse(json.dumps(card), AgentCard()) for card in request.agent_cards],
             abandon_on_cancel=False,
         )
         workflow.source = "solution_package"
-        workflow.user_intent = None
-        await anyio.to_thread.run_sync(validate_before_save, workflow, context)
-        from orchestrate.persistence import current_context
-        # Optimistic concurrency only applies to the document port, whose
-        # revisions are integers; a pluggable save override owns persistence and
-        # keeps the historical best-effort link.
-        link_revision = source_revision if isinstance(source_revision, int) else None
-
-        def persist_generated_workflow():
-            from common.custom import HandlerRegistry
-
-            def link_package():
-                # An arbitrary PreFlow need not have a source package, and a stale
-                # revision or an unusable name must not fail a saved workflow: the
-                # link is best-effort in every backend, exactly as before this
-                # change, so no orphaned PSOP is left behind by a raising link.
-                arguments = {} if link_revision is None else {"expected_revision": link_revision}
-                if solution_package_manager.link_workflow(
-                        preflow_name, workflow.id, request.binding, **arguments):
-                    return
-                logger.warning(f"Solution package '{preflow_name}' was not linked to {workflow.id}")
-
-            override = HandlerRegistry.get_extension_override(InterfaceType.SAVE_PSOP) is not None
-            if override or current_context().mode == "file":
-                # A pluggable save override owns persistence, and file mode already
-                # journals every write on its own; both keep the historical
-                # single-thread path.
-                SharedHandlers.save_psop().handle(workflow)
-                try:
-                    link_package()
-                except Exception as link_error:
-                    logger.warning(
-                        f"Failed to link workflow to solution package '{preflow_name}': {link_error}")
-                return
-            # SQL backends commit the PSOP row and the package link together.
-            with current_context().transaction():
-                SharedHandlers.save_psop().handle(workflow)
-                try:
-                    link_package()
-                except Exception as link_error:
-                    logger.warning(
-                        f"Failed to link workflow to solution package '{preflow_name}': {link_error}")
-        # Persistence runs on the caller's thread: the document port keeps a
-        # per-thread transaction scope, so a worker thread would open a
-        # transaction the request scope cannot see.
-        persist_generated_workflow()
+        SharedHandlers.save_psop().handle(workflow)
         logger.info(f"PSOP generated: id={workflow.id}, steps={len(workflow.steps)}")
+        # 回链:方案包 → 本次生成的工作流,方案包列表页据此展示 Workflow 入口
+        try:
+            solution_package_manager.link_workflow(preflow_name, workflow.id)
+        except Exception as link_error:
+            logger.warning(f"Failed to link workflow to solution package '{preflow_name}': {link_error}")
         audit_logger.audit({
             'object_name': OperationObject.PSOP,
             'operation_name': OperationName.SAVE_PSOP,
@@ -914,8 +793,6 @@ async def generate_from_preflow(
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
         raise
-    except (RoleGenerationError, RoleGenerationServiceError) as error:
-        raise generation_http_exception(error) from error
     except WorkflowGeneratorError as e:
         # Business condition: the solution package references tasks no
         # registered agent can perform. 422 lets the UI show the unmatched
@@ -944,9 +821,8 @@ async def generate_from_intent(
         acquired = True
         logger.info("Generating PSOP from intent (length={})", len(request.user_intent))
 
-        context = await anyio.to_thread.run_sync(partial(prepare_generation, request, "internal_intent"))
-        agent_cards_raw = [] if context else [MessageToDict(card, preserving_proto_field_name=False) for card in await get_agent_cards()]
-        if context is None and not agent_cards_raw:
+        agent_cards_raw = [MessageToDict(card, preserving_proto_field_name=False) for card in await get_agent_cards()]
+        if not agent_cards_raw:
             raise HTTPException(status_code=404, detail="No available AgentCards found")
 
         generator = IntentPsopGenerator()
@@ -957,15 +833,12 @@ async def generate_from_intent(
                 user_intent=request.user_intent,
                 agent_cards=[Parse(json.dumps(agent), AgentCard()) for agent in agent_cards_raw],
                 workflow_name=request.workflow_name,
-                **role_arguments(context),
             ),
             abandon_on_cancel=False,
         )
         psop.source = "ai_intent"
         logger.info(f"PSOP generated from intent: id={psop.id}, steps={len(psop.steps)}")
 
-        # This check is outside the legacy non-fatal persistence block.
-        await anyio.to_thread.run_sync(validate_before_save, psop, context)
         try:
             SharedHandlers.save_psop().handle(psop)
             logger.info(f"PSOP auto-saved: {psop.id}")
@@ -976,19 +849,6 @@ async def generate_from_intent(
                 'result': OperationResult.SUCCESS,
                 'details': {"id": psop.id, "name": psop.name, "steps_count": len(psop.steps)},
             })
-        except RoleReferenceError as role_error:
-            # An unauthorized generated workflow is a failed request, not a
-            # degraded success: the caller must never receive a role PSOP
-            # that the catalog gate refused to persist.
-            logger.warning(f"Generated PSOP rejected by catalog gate: {role_error}")
-            audit_logger.audit({
-                'object_name': OperationObject.PSOP,
-                'operation_name': OperationName.SAVE_PSOP,
-                'level': LogLevel.MINOR,
-                'result': OperationResult.FAILURE,
-                'details': {"id": psop.id, "name": psop.name, "message": str(role_error)},
-            })
-            raise
         except Exception as save_error:
             logger.warning(f"Auto-save failed (non-fatal): {save_error}")
 
@@ -997,8 +857,6 @@ async def generate_from_intent(
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
         raise
-    except (RoleGenerationError, RoleGenerationServiceError) as error:
-        raise generation_http_exception(error) from error
     except WorkflowGeneratorError as e:
         # Business condition: the intent's tasks cannot be matched to any
         # registered agent skill.
@@ -1341,29 +1199,16 @@ execute_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_START_PROCE
 
 @router.get("/execute")
 async def execute_workflow(
-    request: Request,
     psop_id: str = Query(..., description="PSOP workflow ID to execute"),
     user_intent: str = Query(None, description="Runtime user intent for context injection"),
     target_agent: str = Query(None, description="Target host agent name to dispatch to"),
     lang: str = Query(None, description="Language for agent responses (zh/en)"),
-    scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
-    authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
-    caller_id: str = Query(None, deprecated=True,
-                           description="Compatibility input, ignored; authenticated identity is recorded"),
-    task_overrides: str = Query(None, description="JSON object task_id -> instance_id for manual role re-selection"),
-    group_overrides: str = Query(
-        None, description="JSON object binding_group -> instance_id for manual group re-selection"),
-    tie_break: str = Query(None, description="Equal-priority policy: error (default) or instance_id"),
     _: Any = Depends(RateLimiter(config, "start_process_stream"))
 ):
     if not psop_id:
         raise HTTPException(status_code=400, detail="Missing psop_id parameter")
 
     try:
-        from orchestrate.server.sse_executor import resume_execution_sse
-        resumed = await resume_execution_sse(request)
-        if resumed is not None:
-            return resumed
         logger.info(f"Starting workflow execution: psop_id={psop_id}")
         psop = SharedHandlers.retrieval().get_psop_by_id(psop_id)
         if not psop:
@@ -1373,14 +1218,9 @@ async def execute_workflow(
         agent_cards = await get_agent_cards()
 
         intent = user_intent or psop.name or psop_id
-        resolution_request = resolution_request_from_query(
-            scope, authorized_instances, caller_id, task_overrides, group_overrides, tie_break,
-        )
-        bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             agent_cards, intent, target_agent=target_agent, lang=lang,
             semaphore=execute_semaphore, psop=psop,
-            resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -1396,7 +1236,6 @@ dispatch_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_START_PROC
 
 @router.get("/dispatch")
 async def dispatch_to_agent(
-    request: Request,
     intent: str = Query(..., description="Natural language intent to dispatch"),
     agent_name: str = Query(..., description="Target host agent name (must be registered)"),
     lang: Optional[str] = Query(None, description="Language hint (zh/en)"),
@@ -1413,10 +1252,6 @@ async def dispatch_to_agent(
     execution events to the frontend for real-time visualization.
     """
     try:
-        from orchestrate.server.sse_executor import resume_execution_sse
-        resumed = await resume_execution_sse(request)
-        if resumed is not None:
-            return resumed
         logger.info(f"Dispatching intent to agent '{agent_name}'")
 
         # Resolve the target agent's AgentCard from the registry
@@ -1428,7 +1263,6 @@ async def dispatch_to_agent(
         return await dispatch_intent_sse(
             agent_cards, intent, target_agent=agent_name, lang=lang,
             semaphore=dispatch_semaphore,
-            select_template=False, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -1441,10 +1275,8 @@ async def dispatch_to_agent(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/execution-records/{execution_id}")
-async def delete_execution_record(execution_id: str, request: Request):
+async def delete_execution_record(execution_id: str):
     try:
-        from orchestrate.server.durable_api import remove_history_job
-        await asyncio.to_thread(remove_history_job, execution_id, request)
         handler = get_storage_handler(InterfaceType.DELETE_EXECUTION_RECORD)
         deleted = handler.handle(execution_id)
         if not deleted:
@@ -1462,13 +1294,10 @@ async def delete_execution_record(execution_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/execution-records")
-async def list_execution_records(request: Request):
+async def list_execution_records():
     try:
         handler = get_storage_handler(InterfaceType.LIST_EXECUTION_RECORDS)
         records = handler.handle()
-        from orchestrate.server.durable_api import history_visible
-        records = [record for record in records
-                   if await asyncio.to_thread(history_visible, record.get("execution_id"), request)]
         return ok(data=records)
     except HTTPException:
         raise
@@ -1479,11 +1308,8 @@ async def list_execution_records(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/execution-records/{execution_id}")
-async def get_execution_record(execution_id: str, request: Request):
+async def get_execution_record(execution_id: str):
     try:
-        from orchestrate.server.durable_api import history_visible
-        if not await asyncio.to_thread(history_visible, execution_id, request):
-            raise HTTPException(404, "Execution not found")
         handler = get_storage_handler(InterfaceType.GET_EXECUTION_RECORD)
         record = handler.handle(execution_id)
         if not record:
@@ -1503,18 +1329,7 @@ async def get_execution_record(execution_id: str, request: Request):
 # ──── Register routers ────
 app.include_router(router)
 app.include_router(external_router)
-app.include_router(role_execution_router)
 app.include_router(account_router)
-from orchestrate.server.durable_api import run_router, close_durable_runs
-app.include_router(run_router, prefix="/rest/v1/orchestrate")
-app.include_router(run_router, prefix="/api/v1")
-
-@app.on_event("shutdown")
-async def close_execution_services():
-    from orchestrate.server.sandbox_api import sandbox_service
-    await sandbox_service.aclose()
-    await close_durable_runs()
-
 app.include_router(sandbox_router, prefix="/rest/v1/orchestrate")
 
 

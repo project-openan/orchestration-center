@@ -240,16 +240,27 @@
     "th_created": "创建时间",
     "th_actions": "操作",
     "view_action": "查看",
+<<<<<<< ours
+=======
+    "view_swimlane_action": "泳道查看",
+>>>>>>> theirs
     "back_to_list": "返回列表",
     "cat_spg": "SPG导入",
     "cat_manual": "人工编排",
     "cat_intent": "意图编排",
     "no_match_yet": "未找到匹配的工作流",
+<<<<<<< ours
     "export_title": "导出工作流",
     "export_psop": "导出 PSOP (JSON)",
     "export_bpmn": "导出 BPMN (XML)",
     "export_success": "工作流导出成功",
     "export_failed": "导出失败，请检查后端服务"
+=======
+    "export_workflow": "导出",
+    "export_menu": "导出",
+    "export_as_bpmn": "导出为 BPMN",
+    "export_as_psop": "导出为 PSOP"
+>>>>>>> theirs
   },
   "sandbox": {
     "title": "沙箱验证",
@@ -345,7 +356,8 @@
       "sandbox": "沙箱验证",
       "clear": "清空画布",
       "export": "保存",
-      "exportSuccess": "保存成功"
+      "exportSuccess": "保存成功",
+      "download": "导出"
     },
     "node": {
       "skill": "执行技能",
@@ -374,9 +386,17 @@
       "resizeHint": "拖动调整宽度 · 双击复位",
       "agentSection": "智能体",
       "taskSection": "任务",
+<<<<<<< ours
     "warn_unpublished": "未发布",
     "unpublished_title": "智能体未发布",
     "unpublished_hint": "当前步骤引用的智能体「{{agent}}」尚未发布（{{status}}），请先在注册中心发布后再执行。",
+=======
+      "view_mode_flow": "工作流视图",
+      "view_mode_swimlane": "泳道视图",
+      "warn_unpublished": "未发布",
+      "unpublished_title": "智能体未发布",
+      "unpublished_hint": "当前步骤引用的智能体「{{agent}}」尚未发布（{{status}}），请先在注册中心发布后再执行。",
+>>>>>>> theirs
       "pub_published": "已发布",
       "pub_registered": "待发布",
       "pub_rejected": "已驳回",
