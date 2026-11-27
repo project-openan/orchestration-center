@@ -27,6 +27,8 @@ class WorkflowSearchResult(BaseModel):
     name: str = Field(..., description="Workflow name")
     description: Optional[str] = Field(None, description="Workflow description")
     tags: List[str] = Field(default_factory=list, description="Tags")
+    source: Optional[str] = Field(None, description="Creation method: graph_editor, ai_intent, solution_package, template")
+    creator: Optional[str] = Field(None, description="Creator")
     created_at: datetime = Field(..., description="Creation timestamp")
     score: float = Field(1.0, description="Search relevance score")
     user_intent: Optional[str] = Field(None, description="User intent text")

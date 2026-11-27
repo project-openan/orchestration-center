@@ -68,6 +68,8 @@ class FilePsopRepository(PsopRepository):
                 name=psop.name,
                 description=psop.description,
                 tags=psop.tags,
+                source=psop.source,
+                creator=psop.creator,
                 created_at=psop.created_at,
                 user_intent=psop.user_intent,
                 related_preflow=psop.related_preflow,

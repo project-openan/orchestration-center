@@ -371,6 +371,34 @@ const Toolbar = ({ nodes, edges, workflowId, workflowName, workflowDescription, 
                 </svg>
                 {t('workflow.toolbar.export')}
             </button>
+
+            <button
+                onClick={() => {
+                    const psopData = transformReactFlowToPSOP(nodes, edges, {
+                        ...workflowMetadata,
+                        id: workflowId || undefined,
+                        name: workflowName,
+                        description: workflowDescription,
+                    });
+                    const blob = new Blob([JSON.stringify(psopData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${workflowName || 'workflow'}.psop.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }}
+                className={`ml-2 px-4 py-1.5 text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-1 ${theme.pri}`}
+                title={t('workflow.toolbar.download')}
+            >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-14l-4 4m0 0l4 4m-4-4v12" />
+                </svg>
+                {t('workflow.toolbar.download')}
+            </button>
             {showExportModal && createPortal(ExportModal, document.body)}
             {showSandboxDialog && !roleWorkflow && (
                 <SandboxDialog

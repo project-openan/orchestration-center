@@ -119,6 +119,7 @@ class PSOP(BaseModel):
                                         empty by default")
     tags: Optional[List[str]] = Field(default_factory=list, description="Tags for quick filtering")
     source: Optional[str] = Field(None, description="Creation method: graph_editor, ai_intent, solution_package, template")
+    creator: Optional[str] = Field(None, description="Creator: username, or 系统 for system/SPG imports")
     catalog_version: Optional[str] = Field(None, min_length=1)
 
     @model_validator(mode="after")

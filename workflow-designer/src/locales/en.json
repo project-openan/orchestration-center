@@ -240,16 +240,27 @@
     "th_created": "Created At",
     "th_actions": "Actions",
     "view_action": "View",
+<<<<<<< ours
+=======
+    "view_swimlane_action": "Swimlane",
+>>>>>>> theirs
     "back_to_list": "Back to List",
     "cat_spg": "SPG Import",
     "cat_manual": "Manual",
     "cat_intent": "Intent",
     "no_match_yet": "No matching workflows",
+<<<<<<< ours
     "export_title": "Export workflow",
     "export_psop": "Export PSOP (JSON)",
     "export_bpmn": "Export BPMN (XML)",
     "export_success": "Workflow exported successfully",
     "export_failed": "Export failed, please check the backend service"
+=======
+    "export_workflow": "Export",
+    "export_menu": "Export",
+    "export_as_bpmn": "Export as BPMN",
+    "export_as_psop": "Export as PSOP"
+>>>>>>> theirs
   },
   "sandbox": {
     "title": "Sandbox Verification",
@@ -345,7 +356,8 @@
       "sandbox": "Sandbox",
       "clear": "Clear Canvas",
       "export": "Save",
-      "exportSuccess": "Saved successfully"
+      "exportSuccess": "Saved successfully",
+      "download": "Export"
     },
     "node": {
       "skill": "Skill",
@@ -374,9 +386,17 @@
       "resizeHint": "Drag to resize · double-click to reset",
       "agentSection": "Agent",
       "taskSection": "Task",
+<<<<<<< ours
     "warn_unpublished": "Unpublished",
     "unpublished_title": "Agent Not Published",
     "unpublished_hint": "The agent \"{{agent}}\" used by this step is not published ({{status}}). Publish it in the Registry Center before executing.",
+=======
+      "view_mode_flow": "Workflow View",
+      "view_mode_swimlane": "Swimlane View",
+      "warn_unpublished": "Unpublished",
+      "unpublished_title": "Agent Not Published",
+      "unpublished_hint": "The agent \"{{agent}}\" used by this step is not published ({{status}}). Publish it in the Registry Center before executing.",
+>>>>>>> theirs
       "pub_published": "Published",
       "pub_registered": "Registered",
       "pub_rejected": "Rejected",
