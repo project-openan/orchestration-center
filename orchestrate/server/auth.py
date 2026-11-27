@@ -419,6 +419,21 @@ def username_must_change_password(username: str | None) -> bool:
 _PROTECTED_PATH_PREFIXES = ("/rest/v1/orchestrate", "/psops")
 
 
+def is_cors_preflight(request: Request) -> bool:
+    """Whether CORSMiddleware will answer this request as a preflight.
+
+    Mirrors Starlette's own test (OPTIONS + Origin + Access-Control-Request-
+    Method), so every request let through here is consumed by CORSMiddleware
+    and never dispatched to a route handler.
+    """
+    headers = request.headers
+    return (
+        request.method == "OPTIONS"
+        and "origin" in headers
+        and "access-control-request-method" in headers
+    )
+
+
 async def auth_middleware(request: Request, call_next):
     """Shared account identity with explicit public-API Bearer transport.
 
@@ -435,8 +450,11 @@ async def auth_middleware(request: Request, call_next):
     from orchestrate.server.gateway_policy import is_browser_gateway_request
     browser_gateway = is_browser_gateway_request(request)
 
-    # CORS preflight always allowed.
-    if request.method == "OPTIONS":
+    # Only a genuine CORS preflight is anonymous: CORSMiddleware answers it
+    # itself, the same way for every path, without reaching the router. Any
+    # other OPTIONS request is authenticated like every other method, so the
+    # router's 405 (with Allow) vs 404 cannot map the protected API (#204).
+    if is_cors_preflight(request):
         return await call_next(request)
 
     if path == "/api/v1/auth/token" and request.method == "POST":

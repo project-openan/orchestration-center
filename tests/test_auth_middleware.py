@@ -31,8 +31,8 @@ from orchestrate.server import auth as auth_module
 from orchestrate.server.auth import _SessionStore, auth_middleware, _PUBLIC_AUTH_PATHS
 
 
-def _make_request(path, token=None, method="GET", as_cookie=False):
-    headers = []
+def _make_request(path, token=None, method="GET", as_cookie=False, extra_headers=None):
+    headers = [(k.lower().encode(), v.encode()) for k, v in (extra_headers or {}).items()]
     if token:
         if as_cookie:
             headers.append((b"cookie", f"session_token={token}".encode()))
@@ -117,11 +117,33 @@ class TestPublicAuthPaths:
 
 @pytest.mark.anyio
 class TestAuthMiddleware:
-    async def test_options_preflight_always_allowed(self, monkeypatch):
+    @pytest.mark.parametrize("path", ["/rest/v1/orchestrate/workflows", "/psops", "/api/v1/executions"])
+    async def test_cors_preflight_is_anonymous(self, monkeypatch, path):
         monkeypatch.setattr(auth_module, "is_auth_enabled", lambda: True)
-        request = _make_request("/rest/v1/orchestrate/workflows", method="OPTIONS")
+        request = _make_request(path, method="OPTIONS", extra_headers={
+            "Origin": "https://portal.example", "Access-Control-Request-Method": "POST"})
         response = await auth_middleware(request, _call_next)
         assert response.status_code == 200
+
+    @pytest.mark.parametrize("headers", [
+        {},
+        {"Origin": "https://portal.example"},
+        {"Access-Control-Request-Method": "GET"},
+    ], ids=["bare", "origin-only", "acrm-only"])
+    async def test_non_preflight_options_requires_login(self, monkeypatch, headers):
+        """#204: a plain OPTIONS must not reach the router unauthenticated."""
+        monkeypatch.setattr(auth_module, "is_auth_enabled", lambda: True)
+        request = _make_request("/rest/v1/orchestrate/execute", method="OPTIONS", extra_headers=headers)
+        response = await auth_middleware(request, _call_next)
+        assert response.status_code == 401
+
+    async def test_non_preflight_options_on_external_api_requires_auth(self, monkeypatch):
+        monkeypatch.setattr(auth_module, "is_auth_enabled", lambda: True)
+        monkeypatch.setattr(auth_module, "get_conf", lambda: {"enable_https": "false"})
+        monkeypatch.setenv("ORCH_API_TOKEN", "test-only-machine-token-at-least-32-bytes")
+        request = _make_request("/api/v1/orchestrate/sop", method="OPTIONS")
+        response = await auth_middleware(request, _call_next)
+        assert response.status_code == 401
 
     async def test_external_api_requires_machine_auth(self, monkeypatch):
         monkeypatch.setattr(auth_module, "is_auth_enabled", lambda: True)
