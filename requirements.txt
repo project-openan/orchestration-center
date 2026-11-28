@@ -17,7 +17,7 @@
 
 pydantic>=2.12.5
 a2a-t-sdk>=1.2.0,<2
-workflow-exec-engine>=0.1.1,<0.2
+workflow-exec-engine>=0.1.2,<0.2
 a2a-sdk[http-server,grpc]>=1.1.2,<2
 openai>=2.26.0
 python-dotenv>=1.1.0
@@ -29,6 +29,7 @@ pymupdf
 limits>=5.8.0
 python-multipart>=0.0.24
 psycopg2-binary>=2.9.10
+rfc8785==0.1.4
 PyMySQL>=1.1.0,<2
 DBUtils>=3.0,<4
 cryptography>=41.0.0

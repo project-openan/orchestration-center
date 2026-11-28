@@ -20,7 +20,10 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import re
+import os
 import time
+from collections import OrderedDict
 from collections.abc import Callable
 from contextlib import suppress
 from copy import deepcopy
@@ -50,6 +53,13 @@ from host_agent.adapters import (
     EngineClientFactory,
     RegistryAgentCardProvider,
 )
+from host_agent.dispatch_proof import (
+    CLOCK_SKEW_SECONDS,
+    MAX_AGE_SECONDS,
+    PSOP_REVISION_KEY,
+    claim_execution,
+    verified_center_dispatch_id,
+)
 from host_agent.config import ControlPointContext, HostAgentConfig, RoleExecutionContext
 from host_agent.dispatch_auth import DISPATCH_KEYS, PROOF_KEY, DispatchValidationError, verify_dispatch
 from host_agent.execution import (
@@ -65,7 +75,7 @@ from host_agent.role_dispatch import (
 from host_agent.role_execution import RoleExecutionBridge
 from host_agent.role_snapshot import read_role_snapshot, validated_agent_cards
 from host_agent.utils import detect_language
-from host_agent.workflow_repository import OrchestrationWorkflowRepository
+from host_agent.workflow_repository import OrchestrationWorkflowRepository, declared_host
 
 
 class HostAgentEventCallback(EventCallback):
@@ -108,6 +118,8 @@ class HostAgentExecutor(AgentExecutor):
     lifecycle. Business decisions are supplied through ``control_point_factory``.
     """
 
+    _host_name: str | None = None
+
     def __init__(
         self,
         *,
@@ -116,8 +128,10 @@ class HostAgentExecutor(AgentExecutor):
         extension_lifecycle: Any | None = None,
         credentials_config: str | dict | None = None,
         workflow_repository: Any | None = None,
+        host_name: str | None = None,
         agent_card_provider: AgentCardProvider | None = None,
         engine_client_factory: EngineClientFactory | None = None,
+        execution_reporter: Any | None = None,
         auth_provider: Any | None = None,
     ) -> None:
         if control_point_factory is None:
@@ -125,13 +139,17 @@ class HostAgentExecutor(AgentExecutor):
 
         self._execution_tracker = HostExecutionTracker()
         self._config = config
+        self._host_name = host_name
         self._extension_lifecycle = extension_lifecycle
         self._control_point_factory = control_point_factory
+        self._execution_reporter = execution_reporter
+        self._seen_center_dispatches = OrderedDict()
         self._credentials_config = credentials_config
         self._auth_provider = auth_provider
         self._workflow_repository = workflow_repository or OrchestrationWorkflowRepository(
             orch_url=config.orchestration_url,
             ssl_verify=config.ssl_verify,
+            host_name=host_name,
         )
         self._agent_card_provider = agent_card_provider or RegistryAgentCardProvider(
             config.registry_url,
@@ -149,6 +167,23 @@ class HostAgentExecutor(AgentExecutor):
         )
 
     async def start(self) -> None:
+        endpoint = os.environ.get("OPENAN_CENTER_EVENTS_URL")
+        if endpoint and self._execution_reporter is None:
+            try:
+                from workflow_engine.observation import ExecutionReporter
+
+                self._execution_reporter = ExecutionReporter(
+                    endpoint, os.environ["OPENAN_EXECUTION_TOKEN"], os.environ["OPENAN_EXECUTION_SOURCE"],
+                    os.environ["OPENAN_EXECUTION_SPOOL"],
+                )
+            except (ImportError, KeyError, OSError, ValueError) as exc:
+                reason = exc.args[0] if isinstance(exc, KeyError) and exc.args else str(exc)
+                if isinstance(exc, ImportError):
+                    reason = getattr(exc, "name", None) or reason
+                logger.warning(
+                    "Execution observation is unavailable ({}: {})",
+                    type(exc).__name__, reason,
+                )
         if self._extension_lifecycle is not None:
             result = self._extension_lifecycle.start()
             if inspect.isawaitable(result):
@@ -158,6 +193,8 @@ class HostAgentExecutor(AgentExecutor):
         close = getattr(self._extension_lifecycle, "aclose", None)
         if close is not None:
             await close()
+        if self._execution_reporter is not None:
+            await asyncio.to_thread(self._execution_reporter.close)
 
     def shutdown(self) -> None:
         stop = getattr(self._extension_lifecycle, "request_stop", None)
@@ -186,7 +223,14 @@ class HostAgentExecutor(AgentExecutor):
         role_snapshot = None
         try:
             metadata = self._orchestration_metadata(context)
+            center_record_id = verified_center_dispatch_id(metadata, intent=intent)
             role_dispatch = any(key in metadata for key in ("__orch_binding__", "__orch_cards__", PROOF_KEY))
+            if center_record_id is not None:
+                self._claim_center_dispatch(center_record_id)
+            elif (not role_dispatch and self._execution_reporter is not None
+                  and "__orch_psop__" in metadata):
+                raise ValueError(
+                    "PSOP snapshots require an authenticated center dispatch while reporting is enabled")
             if role_dispatch:
                 # Deployment admission first (REQ74 P4): a valid signature on a
                 # closed deployment must not reach workflow verification.
@@ -197,12 +241,17 @@ class HostAgentExecutor(AgentExecutor):
                         reason="ROLE_EXECUTION_NOT_ADMITTED")
                 verify_dispatch(metadata, self._config.role_dispatch_key, intent=intent)
             processed_intent = await self._process_intent(intent)
+            trusted_snapshot = (center_record_id is not None or role_dispatch
+                                or self._execution_reporter is None)
             try:
-                workflow = await self._resolve_workflow(context, processed_intent)
+                workflow = await self._resolve_workflow(
+                    context, processed_intent, trusted_snapshot=trusted_snapshot)
             except (TypeError, ValueError) as exc:
                 if role_dispatch:
-                    raise DispatchValidationError("Invalid role execution workflow", reason="WORKFLOW_SCHEMA") from exc
+                    raise DispatchValidationError(
+                        "Invalid role execution workflow", reason="WORKFLOW_SCHEMA") from exc
                 raise
+            self._validate_workflow_host(workflow)
             steps = workflow.get("steps", []) if isinstance(workflow, dict) else getattr(workflow, "steps", [])
             for step in steps:
                 tasks = step.get("subtasks", []) if isinstance(step, dict) else getattr(step, "subtasks", [])
@@ -214,7 +263,9 @@ class HostAgentExecutor(AgentExecutor):
                 agent_cards = await self._load_agent_cards()
             except Exception as exc:
                 if role_dispatch:
-                    raise DispatchValidationError("Cannot refresh selected instance cards", reason="REGISTRY_UNAVAILABLE") from exc
+                    raise DispatchValidationError(
+                        "Cannot refresh selected instance cards",
+                        reason="REGISTRY_UNAVAILABLE") from exc
                 raise
             role_context = None
             role_bridge = None
@@ -264,6 +315,9 @@ class HostAgentExecutor(AgentExecutor):
                 role_execution=role_context,
             ))
             event_tracker = HostAgentEventCallback()
+            report_options = {}
+            if self._execution_reporter is not None and center_record_id is None:
+                report_options["reporter"] = self._execution_reporter
             if role_bridge is not None:
                 control_point = role_bridge.wrap(control_point)
 
@@ -282,6 +336,7 @@ class HostAgentExecutor(AgentExecutor):
                 lang=lang,
                 ssl_verify=self._config.ssl_verify,
                 on_event=on_event,
+                **report_options,
             ):
                 event_count += 1
                 if event.get("type") in {"complete", "error"}:
@@ -355,15 +410,47 @@ class HostAgentExecutor(AgentExecutor):
                 pass
         return metadata
 
+    def _claim_center_dispatch(self, execution_id: str) -> None:
+        try:
+            claim_execution(execution_id)
+        except OSError as error:
+            logger.warning(
+                "Center dispatch claim store is unavailable ({}); "
+                "falling back to the in-process window",
+                type(error).__name__,
+            )
+        now = time.monotonic()
+        deadline = now - MAX_AGE_SECONDS - CLOCK_SKEW_SECONDS
+        while self._seen_center_dispatches and next(iter(self._seen_center_dispatches.values())) < deadline:
+            self._seen_center_dispatches.popitem(last=False)
+        if execution_id in self._seen_center_dispatches:
+            raise ValueError("Center execution dispatch was already received")
+        self._seen_center_dispatches[execution_id] = now
+
     async def _process_intent(self, intent: str) -> str:
         return intent
 
-    async def _resolve_workflow(self, context: RequestContext, intent: str):
+    def _validate_workflow_host(self, workflow) -> None:
+        if self._host_name is None:
+            return
+        if isinstance(workflow, dict):
+            workflow = Workflow.from_dict(workflow)
+        declared = declared_host(workflow)
+        if declared is not None and declared != self._host_name:
+            raise ValueError(f"PSOP is declared for host {declared!r}, expected {self._host_name!r}")
+
+    async def _resolve_workflow(self, context: RequestContext, intent: str, *,
+                                trusted_snapshot: bool = False):
         metadata = self._orchestration_metadata(context)
         psop_id = metadata.get("__orch_psop_id__")
         if "__orch_psop_id__" in metadata and (not isinstance(psop_id, str) or not psop_id.strip()):
             raise ValueError("Explicit PSOP ID must be a non-empty string")
-        if "__orch_psop__" in metadata:
+        revision = metadata.get(PSOP_REVISION_KEY)
+        if PSOP_REVISION_KEY in metadata and (
+            psop_id is None or not isinstance(revision, str) or re.fullmatch(r"[0-9a-f]{64}", revision) is None
+        ):
+            raise ValueError("Explicit PSOP revision requires a PSOP ID and a SHA-256 digest")
+        if "__orch_psop__" in metadata and trusted_snapshot:
             logger.info("[HostAgent] Using PSOP snapshot from orchestration center")
             psop_snapshot = metadata["__orch_psop__"]
             if isinstance(psop_snapshot, str):
@@ -384,10 +471,16 @@ class HostAgentExecutor(AgentExecutor):
 
         if psop_id is not None:
             logger.info(f"[HostAgent] Using psop_id from orchestration center: {psop_id}")
-            workflow = await self._workflow_repository.get(psop_id)
+            options = {"revision": revision} if revision is not None else {}
+            workflow = await self._workflow_repository.get(psop_id, **options)
             loaded_id = workflow.get("id") if isinstance(workflow, dict) else getattr(workflow, "id", None)
             if loaded_id != psop_id:
                 raise ValueError("Loaded PSOP ID does not match requested ID")
+            if revision is not None:
+                loaded_revision = (workflow.get("revision") if isinstance(workflow, dict)
+                                   else getattr(workflow, "revision", None))
+                if loaded_revision != revision:
+                    raise ValueError("Loaded PSOP revision does not match requested revision")
             return workflow
 
         return await self._workflow_repository.find(intent)

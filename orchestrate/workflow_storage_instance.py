@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 from functools import lru_cache
 
 from orchestrate.core.persistence import WorkflowStorage
@@ -22,4 +23,4 @@ from orchestrate.core.persistence import WorkflowStorage
 
 @lru_cache(maxsize=1)
 def get_workflow_storage() -> WorkflowStorage:
-    return WorkflowStorage()
+    return WorkflowStorage(os.environ.get("ORCH_WORKFLOW_STORAGE_DIR") or None)

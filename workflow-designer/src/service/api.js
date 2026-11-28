@@ -326,6 +326,18 @@ export async function getExecutionRecord(executionId) {
     return api.get(`${ORCHESTRATE_BASE()}/execution-records/${executionId}`);
 }
 
+export async function getExecutionTimelinePage(executionId, afterCursor, throughCursor, signal) {
+    const cursorQuery = new URLSearchParams({
+        view: 'timeline',
+        after_cursor: afterCursor,
+        through_cursor: throughCursor,
+    });
+    return api.get(
+        `${ORCHESTRATE_BASE()}/executions/${encodeURIComponent(executionId)}/events?${cursorQuery}`,
+        { signal },
+    );
+}
+
 export async function deleteExecutionRecord(executionId) {
     return api.delete(`${ORCHESTRATE_BASE()}/execution-records/${executionId}`);
 }

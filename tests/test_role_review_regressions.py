@@ -221,7 +221,7 @@ def test_all_execution_apis_sign_resolved_snapshots_and_record_authenticated_cal
         async def close(self):
             pass
 
-    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda _: VerifyingClient())
+    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda _, target=None: VerifyingClient())
     params = {"scope": "t/s/b", "caller_id": "forged-caller", "user_intent": INTENT}
     with TestClient(frontend_support_server.app, headers=account_session) as client:
         if entry == "external_intent":

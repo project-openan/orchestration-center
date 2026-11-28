@@ -144,7 +144,8 @@ def _build_sse_response(
         from orchestrate.handlers.dispatch import get_storage_handler
 
         started_at = datetime.now(timezone.utc)
-        execution_id = uuid4().hex
+        # The center reports this id to the host, so it must stay a canonical UUID4.
+        execution_id = str(uuid4())
         collected_events = deque(maxlen=_RECORDED_EVENT_LIMIT)
         dropped_events = 0
         psop_id = selected_psop.id if selected_psop is not None else ""
@@ -154,6 +155,7 @@ def _build_sse_response(
         record_error = None
         record_resolution = None
         saw_terminal_event = False
+        step_history = {}
 
         HEARTBEAT_INTERVAL = 15
 
@@ -169,10 +171,9 @@ def _build_sse_response(
                     "timestamp": time.time()})
                 await event_queue.put(done_sentinel)
                 return
-            event_stream = (
-                engine.events(intent, psop=selected_psop, resolution_request=resolution_request)
-                if selected_psop is not None
-                else engine.events(intent, resolution_request=resolution_request)
+            event_stream = engine.events(
+                intent, psop=selected_psop, resolution_request=resolution_request,
+                execution_id=execution_id,
             )
             try:
                 async for event in event_stream:
@@ -244,6 +245,14 @@ def _build_sse_response(
                 elif evt_type == "complete":
                     saw_terminal_event = True
 
+                if evt_type in {"step_start", "step_complete", "task_response"} and evt_data.get("step"):
+                    name = evt_data["step"]
+                    step = step_history.setdefault(name, {"step": name, "tasks": []})
+                    if evt_type == "task_response":
+                        step["tasks"].append(evt_data)
+                    elif evt_type == "step_complete":
+                        step["status"] = "success"
+
                 yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
 
         except Exception as e:
@@ -273,7 +282,7 @@ def _build_sse_response(
                     started_at=started_at,
                     completed_at=datetime.now(timezone.utc),
                     status=record_status,
-                    execution_history=[],
+                    execution_history=list(step_history.values()),
                     final_psop=final_psop,
                     events=([{"type": "events_truncated", "data": {"dropped": dropped_events}}]
                             if dropped_events else []) + list(collected_events),

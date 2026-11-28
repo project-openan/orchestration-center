@@ -15,14 +15,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from collections import OrderedDict
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 from a2a.types import TaskState
 from workflow_engine import MessageContent, StubWorkflowEngineClient
 
+from host_agent.center_dispatch import KEY_ENV, write_center_dispatch_proof
 from host_agent.config import HostAgentConfig
 from host_agent.execution import HostExecutionTracker
 from host_agent.runtime import HostAgentExecutor
@@ -54,6 +57,8 @@ def _workflow():
 
 def _executor():
     executor = HostAgentExecutor.__new__(HostAgentExecutor)
+    executor._execution_reporter = None
+    executor._seen_center_dispatches = OrderedDict()
     executor._execution_tracker = HostExecutionTracker()
     executor._config = HostAgentConfig(
         orchestration_url="https://orch.test",
@@ -65,6 +70,57 @@ def _executor():
         find=AsyncMock(),
     )
     return executor
+
+
+def test_center_dispatch_claim_survives_a_restart(tmp_path, monkeypatch):
+    from host_agent.center_dispatch import CLAIMS_VARIABLE
+
+    monkeypatch.setenv(CLAIMS_VARIABLE, str(tmp_path / "claims.json"))
+    execution_id = str(uuid4())
+
+    first = _executor()
+    first._claim_center_dispatch(execution_id)
+
+    restarted = _executor()
+    with pytest.raises(ValueError, match="already received"):
+        restarted._claim_center_dispatch(execution_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("proof", ["none", "tampered", "valid", "unsigned_snapshot"])
+async def test_only_authenticated_center_dispatch_uses_center_history(monkeypatch, proof):
+    executor = _executor()
+    executor._execution_reporter = object()
+    executor._workflow_repository.find.return_value = _workflow()
+    executor._load_agent_cards = AsyncMock(return_value=[])
+    executor._engine_client_factory = SimpleNamespace(create=lambda _: StubWorkflowEngineClient())
+    executor._control_point_factory = lambda _: None
+    context = _context_snapshot() if proof == "unsigned_snapshot" else _context()
+    context.metadata["__orch_legacy_proxy__"] = True
+    monkeypatch.setenv(KEY_ENV, "synthetic-center-test-key-32-bytes")
+    if proof in {"tampered", "valid"}:
+        write_center_dispatch_proof(context.metadata, execution_id=str(uuid4()), intent=context.get_user_input())
+    if proof == "tampered":
+        context.get_user_input = lambda: "modified intent"
+    invocations = []
+
+    async def execute_psop(**kwargs):
+        invocations.append(kwargs)
+        yield {"type": "complete", "data": {"status": "success"}}
+
+    monkeypatch.setattr("host_agent.runtime.execute_psop", execute_psop)
+    queue = _EventQueue()
+    await executor.execute(context, queue)
+
+    if proof == "unsigned_snapshot":
+        assert not invocations
+        assert queue.events[-1].status.state is TaskState.TASK_STATE_FAILED
+        return
+    assert len(invocations) == 1
+    assert invocations[0].get("reporter") is (None if proof == "valid" else executor._execution_reporter)
+    if proof == "valid":
+        await executor.execute(context, _EventQueue())
+        assert len(invocations) == 1
 
 
 def _context(psop_id=None):
@@ -257,7 +313,10 @@ async def test_execute_prefers_psop_snapshot_from_orchestration(monkeypatch):
             return MessageContent.text("stub task content")
 
     executor._control_point_factory = _ControlPoint
-    await executor.execute(_context_snapshot(), queue)
+    context = _context_snapshot()
+    monkeypatch.setenv(KEY_ENV, "synthetic-center-test-key-32-bytes")
+    write_center_dispatch_proof(context.metadata, execution_id=str(uuid4()), intent=context.get_user_input())
+    await executor.execute(context, queue)
 
     wrapped = [
         json.loads(event.metadata["__sdk_event__"])

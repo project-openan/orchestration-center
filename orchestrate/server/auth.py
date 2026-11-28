@@ -371,6 +371,19 @@ def require_admin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Admin role required")
 
 
+def require_admin_when_authenticated(request: Request) -> None:
+    """Guard shared records in deployments with account authentication."""
+    try:
+        enabled = is_auth_enabled()
+    except RuntimeError as e:
+        logger.error(f"[Auth] Authentication backend unavailable: {e}")
+        raise HTTPException(status_code=503, detail="Authentication backend unavailable") from e
+    except StorageError as e:
+        raise storage_http_exception(e) from e
+    if enabled:
+        require_admin(request)
+
+
 # Usernames that must change their password before anything else is allowed.
 # Populated at login from the DB (see #12) rather than re-queried per
 # request, matching the session-role pattern -- avoids a DB round trip on
@@ -441,6 +454,10 @@ async def auth_middleware(request: Request, call_next):
 
     if path == "/api/v1/auth/token" and request.method == "POST":
         # Only credential verification/token issuance is anonymous, not /auth/*.
+        return await call_next(request)
+
+    if path == "/api/v1/execution-events" and request.method == "POST":
+        # This endpoint authenticates the reporter credential in its own handler.
         return await call_next(request)
 
     if path == "/api/v1" or path.startswith("/api/v1/"):

@@ -96,13 +96,17 @@ def test_handler_crud_uses_one_owned_connection_source(mode, transport, tmp_path
     monkeypatch.setattr(middleware, "limiter", MovingWindowRateLimiter(MemoryStorage()))
 
     class Engine:
-        async def events(self, intent, *, psop=None, resolution_request=None):
+        async def events(self, intent, *, psop=None, resolution_request=None, execution_id=None):
+            assert psop is None and execution_id
             yield {"type": "start", "data": {"psop_id": sample_psop_dict["id"]}}
             yield {"type": "complete", "data": {}}
 
     monkeypatch.setattr(sse_executor, "OrchestrationEngine", lambda *args, **kwargs: Engine())
     async def consume_execution():
-        response = await sse_executor.dispatch_intent_sse([MagicMock()], "synthetic intent")
+        host = MagicMock()
+        host.name = "test-host"
+        host.skills = [MagicMock(id="workflow-host", tags=[])]
+        response = await sse_executor.dispatch_intent_sse([host], "synthetic intent", target_agent=host.name)
         assert len([chunk async for chunk in response.body_iterator]) == 2
     asyncio.run(consume_execution())  # Includes the real SSE-finally record handler.
     assert len(rows["execution_records"]) == 1

@@ -15,6 +15,7 @@
 //    License for the specific language governing permissions and limitations
 //    under the License.
 import React, { useMemo, useState, useCallback } from 'react';
+import { observedSteps, observationOutcome, timelineStatusText } from './observationProjection';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { errorStepNames, formatRoleResolution, formatWorkflowError } from '../workflowErrors.js';
@@ -521,6 +522,30 @@ const RouteDecisionCard = React.memo(({ data }) => {
  * StepPhase - Step container with improved visual hierarchy
  * ────────────────────────────────────────────────────────────────── */
 
+const ObservedTaskCard = React.memo(({ task }) => {
+    const status = StepStatusMap[task.status] || StepStatusMap.pending;
+    return (
+        <div className="space-y-2 rounded-lg border border-zinc-200 dark:border-zinc-700 p-3">
+            <div className="flex items-center justify-between gap-3 text-xs">
+                <span className="font-medium">{task.description ?? task.taskRef}</span>
+                <span className={status.color}>{timelineStatusText(task.status)}</span>
+            </div>
+            <div className="text-xs text-zinc-500">{task.agent} · 第 {task.attempt} 次（已上报 {task.attemptCount} 次）</div>
+            {task.inputSummary && (
+                <div><div className="text-xs font-semibold text-zinc-500">业务请求</div><MarkdownRenderer text={task.inputSummary} /></div>
+            )}
+            {task.content && (
+                <div><div className="text-xs font-semibold text-zinc-500">业务结果</div><MarkdownRenderer text={task.content} /></div>
+            )}
+            {task.progress.filter(item => !task.content.includes(item)).map(item => <MarkdownRenderer key={item} text={item} />)}
+            {task.outputs && Object.keys(task.outputs).length > 0 && (
+                <pre className="overflow-auto text-xs whitespace-pre-wrap">{JSON.stringify(task.outputs, null, 2)}</pre>
+            )}
+            {task.error && <p className="text-xs text-rose-600">{task.error.message || task.error.code}</p>}
+        </div>
+    );
+});
+
 const StepPhase = React.memo(({ step, isDark }) => {
     const statusInfo = StepStatusMap[step.status] || StepStatusMap.pending;
     const StatusIcon = statusInfo.icon;
@@ -528,7 +553,7 @@ const StepPhase = React.memo(({ step, isDark }) => {
     const [collapsed, setCollapsed] = useState(step.status === 'completed');
 
     const interactionCount = step.interactions.length;
-    const hasContent = step.isSelfLoop || interactionCount > 0 || step.route || step.output || step.error;
+    const hasContent = step.isSelfLoop || interactionCount > 0 || step.tasks?.length || step.route || step.output || step.error;
 
     return (
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/50 overflow-hidden">
@@ -562,7 +587,7 @@ const StepPhase = React.memo(({ step, isDark }) => {
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
                             <span className={`text-[10px] font-medium ${statusInfo.color}`}>
-                                {step.status === 'running' ? '执行中' : step.status === 'completed' ? '已完成' : step.status === 'failed' ? '失败' : '等待中'}
+                                {timelineStatusText(step.status)}
                             </span>
                             {duration && <span className="text-[10px] text-zinc-400">· {duration}</span>}
                             {interactionCount > 0 && <span className="text-[10px] text-zinc-400">· {interactionCount} 次交互</span>}
@@ -579,6 +604,7 @@ const StepPhase = React.memo(({ step, isDark }) => {
             {/* Step Content (collapsible) */}
             {!collapsed && (
                 <div className="p-4 space-y-3">
+                    {step.tasks?.map(task => <ObservedTaskCard key={task.key} task={task} />)}
                     {step.isSelfLoop ? (
                         <SelfLoopCard step={step} isDark={isDark} />
                     ) : (
@@ -608,18 +634,19 @@ const StepPhase = React.memo(({ step, isDark }) => {
  * WorkflowHeader - Compact workflow status card
  * ────────────────────────────────────────────────────────────────── */
 
-const WorkflowHeader = React.memo(({ events, steps, isRunning }) => {
+const WorkflowHeader = React.memo(({ events, steps, isRunning, observation, workflow }) => {
     const startEvent = events.find(e => e.type === 'start');
     const completeEvent = events.find(e => e.type === 'complete');
     const errorEvent = events.find(e => e.type === 'error' || e.type === 'dispatch_error');
-    const wfName = startEvent?.data?.workflow || '';
-    const totalSteps = startEvent?.data?.steps || 0;
+    const wfName = observation ? workflow?.name : startEvent?.data?.workflow;
+    const totalSteps = observation ? (workflow?.steps?.length ?? 0) : (startEvent?.data?.steps || 0);
     const completedSteps = steps.filter(s => s.status === 'completed').length;
     const failedSteps = steps.filter(s => s.status === 'failed').length;
-    const startTime = startEvent?.timestamp;
-    const endTime = completeEvent?.timestamp || errorEvent?.timestamp;
+    const startTime = observation ? Date.parse(observation.startedAt) / 1000 : startEvent?.timestamp;
+    const endTime = observation ? Date.parse(observation.completedAt) / 1000 : (completeEvent?.timestamp || errorEvent?.timestamp);
     const duration = formatDuration(startTime, endTime);
-    const overallStatus = errorEvent ? 'failed' : completeEvent ? 'completed' : isRunning ? 'running' : 'pending';
+    const overallStatus = observation ? observationOutcome(observation.status)
+        : (errorEvent ? 'failed' : completeEvent ? 'completed' : isRunning ? 'running' : 'pending');
     const statusInfo = StepStatusMap[overallStatus] || StepStatusMap.pending;
     const StatusIcon = statusInfo.icon;
     const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
@@ -639,7 +666,7 @@ const WorkflowHeader = React.memo(({ events, steps, isRunning }) => {
                     <div className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{wfName || 'Workflow Execution'}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-xs font-medium ${statusInfo.color}`}>
-                            {overallStatus === 'running' ? '执行中' : overallStatus === 'completed' ? '已完成' : overallStatus === 'failed' ? '失败' : '等待中'}
+                            {timelineStatusText(overallStatus)}
                         </span>
                         {totalSteps > 0 && (
                             <span className="text-xs text-zinc-400">
@@ -669,17 +696,17 @@ const WorkflowHeader = React.memo(({ events, steps, isRunning }) => {
  * ExecutionTimeline - Main timeline container
  * ────────────────────────────────────────────────────────────────── */
 
-const ExecutionTimeline = React.memo(({ events, isDark, isRunning, workflow }) => {
+const ExecutionTimeline = React.memo(({ events, isDark, isRunning, workflow, observation }) => {
     const { t } = useTranslation();
     const steps = useMemo(() => {
-        const result = groupEventsByStep(events, workflow);
+        const result = observation ? observedSteps(workflow, observation, events) : groupEventsByStep(events, workflow);
         if (result.length > 0) {
             console.log('[Timeline] steps:', result.map(s => ({ name: s.name, status: s.status, selfLoop: s.isSelfLoop, interactions: s.interactions.length })));
         }
         return result;
-    }, [events, workflow]);
+    }, [events, workflow, observation]);
 
-    if (events.length === 0) {
+    if (events.length === 0 && !observation) {
         return (
             <div className="h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 py-16">
                 <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
@@ -693,7 +720,7 @@ const ExecutionTimeline = React.memo(({ events, isDark, isRunning, workflow }) =
 
     return (
         <div className="space-y-3">
-            <WorkflowHeader events={events} steps={steps} isRunning={isRunning} />
+            <WorkflowHeader events={events} steps={steps} isRunning={isRunning} observation={observation} workflow={workflow} />
             {events.filter(event => ['resolution', 'error', 'dispatch_error'].includes(event.type)).map((event, index) => (
                 <section key={index} role={event.type === 'resolution' ? 'status' : 'alert'}
                     className={`rounded-xl border p-4 ${event.type === 'resolution' ? 'border-blue-300 dark:border-blue-800' : 'border-rose-300 text-rose-600 dark:border-rose-800'}`}>
@@ -704,7 +731,7 @@ const ExecutionTimeline = React.memo(({ events, isDark, isRunning, workflow }) =
             ))}
             <div className="space-y-3">
                 {steps.map((step, idx) => (
-                    <StepPhase key={idx} step={step} isDark={isDark} />
+                    <StepPhase key={step.ref ?? idx} step={step} isDark={isDark} />
                 ))}
             </div>
 

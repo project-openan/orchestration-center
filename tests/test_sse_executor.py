@@ -16,6 +16,7 @@ Drives the async generator with a stub OrchestrationEngine, exercising:
 
 import asyncio
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -29,6 +30,9 @@ from orchestrate.server.sse_executor import dispatch_intent_sse
 # Helpers
 # ---------------------------------------------------------------------------
 
+HOST = SimpleNamespace(name="test-host", skills=[SimpleNamespace(id="workflow-host", tags=[])])
+
+
 class _StubEngine:
     """Minimal async iterator that yields pre-defined events."""
 
@@ -36,7 +40,7 @@ class _StubEngine:
         self._events = events or []
         self._exc = exc
 
-    async def events(self, intent, *, psop=None, resolution_request=None):
+    async def events(self, intent, *, psop=None, resolution_request=None, execution_id=None):
         for evt in self._events:
             yield evt
         if self._exc:
@@ -104,7 +108,7 @@ async def test_incomplete_stream_is_not_recorded_as_success():
              patch("orchestrate.core.model.execution_record.ExecutionRecord") as record:
             registry.get_handler.return_value = MagicMock()
             record.return_value = MagicMock(execution_id="record-1")
-            response = await dispatch_intent_sse([MagicMock()], "intent")
+            response = await dispatch_intent_sse([HOST], "intent", target_agent=HOST.name)
             assert [chunk async for chunk in response.body_iterator]
             assert record.call_args.kwargs["status"] == ExecutionStatus.FAILED
 
@@ -119,7 +123,7 @@ async def test_recorded_events_are_bounded_and_note_truncation():
          patch("orchestrate.core.model.execution_record.ExecutionRecord") as record:
         registry.get_handler.return_value = MagicMock()
         record.return_value = MagicMock(execution_id="record-2")
-        response = await dispatch_intent_sse([MagicMock()], "intent")
+        response = await dispatch_intent_sse([HOST], "intent", target_agent=HOST.name)
         assert len([chunk async for chunk in response.body_iterator]) == 6
         saved_events = record.call_args.kwargs["events"]
         assert saved_events[0] == {"type": "events_truncated", "data": {"dropped": 3}}
@@ -134,7 +138,7 @@ async def test_disconnecting_backpressured_stream_closes_engine_and_records_stop
     produced = 0
 
     class EndlessEngine:
-        async def events(self, intent, *, psop=None, resolution_request=None):
+        async def events(self, intent, *, psop=None, resolution_request=None, execution_id=None):
             nonlocal produced
             try:
                 while True:
@@ -148,7 +152,7 @@ async def test_disconnecting_backpressured_stream_closes_engine_and_records_stop
          patch("orchestrate.core.model.execution_record.ExecutionRecord") as record:
         registry.get_handler.return_value = MagicMock()
         record.return_value = MagicMock(execution_id="record-disconnected")
-        response = await dispatch_intent_sse([MagicMock()], "intent")
+        response = await dispatch_intent_sse([HOST], "intent", target_agent=HOST.name)
         await anext(response.body_iterator)
         await asyncio.sleep(0.01)
         assert produced <= 66, "a slow consumer must backpressure the engine"
@@ -174,7 +178,7 @@ class TestNormalFlow:
                  patch("orchestrate.core.model.execution_record.ExecutionRecord") as mock_er:
                 mock_reg.get_handler.return_value = MagicMock()
                 mock_er.return_value = MagicMock(execution_id="test-1")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock(name="agent1")], "test"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "test", target_agent=HOST.name))
                 chunks = _collect_stream(response)
                 # 2 data events
                 data_chunks = [c for c in chunks if c.startswith("data: ")]
@@ -192,7 +196,7 @@ class TestNormalFlow:
                  patch("orchestrate.core.model.execution_record.ExecutionRecord") as mock_er:
                 mock_reg.get_handler.return_value = MagicMock()
                 mock_er.return_value = MagicMock(execution_id="test-2")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock()], "intent"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "intent", target_agent=HOST.name))
                 chunks = _collect_stream(response)
                 data_chunks = [c for c in chunks if c.startswith("data: ")]
                 assert len(data_chunks) == 1
@@ -215,7 +219,7 @@ class TestErrorEvent:
                 mock_handler = MagicMock()
                 mock_reg.get_handler.return_value = mock_handler
                 mock_er.return_value = MagicMock(execution_id="test-3")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock()], "intent"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "intent", target_agent=HOST.name))
                 chunks = _collect_stream(response)
                 data_chunks = [c for c in chunks if c.startswith("data: ")]
                 assert len(data_chunks) == 1
@@ -239,7 +243,7 @@ class TestEngineException:
                 mock_handler = MagicMock()
                 mock_reg.get_handler.return_value = mock_handler
                 mock_er.return_value = MagicMock(execution_id="test-4")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock()], "intent"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "intent", target_agent=HOST.name))
                 chunks = _collect_stream(response)
                 data_chunks = [c for c in chunks if c.startswith("data: ")]
                 # The exception is caught in _drain_engine and an error event is queued
@@ -277,7 +281,7 @@ class TestHeartbeat:
                 mock_handler = MagicMock()
                 mock_reg.get_handler.return_value = mock_handler
                 mock_er.return_value = MagicMock(execution_id="test-5")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock()], "intent"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "intent", target_agent=HOST.name))
                 chunks = _collect_stream(response)
                 # Should contain heartbeat comments
                 heartbeat_chunks = [c for c in chunks if c.startswith(": heartbeat")]
@@ -323,7 +327,7 @@ class TestExecutionRecordSave:
                 mock_handler = MagicMock()
                 mock_reg.get_handler.return_value = mock_handler
                 mock_er.return_value = MagicMock(execution_id="rec-1")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock()], "my intent"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "my intent", target_agent=HOST.name))
                 _collect_stream(response)
                 # handle() should have been called with the record
                 mock_handler.handle.assert_called_once()
@@ -339,7 +343,7 @@ class TestExecutionRecordSave:
                 mock_handler = MagicMock()
                 mock_reg.get_handler.return_value = mock_handler
                 mock_er.return_value = MagicMock(execution_id="rec-2")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock()], "fallback intent"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "fallback intent", target_agent=HOST.name))
                 _collect_stream(response)
                 mock_handler.handle.assert_called_once()
                 call_args = mock_er.call_args
@@ -358,7 +362,40 @@ class TestExecutionRecordSave:
                 mock_handler.handle.side_effect = RuntimeError("db unavailable")
                 mock_reg.get_handler.return_value = mock_handler
                 mock_er.return_value = MagicMock(execution_id="rec-3")
-                response = _run_and_collect(dispatch_intent_sse([MagicMock()], "intent"))
+                response = _run_and_collect(dispatch_intent_sse([HOST], "intent", target_agent=HOST.name))
                 # Should not raise
                 chunks = _collect_stream(response)
                 assert len(chunks) > 0
+
+
+@pytest.mark.anyio
+async def test_omitted_target_is_rejected_before_dispatch(monkeypatch):
+    from orchestrate.core.shared_handlers import SharedHandlers
+    from orchestrate.runtime import exec_engine
+    monkeypatch.setattr(SharedHandlers, "retrieval", lambda: SimpleNamespace(
+        retrieve_psop_by_intent_topn=lambda *_: [],
+    ))
+    monkeypatch.setattr("common.util.config_util.get_conf", lambda: {})
+    transport = MagicMock()
+    monkeypatch.setattr(exec_engine, "A2ATransport", transport)
+    with patch("orchestrate.handlers.dispatch.get_storage_handler"):
+        response = await dispatch_intent_sse([HOST], "intent", target_agent=None)
+        events = [json.loads(chunk[6:]) async for chunk in response.body_iterator if chunk.startswith("data: ")]
+    assert events[-1]["type"] == "error"
+    assert events[-1]["data"]["code"] == "PSOP_NOT_FOUND"
+    transport.assert_not_called()
+
+
+def test_a_normal_host_card_is_selected_without_a_center_only_skill(monkeypatch):
+    """The host is the agent the PSOP names; workflow-orchestration is not a host marker."""
+    from orchestrate.runtime import exec_engine
+    monkeypatch.setattr("common.util.config_util.get_conf", lambda: {})
+    transport = MagicMock()
+    monkeypatch.setattr(exec_engine, "A2ATransport", transport)
+    worker = SimpleNamespace(name="worker", skills=[])
+
+    engine = exec_engine.OrchestrationEngine([HOST, worker], target_agent="worker")
+    engine._get_engine_client("worker")
+
+    transport.assert_called_once()
+    assert transport.call_args.kwargs["agent_cards"] == [worker]

@@ -1,4 +1,4 @@
-﻿<!--
+<!--
 Copyright (c) 2026 Huawei Technologies Co., Ltd.
 All Rights Reserved.
 
@@ -166,6 +166,8 @@ Worker Agents (SPN / 其他业务域 Agent)
 2. 通过 A2A-T 协议将意图、选定 PSOP ID 与快照下发给 Host Agent（执行宿主）
 3. 流式接收工作台返回的 SDK 事件（从 TaskUpdate metadata 中提取 `__sdk_event__`）
 4. 将事件转发为前端 SSE 流
+
+> **边界说明（评审中）**：以上是当前实现。关于"检索 PSOP、选执行者、发起执行"三项职责应归编排中心还是业务宿主，以及执行记录的归属与宿主能力声明，见 [宿主与编排中心的职责边界](design/host-center-boundary.md)。
 
 ### 3.2 Host Agent（执行宿主）（Workbench Agent）
 

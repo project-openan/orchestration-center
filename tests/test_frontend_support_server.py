@@ -768,7 +768,7 @@ class TestExecuteRoleResolution:
     def stub_transport(self, monkeypatch):
         from orchestrate.runtime.exec_engine import OrchestrationEngine
         client = _CapturingHostClient()
-        monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self: client)
+        monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self, target=None: client)
         self.host_client = client
 
     @pytest.fixture(autouse=True)

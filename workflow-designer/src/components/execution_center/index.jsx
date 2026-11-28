@@ -55,6 +55,9 @@ import { annotateWorkflowErrors, formatWorkflowError } from './workflowErrors.js
 import { projectRoleExecution, roleTemplateFromEvents } from './workflowProjection.js';
 import ExecutionStatistics from './execution_statistics/index.jsx';
 import ExecutionTimeline from './timeline/index.jsx';
+import { useObservationReplay } from './timeline/useObservationReplay.js';
+import { listWorkflowHosts } from './workflowHost.js';
+import ExecutionHostSelect from './ExecutionHostSelect.jsx';
 import RolePreviewPanel from './RolePreviewPanel.jsx';
 import { SandboxReportView } from '@/components/sandbox/SandboxDialog.jsx';
 import {
@@ -451,7 +454,12 @@ const LEFT_PANEL_TABS = [
 const ExecutionCenter = ({ isDark }) => {
     const { t, i18n } = useTranslation();
     const [activeSubMenu, setActiveSubMenu] = useState('execution');
-    const [selectedId, setSelectedId] = useState(null);
+    const [selectedId, updateSelectedId] = useState(null);
+    const workflowRequest = useRef(0);
+    const setSelectedId = useCallback(id => {
+        workflowRequest.current += 1;
+        updateSelectedId(id);
+    }, []);
     const [isRunning, setIsRunning] = useState(false);
     const [events, setEvents] = useState([]);
     const [psopStatus, setPsopStatus] = useState(null);
@@ -468,6 +476,9 @@ const ExecutionCenter = ({ isDark }) => {
     const [matchedWorkflows, setMatchedWorkflows] = useState([]);
     const [runningId, setRunningId] = useState(null);
     const [selectedExecutionId, setSelectedExecutionId] = useState(null);
+    const [observation, setObservation] = useState(null);
+    const replay = useObservationReplay(selectedExecutionId, observation?.replayCursor);
+    const historySelection = useRef(null);
 
     const logScrollRef = useRef(null);
     const [autoScroll, setAutoScroll] = useState(true);
@@ -541,6 +552,7 @@ const ExecutionCenter = ({ isDark }) => {
                 break;
             case 'dispatch_result':
             case 'complete':
+            case 'cancelled':
             case 'close':
                 setIsRunning(false);
                 setIsDispatching(false);
@@ -806,14 +818,7 @@ const ExecutionCenter = ({ isDark }) => {
             .then(resp => {
                 if (mounted && resp?.data) {
                     const cards = Array.isArray(resp.data) ? resp.data : [];
-                    setAgentCards(cards);
-                    // Auto-select Workbench Agent if available, otherwise first agent
-                    if (cards.length > 0 && !selectedAgent) {
-                        const workbenchAgent = cards.find(card => 
-                            card.name && card.name.toLowerCase().includes('workbench')
-                        );
-                        setSelectedAgent(workbenchAgent ? workbenchAgent.name : cards[0].name);
-                    }
+                    setAgentCards(listWorkflowHosts(cards));
                 }
             })
             .catch(err => console.error('Failed to fetch agent cards:', err));
@@ -822,7 +827,7 @@ const ExecutionCenter = ({ isDark }) => {
 
     // Dispatch intent to the selected host agent via A2A-T
     const handleDispatch = useCallback(() => {
-        if (!userIntent.trim() || !selectedAgent) return;
+        if (!userIntent.trim()) return;
 
         if (eventSource) {
             eventSource.close();
@@ -837,6 +842,7 @@ const ExecutionCenter = ({ isDark }) => {
         setIsDispatching(true);
         setIsRunning(true);
         setAutoScroll(true);
+        historySelection.current = null;
         setSelectedExecutionId(null);
         setSelectedSandboxReport(null);
         setSelectedId(null);
@@ -862,12 +868,11 @@ const ExecutionCenter = ({ isDark }) => {
         };
 
         es.onerror = () => {
-            if (es.readyState === EventSource.CLOSED) {
-                setError("Dispatch SSE Connection Error");
-                setIsRunning(false);
-                setIsDispatching(false);
-                setRunningId(null);
-            }
+            es.close();
+            setError("Dispatch SSE Connection Error");
+            setIsRunning(false);
+            setIsDispatching(false);
+            setRunningId(null);
         };
 
         setEventSource(es);
@@ -1098,8 +1103,8 @@ const ExecutionCenter = ({ isDark }) => {
     const selectedWorkflow = matchedWorkflows.find(wf => wf.workflow_id === selectedId);
     const isRoleWorkflow = selectedWorkflow?.binding === 'role';
 
-    const loadHistoryRecords = useCallback(async () => {
-        setIsLoadingRecords(true);
+    const loadHistoryRecords = useCallback(async (background = false) => {
+        if (!background) setIsLoadingRecords(true);
         try {
             const res = await getExecutionRecords();
             if (res.status === 'success') {
@@ -1108,17 +1113,33 @@ const ExecutionCenter = ({ isDark }) => {
         } catch (err) {
             console.error("Failed to load execution records:", err);
         } finally {
-            setIsLoadingRecords(false);
+            if (!background) setIsLoadingRecords(false);
         }
     }, []);
 
-    const loadHistoryDetail = useCallback(async (executionId) => {
+    const loadHistoryDetail = useCallback(async (executionId, current) => {
+        if (!current) historySelection.current = executionId;
+        const isCurrent = () => historySelection.current === executionId && (!current || current());
         try {
             const res = await getExecutionRecord(executionId);
             if (res.status === 'success') {
+                if (!isCurrent()) return;
                 const record = res.data;
                 setSelectedExecutionId(executionId);
                 setExecutionTemplate(roleTemplateFromEvents(record.events));
+                setObservation(record.event_coverage ? {
+                    status: record.status,
+                    startedAt: record.started_at,
+                    completedAt: record.completed_at,
+                    projectedThrough: record.projected_through,
+                    replayCursor: record.events_truncated ? record.last_cursor : null,
+                    stepHistory: record.step_history || [],
+                    taskHistory: record.execution_history || [],
+                    incomplete: ['gapped', 'expired_incomplete'].includes(record.event_coverage)
+                        || record.capture_status === 'degraded' || record.projection_anomaly,
+                    pending: record.event_coverage !== 'expired_incomplete'
+                        && (!record.reported_outcome || record.projected_through !== record.observed_through),
+                } : null);
                 setPsopStatus(record.final_psop || null);
                 clearRolePreview();
                 const displayEvents = (record.events || []).filter(e => {
@@ -1145,10 +1166,30 @@ const ExecutionCenter = ({ isDark }) => {
                 setWorkflowError(failure?.data || null);
             }
         } catch (err) {
+            if (!isCurrent()) return;
             console.error("Failed to load execution record detail:", err);
             setError(t('execution.load_history_failed'));
         }
     }, [t, clearRolePreview]);
+
+    const observationPending = observation?.pending;
+    const replayLoading = replay.status === 'loading';
+
+    useEffect(() => {
+        if (activeTab !== 'history') return;
+        let current = true;
+        const interval = setInterval(() => {
+            loadHistoryRecords(true);
+            if (selectedExecutionId && observationPending && !replayLoading) {
+                loadHistoryDetail(selectedExecutionId, () => current);
+            }
+        }, 3000);
+        return () => {
+            current = false;
+            clearInterval(interval);
+        };
+    }, [activeTab, selectedExecutionId, observationPending, replayLoading, loadHistoryRecords, loadHistoryDetail]);
+
 
     const handleDeleteRecord = useCallback(async () => {
         if (!recordToDelete) return;
@@ -1232,10 +1273,7 @@ const ExecutionCenter = ({ isDark }) => {
     }, [clearRolePreview, requestRolePreview]);
 
     // Start execution
-    const startExecution = useCallback((overrideId) => {
-        const idToRun = overrideId || selectedId;
-        if (!idToRun) return;
-
+    const runWorkflow = useCallback((idToRun, targetAgent) => {
         if (eventSource) {
             eventSource.close();
             setEventSource(null);
@@ -1251,10 +1289,11 @@ const ExecutionCenter = ({ isDark }) => {
         setIsRunning(true);
         setRunningId(idToRun);
         setAutoScroll(true);
+        historySelection.current = null;
         setSelectedExecutionId(null);
         setSelectedSandboxReport(null);
 
-        const url = getStartProcessStreamUrl(idToRun, userIntent, i18n.language, selectedAgent);
+        const url = getStartProcessStreamUrl(idToRun, userIntent, i18n.language, targetAgent);
         const es = new EventSource(url, { withCredentials: true });
 
         es.onmessage = (event) => {
@@ -1269,15 +1308,20 @@ const ExecutionCenter = ({ isDark }) => {
         };
 
         es.onerror = () => {
-            if (es.readyState === EventSource.CLOSED) {
-                setError("SSE Connection Error");
-                setIsRunning(false);
-                setRunningId(null);
-            }
+            es.close();
+            setError("SSE Connection Error");
+            setIsRunning(false);
+            setRunningId(null);
         };
 
         setEventSource(es);
     }, [selectedId, userIntent, selectedAgent, i18n.language, eventSource, applyExecutionEvent]);
+
+    // Instance workflows keep the legacy GET stream: the centre derives the host
+    // from the PSOP declaration / SelfLoop agent, so no manual selection is required.
+    const startExecution = useCallback(id => {
+        runWorkflow(id);
+    }, [runWorkflow]);
 
     useEffect(() => {
         return () => {
@@ -1435,21 +1479,17 @@ const ExecutionCenter = ({ isDark }) => {
 
                             <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-700" />
 
-                            <select
+                            <ExecutionHostSelect
+                                hosts={agentCards}
+                                label={t('execution.select_agent')}
                                 value={selectedAgent}
-                                onChange={(e) => setSelectedAgent(e.target.value)}
-                                className={`h-11 px-3 rounded-xl border text-sm font-medium outline-none transition-all focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${theme.input} min-w-[160px]`}
-                            >
-                                <option value="">{t('execution.select_agent') || 'Select Agent'}</option>
-                                {agentCards.map(agent => (
-                                    <option key={agent.name} value={agent.name}>
-                                        {agent.name}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={setSelectedAgent}
+                                className={`h-11 px-3 rounded-xl border text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500/20 ${theme.input}`}
+                            />
+
                             <button
                                 onClick={handleDispatch}
-                                disabled={isDispatching || !userIntent.trim() || !selectedAgent}
+                                disabled={isDispatching || !userIntent.trim()}
                                 className="flex items-center gap-2 px-5 h-11 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-500/20"
                             >
                                 <Bot size={15} />
@@ -1466,11 +1506,28 @@ const ExecutionCenter = ({ isDark }) => {
                         </button>
                     )}
 
+                    {selectedExecutionId && observation?.incomplete && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                            {t('execution.events_incomplete', { defaultValue: i18n.language?.startsWith('zh') ? '执行事件未收齐' : 'Execution events incomplete' })}
+                        </span>
+                    )}
+
+                    {replay.status === 'loading' && (
+                        <span className="text-xs text-zinc-500" role="status">{t('execution.replay_loading')}</span>
+                    )}
+                    {replay.status === 'failed' && (
+                        <button type="button" className="text-xs text-amber-600 dark:text-amber-400 underline" onClick={replay.retry}>
+                            {t('execution.replay_load_failed')}
+                        </button>
+                    )}
+
                     {/* Status Indicator */}
                     <div className="flex items-center gap-2 pl-3 border-l border-zinc-200 dark:border-zinc-700">
                         <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-emerald-500 animate-pulse' : (psopStatus ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')}`} />
                         <span className={`text-xs font-medium ${isRunning ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                            {isRunning ? t('execution.running') : (psopStatus ? t('execution.completed') : t('execution.ready'))}
+                            {selectedExecutionId && observation
+                                ? t('execution.status_' + observation.status, { defaultValue: observation.status === 'stopped' ? (i18n.language?.startsWith('zh') ? '已取消' : 'Cancelled') : observation.status })
+                                : isRunning ? t('execution.running') : (psopStatus ? t('execution.completed') : t('execution.ready'))}
                         </span>
                     </div>
                 </div>
@@ -1775,6 +1832,9 @@ const ExecutionCenter = ({ isDark }) => {
                                                     <div className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
                                                         {record.psop_name || record.psop_id}
                                                     </div>
+                                                    <div className="mt-1 break-all font-mono text-[10px] text-zinc-500 dark:text-zinc-400">
+                                                        {record.execution_id}
+                                                    </div>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
                                                             record.status === 'success'
@@ -2010,7 +2070,7 @@ const ExecutionCenter = ({ isDark }) => {
                         {selectedSandboxReport ? (
                             <SandboxReportView report={selectedSandboxReport} isDark={isDark} />
                         ) : (
-                            <ExecutionTimeline events={events} workflow={executionTemplate || psopStatus} isDark={isDark} isRunning={isRunning || isDispatching} />
+                            <ExecutionTimeline events={replay.events ?? events} workflow={executionTemplate || psopStatus} observation={selectedExecutionId ? observation : null} isDark={isDark} isRunning={isRunning || isDispatching} />
                         )}
                     </div>
                 </div>

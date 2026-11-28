@@ -42,7 +42,13 @@ from typing import Any, Optional
 
 import anyio
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile, Depends
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import Response
+
+from orchestrate.server.execution_observation_api import reporting_source
+from orchestrate.server.execution_observation_api import enabled as observation_enabled
+from orchestrate.server.execution_observation_api import merge_observed_records, observed_detail
+from orchestrate.persistence.execution_observation import observation_store_for_read, psop_revision
 from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
 
@@ -306,6 +312,8 @@ async def orchestrate_intent(
 @router.get("/orchestrate/psop/{psop_id}")
 async def get_psop(
     psop_id: str,
+    request: Request,
+    revision: str | None = Query(None, pattern=r"^[0-9a-f]{64}$"),
     _: Any = Depends(RateLimiter(config, "get_workflow"))
 ):
     """
@@ -314,10 +322,34 @@ async def get_psop(
     Returns the complete PSOP including all steps, tasks, and conditions.
     """
     try:
+        archive_enabled = observation_enabled()
+        if revision is not None and archive_enabled:
+            version = await run_in_threadpool(lambda: observation_store_for_read().version(psop_id, revision))
+            if version is None:
+                raise HTTPException(status_code=404, detail="PSOP revision not found")
+            source = reporting_source(getattr(request.state, "machine_identity", None))
+            if source is not None:
+                version["execution_reporting_source"] = source
+            return ok(data=version)
         retrieval = SharedHandlers.retrieval()
         psop = retrieval.get_psop_by_id(psop_id)
         if not psop:
             raise HTTPException(status_code=404, detail=f"PSOP {psop_id} not found")
+        if revision is not None:
+            if psop_revision(psop) != revision:
+                raise HTTPException(status_code=404, detail="PSOP revision not found")
+            return ok(data=psop.model_dump() | {"revision": revision})
+        if archive_enabled:
+            try:
+                published = await run_in_threadpool(lambda: observation_store_for_read().published_revision(psop))
+            except Exception as exc:
+                logger.warning("Could not look up the current PSOP revision ({})", type(exc).__name__)
+                published = None
+            data = psop.model_dump() | {"revision": published}
+            source = reporting_source(getattr(request.state, "machine_identity", None))
+            if source is not None and published is not None:
+                data["execution_reporting_source"] = source
+            return ok(data=data)
         return ok(data=psop.model_dump(), message=f"PSOP {psop_id} retrieved")
     except HTTPException:
         raise
@@ -396,6 +428,7 @@ async def search_workflows(
 async def execute_workflow(
     request: Request,
     body: ExecuteRequest,
+    target_agent: str | None = None,
     lang: str = Query(None, description="Language for agent responses (zh/en)"),
     _: Any = Depends(RateLimiter(config, "ext_execute_auto"))
 ):
@@ -431,7 +464,7 @@ async def execute_workflow(
         bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             agent_cards, body.task, lang=lang, semaphore=execute_semaphore,
-            resolution_request=resolution_request, request=request,
+            target_agent=target_agent, resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -452,6 +485,7 @@ async def execute_psop_by_id(
     request: Request,
     psop_id: str,
     user_intent: str = Query(None, description="Runtime user intent for context injection"),
+    target_agent: str | None = None,
     lang: str = Query(None, description="Language for agent responses (zh/en)"),
     scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
     authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
@@ -490,7 +524,7 @@ async def execute_psop_by_id(
         bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             await get_agent_cards(), intent, lang=lang, semaphore=execute_semaphore,
-            psop=psop, resolution_request=resolution_request, request=request,
+            psop=psop, target_agent=target_agent, resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -520,6 +554,7 @@ async def list_executions(
     try:
         handler = get_storage_handler(InterfaceType.LIST_EXECUTION_RECORDS)
         records = handler.handle()
+        records = await run_in_threadpool(merge_observed_records, records)
         from orchestrate.server.durable_api import history_visible
         records = [record for record in records
                    if await asyncio.to_thread(history_visible, record.get("execution_id"), request)]
@@ -542,6 +577,9 @@ async def get_execution(
     Get execution result by execution ID.
     """
     try:
+        observed = await run_in_threadpool(observed_detail, execution_id)
+        if observed is not None:
+            return ok(data=observed)
         from orchestrate.server.durable_api import history_visible
         if not await asyncio.to_thread(history_visible, execution_id, request):
             raise HTTPException(404, "Execution not found")

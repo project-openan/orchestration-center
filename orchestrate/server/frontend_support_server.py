@@ -29,6 +29,13 @@ from typing import Optional, List, Any, Dict
 import anyio
 import httpx
 from a2a.types import AgentCard
+from starlette.concurrency import run_in_threadpool
+
+from orchestrate.persistence.execution_observation import observation_store
+from orchestrate.server.execution_observation_api import (
+    enabled as observation_enabled, merge_observed_records, observed_detail,
+    router as observation_router,
+)
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Request, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -91,6 +98,7 @@ from orchestrate.server.auth import (
     auth_middleware,
     create_account_session,
     require_admin,
+    require_admin_when_authenticated,
     mark_must_change_password,
     clear_must_change_password,
     username_must_change_password,
@@ -145,6 +153,8 @@ async def _setup_exception_handler():
             return
         loop.default_exception_handler(context)
     loop.set_exception_handler(_handler)
+    from orchestrate.persistence.execution_observation import backfill_psop_revisions
+    await asyncio.to_thread(backfill_psop_revisions)
 
 @app.on_event("shutdown")
 async def _cleanup_resources():
@@ -1370,10 +1380,13 @@ async def dispatch_to_agent(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/execution-records/{execution_id}")
-async def delete_execution_record(execution_id: str):
+async def delete_execution_record(execution_id: str, request: Request):
     try:
         handler = get_storage_handler(InterfaceType.DELETE_EXECUTION_RECORD)
         deleted = handler.handle(execution_id)
+        if not deleted and observation_enabled():
+            require_admin_when_authenticated(request)
+            deleted = await run_in_threadpool(lambda: observation_store().hide(execution_id))
         if not deleted:
             raise HTTPException(status_code=404, detail=f"Execution record {execution_id} not found")
         return ok(data={"deleted": execution_id})
@@ -1393,6 +1406,7 @@ async def list_execution_records():
     try:
         handler = get_storage_handler(InterfaceType.LIST_EXECUTION_RECORDS)
         records = handler.handle()
+        records = await run_in_threadpool(merge_observed_records, records)
         return ok(data=records)
     except HTTPException:
         raise
@@ -1405,6 +1419,9 @@ async def list_execution_records():
 @router.get("/execution-records/{execution_id}")
 async def get_execution_record(execution_id: str):
     try:
+        observed = await run_in_threadpool(observed_detail, execution_id)
+        if observed is not None:
+            return ok(data=observed)
         handler = get_storage_handler(InterfaceType.GET_EXECUTION_RECORD)
         record = handler.handle(execution_id)
         if not record:
@@ -1424,6 +1441,7 @@ async def get_execution_record(execution_id: str):
 # ──── Register routers ────
 app.include_router(router)
 app.include_router(external_router)
+app.include_router(observation_router)
 app.include_router(account_router)
 app.include_router(role_execution_router)
 app.include_router(sandbox_router, prefix="/rest/v1/orchestrate")

@@ -68,7 +68,9 @@ def create_workflow_repository(
     )
 
 
-def create_spn_host_executor(all_agent_cards: list | None = None) -> HostAgentExecutor:
+def create_spn_host_executor(
+    all_agent_cards: list | None = None, *, host_name: str = "Host Agent",
+) -> HostAgentExecutor:
     """Compose the reusable HostAgent runtime with the SPN sample policy."""
 
     conf = get_conf()
@@ -87,6 +89,7 @@ def create_spn_host_executor(all_agent_cards: list | None = None) -> HostAgentEx
         )
 
     return HostAgentExecutor(
+        host_name=host_name,
         config=HostAgentConfig(
             orchestration_url=orchestration_url,
             registry_url=registry_url,
