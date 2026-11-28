@@ -48,3 +48,5 @@ workflow-designer/dist-plugin/
 reviews
 .env.database-*
 etc/conf/db/*.json
+
+evals/output/

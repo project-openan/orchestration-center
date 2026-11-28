@@ -1,0 +1,92 @@
+{
+  "id": "gold-tc-lch-004",
+  "name": "数据处理流水线（通用池）",
+  "description": "长链路参考答案：查询→报表→摘要→工单→通知的五步链（通用池）",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "query_data",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "查询业务数据",
+          "agent": "Data Agent",
+          "skill": "data-query"
+        }
+      ],
+      "next": [
+        {"step": "make_report", "condition": ""}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "make_report",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "基于查询结果生成业务数据报表",
+          "agent": "Data Agent",
+          "skill": "data-report"
+        }
+      ],
+      "next": [
+        {"step": "summarize_report", "condition": ""}
+      ],
+      "layer": 1,
+      "context_from": ["query_data"]
+    },
+    {
+      "name": "summarize_report",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "把报表要点整理成摘要",
+          "agent": "Doc Agent",
+          "skill": "doc-summarize"
+        }
+      ],
+      "next": [
+        {"step": "archive_ticket", "condition": ""}
+      ],
+      "layer": 1,
+      "context_from": ["make_report"]
+    },
+    {
+      "name": "archive_ticket",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "创建归档工单",
+          "agent": "Ticket Agent",
+          "skill": "ticket-create"
+        }
+      ],
+      "next": [
+        {"step": "notify_oncall", "condition": ""}
+      ],
+      "layer": 1,
+      "context_from": ["summarize_report"]
+    },
+    {
+      "name": "notify_oncall",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "把报表与工单信息通知值班群",
+          "agent": "Notify Agent",
+          "skill": "notify-send"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "流水线完成"}
+      ],
+      "layer": 1,
+      "context_from": ["archive_ticket"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "跑一遍数据处理流水线：查询业务数据→生成报表→把报表要点整理成摘要→创建归档工单→通知值班群。",
+  "tags": ["eval-gold", "long_chain"],
+  "source": "eval_gold"
+}

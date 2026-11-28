@@ -1,0 +1,28 @@
+{
+  "id": "gold-tc-sgl-002",
+  "name": "SPN专线投诉诊断（粤东）",
+  "description": "单步规划参考答案：粤东地市应选择 City1 的诊断技能",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "spn_diagnosis_city1",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "对粤东地市SPN专线业务投诉进行网络侧故障根因诊断",
+          "agent": "SPN Domain Agent City1",
+          "skill": "SPN-private-line-service-complain-diagnosis"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "诊断完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "对粤东地市SPN专线业务投诉发起网络侧故障根因诊断。",
+  "tags": ["eval-gold", "single_step"],
+  "source": "eval_gold"
+}

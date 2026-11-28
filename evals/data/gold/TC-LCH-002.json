@@ -1,0 +1,108 @@
+{
+  "id": "gold-tc-lch-002",
+  "name": "赛事保障六步全流程",
+  "description": "长链路参考答案：解析→策略→规划→执行→监控→恢复的六步长链",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "parse_event",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "解析赛事路线与业务保障需求",
+          "agent": "Live Streaming Agent",
+          "skill": "info-parsing"
+        }
+      ],
+      "next": [
+        {"step": "generate_strategy", "condition": ""}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "generate_strategy",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "生成网络保障策略",
+          "agent": "Assurance Agent",
+          "skill": "strategy-generation"
+        }
+      ],
+      "next": [
+        {"step": "design_plan", "condition": ""}
+      ],
+      "layer": 1,
+      "context_from": ["parse_event"]
+    },
+    {
+      "name": "design_plan",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "规划网络策略方案",
+          "agent": "RAN Agent",
+          "skill": "plan-design"
+        }
+      ],
+      "next": [
+        {"step": "execute_plan", "condition": ""}
+      ],
+      "layer": 1,
+      "context_from": ["generate_strategy"]
+    },
+    {
+      "name": "execute_plan",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "执行网络策略下发",
+          "agent": "RAN Agent",
+          "skill": "net-exec"
+        }
+      ],
+      "next": [
+        {"step": "kqi_monitor", "condition": ""}
+      ],
+      "layer": 1,
+      "context_from": ["design_plan"]
+    },
+    {
+      "name": "kqi_monitor",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "保障期间持续监控KQI指标",
+          "agent": "Live Streaming Agent",
+          "skill": "kqi-monitoring"
+        }
+      ],
+      "next": [
+        {"step": "restore_network", "condition": ""}
+      ],
+      "layer": 1,
+      "context_from": ["execute_plan"]
+    },
+    {
+      "name": "restore_network",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "保障结束后恢复保障前网络配置",
+          "agent": "Assurance Agent",
+          "skill": "recovery-delivery"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "保障流程结束"}
+      ],
+      "layer": 1,
+      "context_from": ["kqi_monitor"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "执行赛事网络保障全流程：解析赛事需求→生成保障策略→规划网络方案→执行网络策略→保障期间持续监控KQI→保障结束后恢复保障前网络配置。",
+  "tags": ["eval-gold", "long_chain"],
+  "source": "eval_gold"
+}

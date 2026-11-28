@@ -1,0 +1,76 @@
+{
+  "id": "gold-tc-agg-002",
+  "name": "三路保障评估汇聚",
+  "description": "汇聚分层参考答案：三路扇入 + 宿主汇聚报告",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "load_analysis",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "分析无线网络负载现状",
+          "agent": "RAN Agent",
+          "skill": "analysis-eval"
+        }
+      ],
+      "next": [
+        {"step": "merge_report", "condition": "分析完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "kqi_monitor",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "监控直播保障任务KQI指标",
+          "agent": "Live Streaming Agent",
+          "skill": "kqi-monitoring"
+        }
+      ],
+      "next": [
+        {"step": "merge_report", "condition": "监控完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "parse_event",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "解析赛事路线与业务保障需求",
+          "agent": "Live Streaming Agent",
+          "skill": "info-parsing"
+        }
+      ],
+      "next": [
+        {"step": "merge_report", "condition": "解析完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "merge_report",
+      "type": "SelfLoop",
+      "subtasks": [
+        {
+          "description": "汇聚三路采集结果，输出综合保障评估报告",
+          "agent": "Host Agent",
+          "skill": "result-aggregation"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "报告输出完成"}
+      ],
+      "layer": 1,
+      "context_from": ["load_analysis", "kqi_monitor", "parse_event"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "并行完成负载分析、KQI监控与赛事需求解析三项采集，由宿主汇聚三路结果，输出综合保障评估报告。",
+  "tags": ["eval-gold", "aggregation_layer"],
+  "source": "eval_gold"
+}

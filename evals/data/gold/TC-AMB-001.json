@@ -1,0 +1,28 @@
+{
+  "id": "gold-tc-amb-001",
+  "name": "网络异常初查（保守规划）",
+  "description": "模糊意图参考答案：只读分析，不规划任何变更操作",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "initial_analysis",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "初步分析无线网络负载与运行现状，输出观察结论",
+          "agent": "RAN Agent",
+          "skill": "analysis-eval"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "分析完成"}
+      ],
+      "layer": 0,
+      "context_from": null
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "最近网络好像有点问题，你帮忙看看是什么情况。",
+  "tags": ["eval-gold", "ambiguous_intent"],
+  "source": "eval_gold"
+}

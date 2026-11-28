@@ -1,0 +1,45 @@
+{
+  "id": "gold-tc-brh-001",
+  "name": "诊断结果条件路由",
+  "description": "条件分支参考答案：诊断异常则汇聚给建议，正常则直接结束",
+  "created_at": "2026-11-18T00:00:00Z",
+  "steps": [
+    {
+      "name": "spn_diagnosis",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "description": "对粤东SPN专线投诉发起网络侧故障根因诊断",
+          "agent": "SPN Domain Agent City1",
+          "skill": "SPN-private-line-service-complain-diagnosis"
+        }
+      ],
+      "next": [
+        {"step": "merge_conclusion", "condition": "诊断出网络侧故障"},
+        {"step": "end", "condition": "诊断无异常"}
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "merge_conclusion",
+      "type": "SelfLoop",
+      "subtasks": [
+        {
+          "description": "汇总诊断结论并给出处理建议",
+          "agent": "Host Agent",
+          "skill": "result-aggregation"
+        }
+      ],
+      "next": [
+        {"step": "end", "condition": "处理建议输出完成"}
+      ],
+      "layer": 1,
+      "context_from": ["spn_diagnosis"]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "对粤东SPN专线投诉发起诊断：若诊断出网络侧故障，则由宿主汇总诊断结论并给出处理建议；若一切正常，直接结束流程。",
+  "tags": ["eval-gold", "conditional_branch"],
+  "source": "eval_gold"
+}
