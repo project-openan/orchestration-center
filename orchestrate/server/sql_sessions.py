@@ -142,15 +142,22 @@ class SqlSessionStore:
         # Short lock: freeze credentials and version before expensive verification.
         with _transaction(self.provider) as cur:
             row = self._user_locked(cur, username)
-            if row is None:
-                return None
-            generation, version = self._state_locked(cur, username)
-            snapshot = {
-                "generation": generation,
-                "version": version,
-                "role": row[3],
-                "must_change_password": bool(row[4]),
-            }
+            if row is not None:
+                generation, version = self._state_locked(cur, username)
+                snapshot = {
+                    "generation": generation,
+                    "version": version,
+                    "role": row[3],
+                    "must_change_password": bool(row[4]),
+                }
+        if row is None:
+            # Unknown account: spend a real verification (outside the lock,
+            # like the real one) so timing doesn't reveal which usernames
+            # exist (#205).
+            from common.util.password_hash import burn_password_check
+
+            burn_password_check(password)
+            return None
         if not _verify_password(row[1], row[2], row[5] or "legacy", password):
             return None
         # A same-password hash upgrade is not a security-version change. It uses

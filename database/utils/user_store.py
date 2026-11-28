@@ -35,7 +35,9 @@ from typing import Optional
 
 from loguru import logger
 
-from common.util.password_hash import PASSWORD_SCHEME, hash_password, verify_legacy_bcrypt, verify_password
+from common.util.password_hash import (
+    PASSWORD_SCHEME, burn_password_check, hash_password, verify_legacy_bcrypt, verify_password,
+)
 from database.utils.db_connection import create_connection
 from database.utils.query_execution import execute_query
 from database.utils.sql_dialect import null_safe_equal
@@ -96,6 +98,9 @@ def _verify_password(stored_hash: str, salt: str, scheme: str, password: str) ->
         computed_hash = _hash_password(legacy_input, salt)
     else:
         computed_hash = _hash_password(password, salt)
+    # Fast SHA-256 schemes still awaiting their upgrade must cost as much as
+    # a bcrypt check, or they would stand out from unknown accounts (#205).
+    burn_password_check(password)
     return _secrets.compare_digest(computed_hash, stored_hash)
 
 
@@ -193,6 +198,9 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
         if err:
             raise_storage_error(err, "Authenticate user")
         if not result:
+            # Unknown account: spend a real verification so timing doesn't
+            # reveal which usernames exist (#205).
+            burn_password_check(password)
             return None
         row = result[0]
         stored_hash = row[1]
