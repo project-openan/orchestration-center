@@ -52,7 +52,7 @@ def test_architecture_import_direction(source, forbidden):
 
 
 def _host_import_violations(source):
-    allowed = {"host_agent.role_contract", "host_agent.dispatch_auth"}
+    allowed = {"host_agent.role_contract", "host_agent.dispatch_auth", "host_agent.dispatch_proof"}
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
             modules = [alias.name for alias in node.names]
@@ -82,6 +82,7 @@ def test_orchestrate_only_imports_host_wire_contracts():
     ("from host_agent.role_contract import RoleSnapshot", True),
     ("import host_agent.dispatch_auth", True),
     ("from host_agent import role_contract, dispatch_auth", True),
+    ("from host_agent.dispatch_proof import PSOP_REVISION_KEY", True),
     ("import host_agent", False),
     ("import host_agent.runtime", False),
     ("from host_agent import runtime", False),

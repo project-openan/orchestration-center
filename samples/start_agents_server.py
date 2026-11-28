@@ -141,7 +141,7 @@ async def start_server(
     agent_name = agent_card.name
     try:
         if agent_name == "Host Agent":
-            agent_impl = create_spn_host_executor(all_agent_cards)
+            agent_impl = create_spn_host_executor(all_agent_cards, host_name=agent_card.name)
         elif agent_name == "SPN Domain Agent City1":
             agent_impl = SpnDomainAgentExecutor()
         elif agent_name == "SPN Domain Agent City2":

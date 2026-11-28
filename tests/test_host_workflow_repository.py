@@ -34,6 +34,63 @@ async def test_find_loads_first_match_and_forwards_connection_options(monkeypatc
 
 
 @pytest.mark.asyncio
+async def test_find_skips_a_candidate_that_fails_to_load(monkeypatch):
+    search = AsyncMock(return_value=[
+        SimpleNamespace(workflow_id="broken"), SimpleNamespace(workflow_id="good")])
+    monkeypatch.setattr("host_agent.workflow_repository.search_psop", search)
+
+    async def load(url, psop_id, **kwargs):
+        if psop_id == "broken":
+            raise RuntimeError("PSOP_NOT_FOUND")
+        return SimpleNamespace(workflow_host="Host Agent", steps=[])
+
+    monkeypatch.setattr("host_agent.workflow_repository.load_psop", load)
+    repository = OrchestrationWorkflowRepository(orch_url="https://orch.example", host_name="Host Agent")
+
+    result = await repository.find("diagnose the network")
+
+    assert result.workflow_host == "Host Agent"
+
+
+@pytest.mark.asyncio
+async def test_find_skips_a_workflow_with_ambiguous_hosts(monkeypatch):
+    search = AsyncMock(return_value=[SimpleNamespace(workflow_id="ambiguous")])
+    monkeypatch.setattr("host_agent.workflow_repository.search_psop", search)
+
+    async def load(url, psop_id, **kwargs):
+        return SimpleNamespace(workflow_host=None, steps=[SimpleNamespace(
+            step_type="SelfLoop",
+            subtasks=[SimpleNamespace(agent="host-a"), SimpleNamespace(agent="host-b")],
+        )])
+
+    monkeypatch.setattr("host_agent.workflow_repository.load_psop", load)
+    repository = OrchestrationWorkflowRepository(orch_url="https://orch.example", host_name="host-a")
+
+    with pytest.raises(RuntimeError, match="None of the matching workflows"):
+        await repository.find("diagnose the network")
+
+
+@pytest.mark.asyncio
+async def test_get_omits_revision_when_the_installed_sdk_cannot_use_it(monkeypatch):
+    from host_agent import workflow_repository as module
+
+    calls = []
+
+    async def load(url, psop_id, *, ssl_verify=False):
+        calls.append({"ssl_verify": ssl_verify})
+        return SimpleNamespace(id=psop_id)
+
+    monkeypatch.setattr(module, "load_psop", load)
+    module._load_psop_accepts_revision.cache_clear()
+    repository = OrchestrationWorkflowRepository(orch_url="https://orch.example")
+
+    await repository.get("wf", revision="a" * 64)
+
+    assert calls == [{"ssl_verify": False}]
+    module._load_psop_accepts_revision.cache_clear()
+
+
+@pytest.mark.asyncio
 async def test_find_without_matches_does_not_load_a_workflow(monkeypatch):
     search = AsyncMock(return_value=[])
     load = AsyncMock()
@@ -57,6 +114,19 @@ async def test_get_forwards_id_and_default_tls_option(monkeypatch):
 
     assert result.id == "wf-42"
     load.assert_awaited_once_with("http://orch.example", "wf-42", ssl_verify=False)
+
+
+@pytest.mark.asyncio
+async def test_configured_psop_credential_is_used_for_search_and_load(monkeypatch):
+    monkeypatch.setenv("OPENAN_PSOP_ACCESS_TOKEN", "test-retrieval-token")
+    search = AsyncMock(return_value=[SimpleNamespace(workflow_id="wf-42")])
+    load = AsyncMock(return_value=SimpleNamespace(id="wf-42"))
+    monkeypatch.setattr("host_agent.workflow_repository.search_psop", search)
+    monkeypatch.setattr("host_agent.workflow_repository.load_psop", load)
+    repository = OrchestrationWorkflowRepository(orch_url="https://orch.example")
+    await repository.find("intent")
+    assert search.await_args.kwargs["access_token"] == "test-retrieval-token"
+    assert load.await_args.kwargs["access_token"] == "test-retrieval-token"
 
 
 @pytest.mark.asyncio

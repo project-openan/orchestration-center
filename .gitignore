@@ -26,6 +26,7 @@ data/solution_packages/*
 data/workflow_storage/*
 !data/workflow_storage/psop/
 data/workflow_storage/psop/*
+!data/workflow_storage/psop/psop_spn_workbench_cross_city_diagnosis.json
 !data/workflow_storage/psop/psop_spn_cross_city_diagnosis.json
 etc/conf/task_prompt_stubs.json
 .env

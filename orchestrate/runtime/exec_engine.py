@@ -40,12 +40,14 @@ from loguru import logger
 from pydantic import ValidationError
 from workflow_engine import A2ATransport, MessageContent, WorkflowEngineClient
 
+from host_agent.dispatch_proof import PSOP_REVISION_KEY, write_center_dispatch_proof
 from host_agent.dispatch_auth import PROOF_KEY, DispatchValidationError, sign_dispatch
 from orchestrate.core.catalog_gate import has_role_tasks
 from orchestrate.core.model.psop import PSOP
 from orchestrate.core.model.role_execution_snapshot import binding_metadata
 from orchestrate.core.shared_handlers import SharedHandlers
 from orchestrate.persistence.errors import RoleReferenceError
+from orchestrate.persistence.execution_observation import psop_revision
 from orchestrate.runtime.instance_projection import (
     ResolutionError, ResolutionRequest, resolve_execution_plan,
 )
@@ -123,27 +125,31 @@ class OrchestrationEngine:
                 raise ValueError("Configured agent credentials file does not exist")
             self._cred_path = str(cred_path)
 
-    def _find_target_card(self):
-        if not self._target_agent:
+    def _find_target_card(self, target_agent: str | None = None):
+        # An explicit target (the PSOP's declared host) wins over the configured default.
+        name = target_agent or self._target_agent
+        if not name:
             return None
+        organization = self._target_organization if target_agent is None else None
         matches = [
             card for card in self._agent_cards
-            if card.name == self._target_agent and (
-                self._target_organization is None
-                or card.provider.organization == self._target_organization
+            if card.name == name and (
+                organization is None
+                or card.provider.organization == organization
             )
         ]
         if len(matches) > 1:
             raise ResolutionError(
                 "HOST_AGENT_AMBIGUOUS",
-                f"Multiple cards match Host Agent '{self._target_agent}'. Configure a unique organization and name.",
+                f"Multiple cards match Host Agent '{name}'. Configure a unique organization and name.",
             )
         return matches[0] if matches else None
 
-    def _get_engine_client(self) -> WorkflowEngineClient:
-        target_card = self._find_target_card()
+    def _get_engine_client(self, target_agent: str | None = None) -> WorkflowEngineClient:
+        target_card = self._find_target_card(target_agent)
+        name = target_agent or self._target_agent
         if target_card is None:
-            raise ResolutionError("HOST_AGENT_NOT_FOUND", f"Agent '{self._target_agent}' not found in registry")
+            raise ResolutionError("HOST_AGENT_NOT_FOUND", f"Agent '{name}' not found in registry")
         transport = A2ATransport(
             agent_cards=[target_card],
             credentials_config=self._cred_path,
@@ -255,9 +261,21 @@ class OrchestrationEngine:
             )
             raise ValueError("ROLE_EXECUTION_NOT_ENABLED: unresolved role workflow")
 
+        target_agent = self._target_agent
+        if psop_model is not None:
+            target_agent = psop_model.workflow_host_name() or target_agent
+
         dispatch_metadata = {}
         if psop_model:
             dispatch_metadata["__orch_psop_id__"] = psop_model.id
+            try:
+                dispatch_metadata[PSOP_REVISION_KEY] = psop_revision(psop_model)
+            except Exception as revision_error:  # noqa: BLE001 - dispatch must still run
+                logger.warning(
+                    "[Orchestration] Could not compute the PSOP revision ({}: {}); "
+                    "dispatching without it",
+                    type(revision_error).__name__, revision_error,
+                )
             dispatch_metadata["__orch_psop__"] = json.dumps(
                 psop_model.model_dump(mode="json"),
                 ensure_ascii=False,
@@ -277,8 +295,21 @@ class OrchestrationEngine:
                 yield _resolution_error_event(error)
                 return
 
+        if execution_id:
+            try:
+                write_center_dispatch_proof(
+                    dispatch_metadata, execution_id=execution_id, intent=intent)
+            except (ValueError, OSError) as proof_error:
+                # Reporting is a side channel: a bad key or execution id must not stop the
+                # dispatch it was meant to describe.
+                logger.warning(
+                    "[Orchestration] Center dispatch proof unavailable ({}); "
+                    "dispatching without observation ownership",
+                    type(proof_error).__name__,
+                )
+
         try:
-            engine_client = self._get_engine_client()
+            engine_client = self._get_engine_client(target_agent)
         except ResolutionError as error:
             yield _resolution_error_event(error)
             return
@@ -293,7 +324,7 @@ class OrchestrationEngine:
                         resolution_snapshot.model_dump(mode="json")
                         if resolution_snapshot is not None else None
                     ),
-                    "target_agent": self._target_agent,
+                    "target_agent": target_agent,
                 })
             yield {
                 "type": "start",
@@ -301,18 +332,18 @@ class OrchestrationEngine:
                     "workflow": psop_model.name if psop_model else intent[:80],
                     "intent": intent,
                     "phase": "dispatching",
-                    "target_agent": self._target_agent,
+                    "target_agent": target_agent,
                 },
                 "timestamp": time.time(),
             }
-            logger.info("[Orchestration] Dispatching to target agent {}", self._target_agent)
+            logger.info("[Orchestration] Dispatching to target agent {}", target_agent)
             content = MessageContent(
                 parts=(Part(text=intent),),
                 metadata=dispatch_metadata,
             )
             terminal_emitted = False
             async for response in engine_client.stream_message(
-                self._target_agent, content,
+                target_agent, content,
             ):
                 if transport_observer is not None:
                     task_id = getattr(response, "task_id", "")

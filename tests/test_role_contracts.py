@@ -169,7 +169,7 @@ async def test_unresolved_roles_never_open_transport(
     engine._target_agent = "Host Agent"
     engine._agent_cards = []
 
-    def forbidden_client():
+    def forbidden_client(*_args, **_kwargs):
         pytest.fail("Unresolved role reached transport construction")
 
     monkeypatch.setattr(engine, "_get_engine_client", forbidden_client)

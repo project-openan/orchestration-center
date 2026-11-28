@@ -113,7 +113,7 @@ def _engine(monkeypatch, cards, client):
     engine = OrchestrationEngine.__new__(OrchestrationEngine)
     engine._agent_cards = cards
     engine._target_agent = "Host Agent"
-    monkeypatch.setattr(engine, "_get_engine_client", lambda: client)
+    monkeypatch.setattr(engine, "_get_engine_client", lambda target=None: client)
     return engine
 
 

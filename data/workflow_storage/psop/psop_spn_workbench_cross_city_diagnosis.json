@@ -1,0 +1,86 @@
+{
+  "id": "psop_spn_workbench_cross_city_diagnosis",
+  "name": "SPN跨城专线故障诊断与抢通（传输工作台）",
+  "description": "工作流内只涉及Task-T和Negotiation-T。工作台向两地市OMC并行下发诊断任务，汇总诊断结论后结束。授权放行策略和抢通结果订阅已前置预置（一次性）。",
+  "created_at": "2026-08-12T07:49:07.933273Z",
+  "workflow_host": "Transport Workbench Agent",
+  "steps": [
+    {
+      "name": "diagnosis_city1",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "task-diag-city1",
+          "description": "SPN专线故障诊断",
+          "agent": "SPN Domain Agent City1",
+          "skill": "SPN-private-line-service-complain-diagnosis",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "merge_analysis",
+          "condition": ""
+        }
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "diagnosis_city2",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "task-diag-city2",
+          "description": "SPN专线故障诊断",
+          "agent": "SPN Domain Agent City2",
+          "skill": "SPN-private-line-service-complain-diagnosis-city2",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "merge_analysis",
+          "condition": ""
+        }
+      ],
+      "layer": 0,
+      "context_from": null
+    },
+    {
+      "name": "merge_analysis",
+      "type": "SelfLoop",
+      "subtasks": [
+        {
+          "task_id": "task-merge-diagnosis",
+          "description": "汇总两地市OMC诊断结论",
+          "agent": "Transport Workbench Agent",
+          "skill": "cross-city-fault-diagnosis",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "end",
+          "condition": ""
+        }
+      ],
+      "layer": 1,
+      "context_from": [
+        "diagnosis_city1",
+        "diagnosis_city2"
+      ]
+    }
+  ],
+  "related_preflow": null,
+  "user_intent": "SPN跨城专线故障诊断：工作台协同两地市OMC并行诊断，汇总分析确定故障在哪个地市",
+  "tags": [
+    "SPN",
+    "fault-diagnosis",
+    "cross-city",
+    "negotiation",
+    "authentication",
+    "recovery"
+  ],
+  "source": "graph_editor"
+}

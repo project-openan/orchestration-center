@@ -708,7 +708,7 @@ class TestExecutePsopByIdRoleResolution:
         from orchestrate.runtime.exec_engine import OrchestrationEngine
         host_client = _CapturingHostClient()
         monkeypatch.setattr(OrchestrationEngine, "_get_engine_client",
-                            lambda self: host_client)
+                            lambda self, target=None: host_client)
         self.host_client = host_client
 
     @pytest.fixture(autouse=True)

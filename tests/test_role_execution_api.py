@@ -232,7 +232,7 @@ class _CapturingClient:
 def fake_engine(monkeypatch):
     contents = []
 
-    def _fake_client(self):
+    def _fake_client(self, target=None):
         return _CapturingClient(contents)
 
     monkeypatch.setenv("ORCH_ROLE_DISPATCH_KEY", "test-only-role-dispatch-key-32-bytes")

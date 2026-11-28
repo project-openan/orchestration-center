@@ -49,23 +49,25 @@ def relay(monkeypatch, sample_psop_dict):
             )
             yield A2AStreamEvent(
                 event_type="status_update", task_id="task-1", context_id="ctx-1",
-                task_state="TASK_STATE_COMPLETED", metadata={},
+                task_state="TASK_STATE_COMPLETED",
+                metadata={"__sdk_event__": json.dumps({"type": "complete", "data": {}})},
             )
 
         async def close(self):
             self.closed = True
 
     client = Client()
-    cards = AsyncMock(return_value=[SimpleNamespace(name="Host Agent")])
+    host = SimpleNamespace(name="Host Agent", skills=[SimpleNamespace(id="workflow-host", tags=[])])
+    cards = AsyncMock(return_value=[host])
     storage = SimpleNamespace(handle=records.append)
     monkeypatch.setattr(SharedHandlers, "retrieval", lambda: retrieval)
     monkeypatch.setattr(external_api, "get_agent_cards", cards)
     monkeypatch.setattr(frontend_support_server, "get_agent_cards", cards)
-    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self: client)
+    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self, target=None: client)
     monkeypatch.setattr("common.util.config_util.get_conf", lambda: {})
     monkeypatch.delenv("ORCH_AGENT_CREDENTIALS_FILE", raising=False)
     monkeypatch.setattr("orchestrate.handlers.dispatch.get_storage_handler", lambda *args: storage)
-    return SimpleNamespace(selected=selected, other=other, retrieval=retrieval,
+    return SimpleNamespace(selected=selected, other=other, retrieval=retrieval, host=host,
                            sent=sent, records=records, client=client)
 
 
@@ -76,7 +78,11 @@ async def collect(response):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("endpoint", ["internal", "external"])
-async def test_execute_by_id_keeps_requested_snapshot_and_record(relay, endpoint):
+async def test_execute_by_id_keeps_requested_snapshot_and_record(relay, endpoint, monkeypatch):
+    from host_agent.center_dispatch import KEY_ENV, verified_center_dispatch_id
+    from workflow_engine import A2ATransport
+
+    monkeypatch.setenv(KEY_ENV, "test-center-dispatch-key-at-least-32-bytes")
     original = relay.selected.model_dump(mode="json")
     if endpoint == "internal":
         response = await frontend_support_server.execute_workflow(
@@ -89,6 +95,7 @@ async def test_execute_by_id_keeps_requested_snapshot_and_record(relay, endpoint
     else:
         response = await external_api.execute_psop_by_id(
             MagicMock(), relay.selected.id, user_intent="shared purpose", lang="en",
+            target_agent=relay.host.name,
             scope=None, authorized_instances=None, caller_id=None,
             task_overrides=None, group_overrides=None, tie_break=None,
         )
@@ -99,6 +106,10 @@ async def test_execute_by_id_keeps_requested_snapshot_and_record(relay, endpoint
     assert content.parts[0].text == "shared purpose"
     assert content.metadata["__orch_psop_id__"] == "requested-A"
     assert json.loads(content.metadata["__orch_psop__"]) == original
+    assert "__orch_legacy_proxy__" not in content.metadata
+    assert verified_center_dispatch_id(
+        A2ATransport._plain(content.metadata), intent="shared purpose",
+    ) == relay.records[0].execution_id
     relay.retrieval.retrieve_psop_by_intent_topn.assert_not_called()
     assert relay.selected.model_dump(mode="json") == original
     assert relay.records[0].psop_id == "requested-A"
@@ -113,7 +124,7 @@ async def test_execute_by_id_keeps_requested_snapshot_and_record(relay, endpoint
 async def test_bound_snapshot_is_captured_before_stream_consumption(relay):
     original = relay.selected.model_dump(mode="json")
     response = await sse_executor.dispatch_intent_sse(
-        [SimpleNamespace(name="Host Agent")], "shared purpose", psop=relay.selected,
+        [relay.host], "shared purpose", psop=relay.selected, target_agent=relay.host.name,
     )
     relay.selected.name = "edited after dispatch"
     relay.selected.steps[0].subtasks[0].description = "edited after dispatch"
@@ -126,11 +137,13 @@ async def test_bound_snapshot_is_captured_before_stream_consumption(relay):
 async def test_intent_only_keeps_search_behavior_and_does_not_mutate_store(relay, endpoint):
     if endpoint == "auto":
         response = await external_api.execute_workflow(
-            MagicMock(), external_api.ExecuteRequest(task="shared purpose"), lang="en",
+            MagicMock(), external_api.ExecuteRequest(task="shared purpose"), lang="en", target_agent=relay.host.name,
         )
     else:
+        relay.other.workflow_host = "Different Host"
         response = await frontend_support_server.dispatch_to_agent(
-            request=MagicMock(), intent="shared purpose", agent_name="Host Agent", lang="en",
+            request=MagicMock(),
+            intent="shared purpose", agent_name="Host Agent", lang="en",
         )
     await collect(response)
     if endpoint == "auto":
@@ -138,6 +151,7 @@ async def test_intent_only_keeps_search_behavior_and_does_not_mutate_store(relay
         assert relay.sent[0][1].metadata["__orch_psop_id__"] == "search-result-B"
     else:
         relay.retrieval.retrieve_psop_by_intent_topn.assert_not_called()
+        assert relay.sent[0][0] == "Host Agent"
         assert not relay.sent[0][1].metadata
     assert relay.other.steps[0].subtasks[0].status == TaskStatus.PENDING
 
@@ -150,6 +164,8 @@ async def test_missing_requested_workflow_is_404_without_fallback(relay, endpoin
             await frontend_support_server.execute_workflow(
                 request=MagicMock(),
                 psop_id="missing", user_intent="shared purpose", target_agent=None, lang="en",
+                scope=None, authorized_instances=None, caller_id=None,
+                task_overrides=None, group_overrides=None, tie_break=None,
             )
         else:
             await external_api.execute_psop_by_id(
@@ -164,7 +180,7 @@ async def test_missing_requested_workflow_is_404_without_fallback(relay, endpoin
 async def test_intent_without_match_fails_without_dispatch(relay):
     relay.retrieval.retrieve_psop_by_intent_topn.return_value = []
     response = await sse_executor.dispatch_intent_sse(
-        [SimpleNamespace(name="Host Agent")], "new intent",
+        [relay.host], "new intent", target_agent=relay.host.name,
     )
     events = await collect(response)
     assert not relay.sent
@@ -183,6 +199,7 @@ async def test_intent_without_match_returns_real_host_failure(relay, monkeypatch
     search = AsyncMock(return_value=[])
     monkeypatch.setattr("host_agent.workflow_repository.search_psop", search)
     executor = HostAgentExecutor.__new__(HostAgentExecutor)
+    executor._execution_reporter = None
     executor._execution_tracker = HostExecutionTracker()
     executor._config = HostAgentConfig(orchestration_url="https://orch.test", registry_url="https://registry.test")
     executor._workflow_repository = OrchestrationWorkflowRepository(orch_url="https://orch.test")
@@ -208,9 +225,9 @@ async def test_intent_without_match_returns_real_host_failure(relay, monkeypatch
         async def close(self):
             pass
 
-    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self: HostBridge())
+    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self, target=None: HostBridge())
     response = await external_api.execute_workflow(
-        MagicMock(), external_api.ExecuteRequest(task="new intent"), lang="en",
+        MagicMock(), external_api.ExecuteRequest(task="new intent"), lang="en", target_agent=relay.host.name,
     )
     events = await collect(response)
     assert response.status_code == 200
@@ -237,12 +254,12 @@ async def test_host_rejects_explicit_empty_id_without_fallback(identifier):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("snapshot", [None, {}, "", "not-json", [], {"id": "B", "steps": []},
                                           {"steps": []}, {"id": "A", "steps": "invalid"}])
-async def test_host_rejects_invalid_explicit_snapshot_without_fallback(snapshot):
+async def test_host_rejects_invalid_trusted_snapshot_without_fallback(snapshot):
     executor = HostAgentExecutor.__new__(HostAgentExecutor)
     executor._workflow_repository = SimpleNamespace(get=AsyncMock(), find=AsyncMock())
     context = SimpleNamespace(message=None, metadata={"__orch_psop_id__": "A", "__orch_psop__": snapshot})
     with pytest.raises(ValueError):
-        await executor._resolve_workflow(context, "shared purpose")
+        await executor._resolve_workflow(context, "shared purpose", trusted_snapshot=True)
     executor._workflow_repository.get.assert_not_awaited()
     executor._workflow_repository.find.assert_not_awaited()
 
@@ -269,7 +286,7 @@ async def test_host_uses_matching_snapshot_without_repository(relay, encoded):
         "__orch_psop_id__": "requested-A",
         "__orch_psop__": json.dumps(snapshot) if encoded else snapshot,
     })
-    resolved = await executor._resolve_workflow(context, "shared purpose")
+    resolved = await executor._resolve_workflow(context, "shared purpose", trusted_snapshot=True)
     assert resolved["id"] == "requested-A"
     executor._workflow_repository.get.assert_not_awaited()
     executor._workflow_repository.find.assert_not_awaited()
@@ -282,6 +299,7 @@ def test_requested_workflow_runs_in_host_over_real_http_transport(
 ):
     """Real center socket and real Host/SDK execution; A2A/worker I/O is injected."""
     import hashlib
+    from collections import OrderedDict
     import socket
     import ssl
     import threading
@@ -292,9 +310,12 @@ def test_requested_workflow_runs_in_host_over_real_http_transport(
     from workflow_engine import MessageContent, StubWorkflowEngineClient
     from a2a.types import TaskState
     from host_agent.config import HostAgentConfig
+    from host_agent.center_dispatch import KEY_ENV
     from host_agent.execution import HostExecutionTracker
     from orchestrate.server import auth, account_api, middleware
     from test_storage_http_transport import _tls_files
+
+    monkeypatch.setenv(KEY_ENV, "synthetic-test-key-for-http-dispatch-only")
 
     conf = {"persistence_mode": "file", "enable_https": str(transport == "https").lower(),
             "verify_client": "false", "external.auth.mode": "user",
@@ -323,6 +344,8 @@ def test_requested_workflow_runs_in_host_over_real_http_transport(
     executor._execution_tracker = HostExecutionTracker()
     executor._config = HostAgentConfig(orchestration_url="http://unused.test", registry_url="http://unused.test")
     executor._extension_lifecycle = None
+    executor._execution_reporter = None
+    executor._seen_center_dispatches = OrderedDict()
     executor._workflow_repository = SimpleNamespace(get=AsyncMock(), find=AsyncMock())
     executor._load_agent_cards = AsyncMock(return_value=[SimpleNamespace(name="agent_a")])
     executor._engine_client_factory = SimpleNamespace(create=lambda cards: StubWorkflowEngineClient())
@@ -350,7 +373,7 @@ def test_requested_workflow_runs_in_host_over_real_http_transport(
         async def close(self):
             pass
 
-    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self: HostBridge())
+    monkeypatch.setattr(OrchestrationEngine, "_get_engine_client", lambda self, target=None: HostBridge())
     # Fresh loop-owned semaphores; do not reuse those bound by another test loop.
     import anyio
     monkeypatch.setattr(frontend_support_server, "execute_semaphore", anyio.Semaphore(1))
@@ -376,6 +399,7 @@ def test_requested_workflow_runs_in_host_over_real_http_transport(
             path, params = "/rest/v1/orchestrate/execute", {"psop_id": "requested-A", "user_intent": "shared purpose"}
         else:
             path, params = "/api/v1/orchestrate/execute/requested-A", {"user_intent": "shared purpose"}
+        params["target_agent"] = relay.host.name
         with httpx.Client(base_url=base, verify=verify, trust_env=False, timeout=10) as client:
             assert client.get(path, params=params).status_code == 401
             issued = client.post("/api/v1/auth/token", json={"username": "admin", "password": "SyntheticBinding9!"})

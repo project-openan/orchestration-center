@@ -18,8 +18,9 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Literal, Optional
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
+from loguru import logger
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -105,9 +106,59 @@ class Step(BaseModel):
 
 
 class PSOP(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def assign_legacy_task_ids(cls, value):
+        if not isinstance(value, dict) or not isinstance(value.get("steps"), (list, tuple)):
+            return value
+        # An empty or null id must not feed the deterministic ref: every such PSOP would then
+        # derive the same task ids for the same step/task position.
+        psop_id = value.get("id") or str(uuid4())
+        steps = []
+        for step_index, step in enumerate(value["steps"]):
+            if isinstance(step, dict) and isinstance(step.get("subtasks"), (list, tuple)):
+                subtasks = []
+                for task_index, task in enumerate(step["subtasks"]):
+                    if isinstance(task, dict) and "task_id" not in task:
+                        ref = f"urn:openan:psop:{psop_id}/steps/{step_index}/tasks/{task_index}"
+                        task = task | {"task_id": str(uuid5(NAMESPACE_URL, ref))}
+                    subtasks.append(task)
+                step = step | {"subtasks": subtasks}
+            steps.append(step)
+        return value | {"id": psop_id, "steps": steps}
+
+    def workflow_host_name(self) -> str | None:
+        """Resolve the declared host.
+
+        The host is the agent this PSOP runs its SelfLoop tasks on. An explicit ``workflow_host``
+        wins; a definition whose SelfLoop agents disagree is reported as a data problem, not a
+        runtime failure, so historical PSOPs keep executing.
+        """
+        names: list[str] = []
+        for step in self.steps:
+            if step.type != StepType.SELF_LOOP:
+                continue
+            for task in step.subtasks:
+                agent = task.agent.strip()
+                if agent and agent not in names:
+                    names.append(agent)
+        if self.workflow_host and self.workflow_host.strip():
+            declared = self.workflow_host.strip()
+            if any(name != declared for name in names):
+                logger.warning(
+                    "PSOP {} declares host {} but its SelfLoop tasks name {}; using the declaration",
+                    self.id, declared, names)
+            return declared
+        if len(names) > 1:
+            logger.warning(
+                "PSOP {} has multiple SelfLoop hosts {}; using the first",
+                self.id, names)
+        return names[0] if names else None
+
     id: str = Field(default_factory=lambda: str(uuid4()),
                     description="Unique workflow identifier (auto-generated if not provided)")
     name: str = Field(..., description="Workflow name", examples=['energy_saving_process', 'fault_diagnosis_process'])
+    workflow_host: str | None = Field(None, description="Name of the registered host that executes this PSOP")
     description: Optional[str] = Field(None, description="Brief work description, empty by default")
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), description="Creation timestamp")
     steps: List[Step] = Field(..., description="List of steps in the agent collaboration workflow")
