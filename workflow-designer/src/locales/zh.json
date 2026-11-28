@@ -65,6 +65,10 @@
     "ai_gen": "自然语言编排",
     "native": "原生编排",
     "select_agent": "选择宿主智能体",
+    "workflow_host": "工作流宿主",
+    "workflow_host_conflict": "工作流定义指定了多个宿主。",
+    "workflow_host_lookup_failed": "无法读取工作流定义。",
+    "workflow_host_unavailable": "工作流宿主不可用，请检查注册状态和工作流派发能力。",
     "dispatch": "派发",
     "dispatching": "派发中...",
     "generating_wf": "正在生成工作流...",
@@ -98,6 +102,8 @@
     "no_history_hint": "执行工作流后将在此保存记录",
     "loading": "加载中...",
     "load_history_failed": "加载历史记录失败",
+    "replay_loading": "正在加载完整回放…",
+    "replay_load_failed": "当前显示最近事件，点击重试完整回放",
     "delete_record_title": "删除执行记录",
     "delete_record_confirm": "确定要删除该执行记录吗？此操作无法撤销。",
     "delete_sandbox_title": "删除沙箱报告",
@@ -240,27 +246,16 @@
     "th_created": "创建时间",
     "th_actions": "操作",
     "view_action": "查看",
-<<<<<<< ours
-=======
     "view_swimlane_action": "泳道查看",
->>>>>>> theirs
     "back_to_list": "返回列表",
     "cat_spg": "SPG导入",
     "cat_manual": "人工编排",
     "cat_intent": "意图编排",
     "no_match_yet": "未找到匹配的工作流",
-<<<<<<< ours
-    "export_title": "导出工作流",
-    "export_psop": "导出 PSOP (JSON)",
-    "export_bpmn": "导出 BPMN (XML)",
-    "export_success": "工作流导出成功",
-    "export_failed": "导出失败，请检查后端服务"
-=======
     "export_workflow": "导出",
     "export_menu": "导出",
     "export_as_bpmn": "导出为 BPMN",
     "export_as_psop": "导出为 PSOP"
->>>>>>> theirs
   },
   "sandbox": {
     "title": "沙箱验证",
@@ -386,17 +381,11 @@
       "resizeHint": "拖动调整宽度 · 双击复位",
       "agentSection": "智能体",
       "taskSection": "任务",
-<<<<<<< ours
-    "warn_unpublished": "未发布",
-    "unpublished_title": "智能体未发布",
-    "unpublished_hint": "当前步骤引用的智能体「{{agent}}」尚未发布（{{status}}），请先在注册中心发布后再执行。",
-=======
       "view_mode_flow": "工作流视图",
       "view_mode_swimlane": "泳道视图",
       "warn_unpublished": "未发布",
       "unpublished_title": "智能体未发布",
       "unpublished_hint": "当前步骤引用的智能体「{{agent}}」尚未发布（{{status}}），请先在注册中心发布后再执行。",
->>>>>>> theirs
       "pub_published": "已发布",
       "pub_registered": "待发布",
       "pub_rejected": "已驳回",

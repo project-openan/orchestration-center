@@ -80,6 +80,12 @@ def _make_psop(pid="psop-1", name="WF1", description="desc", tags=None,
     psop.user_intent = user_intent
     psop.related_preflow = related_preflow
     psop.created_at = MagicMock()
+    # WorkflowSearchResult validates these as Optional[str]; a bare MagicMock is not a string.
+    psop.source = None
+    psop.creator = None
+    psop.workflow_type = "psop"
+    psop.binding = None
+    psop.tasks_summary = None
     return psop
 
 

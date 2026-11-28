@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Huawei Technologies Co., Ltd.
+// Copyright (c) 2026 Huawei Technologies Co., Ltd.
 // All Rights Reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -17,10 +17,10 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from "react-i18next";
 import { AgentRegistryBadges, matchAgentInfo, useAgentRegistryStatus } from '../agent_registry.jsx';
-import { Bot } from 'lucide-react';
+import { Bot, X } from 'lucide-react';
 import DeleteConfirm from "@/components/common/pop_confirm/index.jsx";
 import { getAgentCards } from "@/service/api.js";
-
+import { hasRoleTasks, workflowBinding, isApprovedEntry, isApprovedRoleSkill } from '../rolePolicy.js';
 
 // Agent chip colors — deterministic per agent name, shared with the view panel.
 const AGENT_CHIP_COLORS = ['bg-blue-500', 'bg-purple-500', 'bg-teal-500', 'bg-orange-500', 'bg-pink-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-cyan-500'];
@@ -34,12 +34,14 @@ const agentAvatarClass = (agentName) => {
     return AGENT_CHIP_COLORS[Math.abs(hash) % AGENT_CHIP_COLORS.length];
 };
 
-const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes, setEdges, isDark, onDelete, onClose }) => {
+const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes, setEdges, isDark, onDelete, onClose, readOnly = false, roleMode = false, catalog = null, onRoleTaskContentChange }) => {
     const { t } = useTranslation();
     const registry = useAgentRegistryStatus();
     const [allAgents, setAllAgents] = React.useState([]);
-
+    const roleCanvas = roleMode || hasRoleTasks(nodes);
+    const protectedWorkflow = readOnly || workflowBinding(nodes) === 'mixed' || (roleCanvas && !catalog);
     useEffect(() => {
+        if (protectedWorkflow || roleCanvas) return;
         const fetchAgents = async () => {
             try {
                 const res = await getAgentCards();
@@ -49,7 +51,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
             }
         };
         fetchAgents();
-    }, []);
+    }, [protectedWorkflow, roleCanvas]);
     const theme = {
         container: isDark ? 'bg-gradient-to-b from-zinc-900 via-zinc-900 to-zinc-900/90 text-zinc-200' : 'bg-gradient-to-b from-white to-slate-50/70 text-slate-800',
         emptyBg: isDark ? 'bg-zinc-900/60' : 'bg-zinc-50/50',
@@ -68,7 +70,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         }
     }, [selectedElement, nodes, edges]);
     const updateData = useCallback((key, value, extraProps = {}) => {
-        if (!selectedElement) return;
+        if (!selectedElement || protectedWorkflow) return;
 
         const isNode = !('source' in selectedElement);
 
@@ -95,7 +97,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
                 })
             );
         }
-    }, [selectedElement, setNodes, setEdges]);
+    }, [selectedElement, setNodes, setEdges, protectedWorkflow]);
 
     useEffect(() => {
         const d = activeElement?.data || {};
@@ -152,6 +154,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
     };
 
     const handleDelete = () => {
+        if (protectedWorkflow) return;
         onDelete();
     }
 
@@ -200,16 +203,6 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         }
     };
 
-    if (!activeElement) {
-        return (
-            <div className={`w-80 h-full flex flex-col items-center justify-center p-8 text-center transition-colors ${theme.emptyBg}`}>
-                <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center ${isDark ? 'bg-zinc-900 text-zinc-700' : 'bg-zinc-200 text-zinc-400'}`}>
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" /></svg>
-                </div>
-                <p className={`text-sm font-medium ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{t('workflow.panel.empty')}</p>
-            </div>
-        );
-    }
     const renderValue = (val) => {
         if (typeof val === 'object' && val !== null) {
             return (
@@ -220,8 +213,8 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         }
         return <span className="font-medium">{String(val)}</span>;
     };
-    const isNode = !('source' in activeElement);
-    const data = activeElement.data || {};
+    const isNode = Boolean(activeElement) && !('source' in activeElement);
+    const data = activeElement?.data || {};
     // Start/End are boundary markers synthesized by the editor, not PSOP steps —
     // their name and settings are system-managed and must not be edited
     const isBoundaryNode = isNode && (activeElement.type === 'startNode' || activeElement.type === 'endNode');
@@ -234,7 +227,7 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
 
     const downstreamIds = useMemo(() => {
         const descendants = new Set();
-        const queue = [activeElement.id];
+        const queue = [activeElement?.id];
         while (queue.length > 0) {
             const current = queue.shift();
             for (const edge of edges) {
@@ -245,21 +238,21 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
             }
         }
         return descendants;
-    }, [activeElement.id, edges]);
+    }, [activeElement?.id, edges]);
 
     const directPredecessorIds = useMemo(() => {
         const preds = new Set();
         for (const edge of edges) {
-            if (edge.target === activeElement.id) {
+            if (edge.target === activeElement?.id) {
                 preds.add(edge.source);
             }
         }
         return preds;
-    }, [activeElement.id, edges]);
+    }, [activeElement?.id, edges]);
 
     const allPredecessorIds = useMemo(() => {
         const ancestors = new Set();
-        const queue = [activeElement.id];
+        const queue = [activeElement?.id];
         while (queue.length > 0) {
             const current = queue.shift();
             for (const edge of edges) {
@@ -270,13 +263,13 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
             }
         }
         return ancestors;
-    }, [activeElement.id, edges]);
+    }, [activeElement?.id, edges]);
 
     const eligibleStepNames = useMemo(() => {
         return allStepNames.filter(s =>
-            s.id !== activeElement.id && !downstreamIds.has(s.id)
+            s.id !== activeElement?.id && !downstreamIds.has(s.id)
         );
-    }, [allStepNames, activeElement.id, downstreamIds]);
+    }, [allStepNames, activeElement?.id, downstreamIds]);
 
     const isStarMode = data.context_from && data.context_from[0] === '*';
 
@@ -295,6 +288,16 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         return eligibleStepNames;
     }, [eligibleStepNames, isStarMode, allPredecessorIds]);
 
+    if (!activeElement) {
+        return (
+            <div className={`w-80 h-full flex flex-col items-center justify-center p-8 text-center transition-colors ${theme.emptyBg}`}>
+                <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center ${isDark ? 'bg-zinc-900 text-zinc-700' : 'bg-zinc-200 text-zinc-400'}`}>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" /></svg>
+                </div>
+                <p className={`text-sm font-medium ${isDark ? 'text-zinc-500' : 'text-zinc-500'}`}>{t('workflow.panel.empty')}</p>
+            </div>
+        );
+    }
     const toggleContextFrom = (stepName) => {
         let current = Array.isArray(data.context_from) ? [...data.context_from] : [];
         if (current.includes('*')) {
@@ -322,6 +325,151 @@ const PropertyPanel = ({ selectedElement, nodes, edges, setPhenomenon, setNodes,
         }
         return val;
     };
+    if (protectedWorkflow || roleCanvas) {
+        const approvedRoles = (catalog?.roles || []).filter(isApprovedEntry);
+        const approvedSkillsOf = (roleId, roleVersion) => {
+            const role = approvedRoles.find(item => item.role_id === roleId && item.role_version === roleVersion);
+            return (role?.skills || []).filter(isApprovedEntry);
+        };
+        return (
+            <div className={`p-4 space-y-4 overflow-auto ${theme.container}`}>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 -ml-1 rounded-lg text-[12px] font-bold uppercase tracking-wide transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                    title={t('common.close')}
+                >
+                    <X size={14} />
+                    {t('common.close')}
+                </button>
+                {protectedWorkflow && <p role="note">{t('workflow.roleProtection')}</p>}
+                <h3 className="font-bold">{data.label || activeElement.id}</h3>
+                {!protectedWorkflow && !isBoundaryNode && <button type="button" onClick={onDelete} className="text-red-600 text-sm">{t('common.delete')}</button>}
+                {!isNode && (protectedWorkflow ? <p>{data.condition || activeElement.label || '-'}</p>
+                    : <Field label={t('workflow.panel.condition')} value={data.condition || activeElement.label || ''}
+                        onChange={value => updateData('condition', value)} isDark={isDark} />)}
+                {isNode && !isBoundaryNode && !protectedWorkflow && <div className="space-y-3">
+                    <Field label={t('workflow.panel.stepName')} value={data.label || ''} onChange={value => updateData('label', value)} isDark={isDark} />
+                    <label className="block text-xs">{t('workflow.panel.stepType')}
+                        <select aria-label={t('workflow.panel.stepType')} value={data.type || 'AllSuccess'} onChange={event => updateData('type', event.target.value)} className={`w-full border rounded p-2 ${theme.inputArea}`}>
+                            <option value="AllSuccess">{t('workflow.panel.stepTypeAllSuccess')}</option>
+                            <option value="AnySuccess">{t('workflow.panel.stepTypeAnySuccess')}</option>
+                        </select>
+                        <span className="block opacity-60 mt-1">{t('workflow.roleCanvas.selfLoop')}</span>
+                    </label>
+                    <label className="block text-xs">{t('workflow.panel.layer')}
+                        <select aria-label={t('workflow.panel.layer')} value={data.layer > 0 ? 1 : 0} onChange={event => updateData('layer', Number(event.target.value))} className={`w-full border rounded p-2 ${theme.inputArea}`}>
+                            <option value="0">{t('workflow.panel.layerExecution')}</option>
+                            <option value="1">{t('workflow.panel.layerAggregation')}</option>
+                        </select>
+                    </label>
+                    <fieldset className="text-xs space-y-2">
+                        <legend>{t('workflow.panel.contextFrom')}</legend>
+                        <button type="button" onClick={setContextAuto} className="border rounded p-1 mr-2">{t('workflow.roleCanvas.contextAuto')}</button>
+                        <button type="button" onClick={setContextAll} className="border rounded p-1">{t('workflow.roleCanvas.contextAll')}</button>
+                        <p className="opacity-60">{contextHint}</p>
+                        {visibleStepNames.map(step => <label className="block" key={step.id}>
+                            <input type="checkbox" checked={isStarMode || Boolean(data.context_from?.includes(step.id))} onChange={() => toggleContextFrom(step.id)} /> {step.label}
+                        </label>)}
+                    </fieldset>
+                </div>}
+                {isNode && data.subtasks?.some(task => task.binding === 'role') && (
+                    <p role="note" className="text-[11px] opacity-70">
+                        {catalog
+                            ? t('workflow.roleEditHint', { version: data.catalogVersion || catalog.catalog_version || '-' })
+                            : t('workflow.roleEditUnavailable')}
+                    </p>
+                )}
+                {(data.subtasks || []).map((task, index) => {
+                    const editable = task.binding === 'role' && approvedRoles.some(role => role.skills?.some(isApprovedEntry)) && Boolean(onRoleTaskContentChange);
+                    const taskSkills = editable ? approvedSkillsOf(task.agent, task.role_version) : [];
+                    return (
+                        <div key={task.task_id || index} className="border rounded-xl p-3 space-y-2" data-testid="role-task-card">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold">{task.agent}</p>
+                                {task.roleName && <p>{task.roleName}</p>}
+                                {task.binding === 'role' && <p className="text-[11px] opacity-60">{t('workflow.roleIdentity')}: {task.role_version}</p>}
+                                <p className="text-[10px] opacity-40 font-mono">{task.task_id}</p>
+                            </div>
+                            {!protectedWorkflow && <div className="flex flex-wrap items-center gap-2 text-xs">
+                                <button type="button" onClick={() => handleRemoveSubtask(index)} className="text-red-600">{t('workflow.panel.removeSubtask')}</button>
+                            </div>}
+                            {editable ? (
+                                <>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest opacity-50">
+                                        {t('workflow.panel.taskDesc')}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={task.description || ''}
+                                        data-testid="role-task-description"
+                                        onChange={(e) => onRoleTaskContentChange(activeElement.id, index, { description: e.target.value })}
+                                        className={`w-full px-2 py-1 text-[12px] rounded-lg border outline-none transition-all ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-blue-500' : 'bg-zinc-50 border-zinc-200 text-zinc-800 focus:border-blue-400'}`}
+                                    />
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest opacity-50">
+                                        {t('workflow.roleEditRole')}
+                                    </label>
+                                    <select
+                                        value={`${task.agent}@${task.role_version || ''}`}
+                                        data-testid="role-task-role"
+                                        onChange={(e) => {
+                                            const [roleId, roleVersion] = e.target.value.split('@');
+                                            // Switching the role identity invalidates the previous
+                                            // skill; the user must re-select from the new role.
+                                            onRoleTaskContentChange(activeElement.id, index, {
+                                                agent: roleId, role_version: roleVersion, skill: null,
+                                            });
+                                        }}
+                                        className={`w-full px-2 py-1.5 text-[12px] font-bold rounded-lg border appearance-none outline-none transition-all ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-blue-500' : 'bg-zinc-50 border-zinc-200 text-zinc-800 focus:border-blue-400'}`}
+                                    >
+                                        {!approvedRoles.some(role => role.role_id === task.agent && role.role_version === task.role_version) && (
+                                            <option value={`${task.agent}@${task.role_version || ''}`}>{task.agent}</option>
+                                        )}
+                                        {approvedRoles.map(role => (
+                                            <option key={`${role.role_id}@${role.role_version}`} value={`${role.role_id}@${role.role_version}`}>
+                                                {role.name ? `${role.name} (${role.role_id}@${role.role_version})` : `${role.role_id}@${role.role_version}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <label className="block text-[10px] font-bold uppercase tracking-widest opacity-50">
+                                        {t('workflow.roleEditSkill')}
+                                    </label>
+                                    <select
+                                        value={task.skill || ''}
+                                        data-testid="role-task-skill"
+                                        onChange={(e) => onRoleTaskContentChange(activeElement.id, index, { skill: e.target.value || null })}
+                                        className={`w-full px-2 py-1.5 text-[12px] font-bold rounded-lg border appearance-none outline-none transition-all ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200 focus:border-blue-500' : 'bg-zinc-50 border-zinc-200 text-zinc-800 focus:border-blue-400'}`}
+                                    >
+                                        {!task.skill && <option value="">{t('workflow.roleEditSelectSkill')}</option>}
+                                        {!taskSkills.some(skill => skill.skill_id === task.skill) && task.skill && (
+                                            <option value={task.skill}>{task.skill}</option>
+                                        )}
+                                        {taskSkills.map(skill => (
+                                            <option key={skill.skill_id} value={skill.skill_id}>
+                                                {skill.name ? `${skill.name} (${skill.skill_id})` : skill.skill_id}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {!isApprovedRoleSkill(catalog, task.agent, task.role_version, task.skill) && (
+                                        <p role="alert" className="text-[11px] text-amber-600 dark:text-amber-400">
+                                            {t('workflow.roleEditInvalidReference', { task: task.task_id })}
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <p>{task.skill}</p>
+                                    {task.skillName && <p>{task.skillName}</p>}
+                                    <p className="text-sm">{task.description}</p>
+                                </>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
     return (
         <div className={`flex flex-col h-full w-full transition-colors ${theme.container}`}>
             <div className={`flex flex-row items-center justify-between gap-3 p-4 border-b transition-colors ${theme.header}`}>
