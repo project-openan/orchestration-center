@@ -15,15 +15,21 @@
 //    License for the specific language governing permissions and limitations
 //    under the License.
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { dump } from 'js-yaml';
-import { Search, Loader2, Layout, Hash,
+import {
+    Search, Loader2, Layout, Hash,
     Plus, Upload, MessageSquare,
-    ChevronRight, Sparkles, ChevronLeft, Code2, Trash2, Download, Eye, ArrowLeft, TriangleAlert, Columns3 } from 'lucide-react';
-import { getAgentCards, getWorkflow, getWorkflowById, handlePlan, parsePdf, generateWorkflowFromIntent, delWorkflowById, getTemplates, importTemplate } from "@/service/api.js";
+    ChevronRight, Sparkles, ChevronLeft, Code2, Trash2, Download, Eye, ArrowLeft, TriangleAlert,
+    FlaskConical, FileJson, Network
+} from 'lucide-react';
+import { getRoleCatalog, getAgentCards, getWorkflow, getWorkflowById, getWorkflowBpmn, handlePlan, parsePdf, generateWorkflowFromIntent, delWorkflowById, getTemplates, importTemplate } from "@/service/api.js";
 import { transformWorkflowToReactFlow } from "./workflow/utils/index.jsx";
 import UnifiedWorkflow from "../orchestration_center/workflow/index.jsx";
-import { transformReactFlowToPSOP } from "../orchestration_center/workflow/utils/index.jsx";
 import SolutionPackages from "./packages/index.jsx";
+import SandboxDialog from "@/components/sandbox/SandboxDialog.jsx";
+import GenerationMode from './generationMode.jsx';
+import { generationErrorMessage } from './generationErrors.js';
 import { useTranslation } from 'react-i18next';
 
 
@@ -89,15 +95,16 @@ const OrchestrationCenter = ({ isDark, mode }) => {
     const { t, i18n } = useTranslation();
     const [workflows, setWorkflows] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
+    const [openedFromPackage, setOpenedFromPackage] = useState(false);
     const [currentWf, setCurrentWf] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const homeView = mode === 'manage' ? 'browse' : 'welcome';
     const [activeView, setActiveView] = useState(homeView); // 'welcome' | 'browse' | 'detail' | 'ai' | 'editor' | 'packages'
     const [aiPrompt, setAiPrompt] = useState("");
+    const [generationBinding, setGenerationBinding] = useState('role');
+    const [generationError, setGenerationError] = useState(null);
     const [showConfig, setShowConfig] = useState(false);
     const [browseMode, setBrowseMode] = useState('view');
-    const [viewInitialMode, setViewInitialMode] = useState('flow');
-    const [exportMenuFor, setExportMenuFor] = useState(null);
     const [progress, setProgress] = useState(0);
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
@@ -112,6 +119,10 @@ const OrchestrationCenter = ({ isDark, mode }) => {
     // Delete confirmation related status
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [wfToDelete, setWfToDelete] = useState(null);
+    // Sandbox verification opened from the workflow view (detail) page. No
+    // psop snapshot is passed on purpose: the backend loads the saved
+    // workflow by id, which is exactly what the preview is showing.
+    const [showSandbox, setShowSandbox] = useState(false);
     // Workflow id returned by the first save of a brand-new design, so that
     // subsequent saves update the same workflow instead of creating duplicates
     const [savedWorkflowId, setSavedWorkflowId] = useState(null);
@@ -123,6 +134,64 @@ const OrchestrationCenter = ({ isDark, mode }) => {
     useEffect(() => {
         if (activeView !== 'editor') setEditorDirty(false);
     }, [activeView]);
+
+    // Workflow-table export (manage view): PSOP JSON / BPMN XML, driven by the
+    // per-row download button. exportMenuId is the workflow whose format menu
+    // is open, exportingId the one whose download is in flight.
+    const [exportMenuId, setExportMenuId] = useState(null);
+    const [exportMenuPos, setExportMenuPos] = useState({ top: 0, left: 0 });
+    const [exportingId, setExportingId] = useState(null);
+    const [exportToast, setExportToast] = useState(null); // { type: 'success'|'error', msg }
+
+    useEffect(() => {
+        if (!exportToast) return undefined;
+        const timer = setTimeout(() => setExportToast(null), 3000);
+        return () => clearTimeout(timer);
+    }, [exportToast]);
+
+    const sanitizeExportFilename = (name) => (
+        (name || 'workflow').replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 128) || 'workflow'
+    );
+
+    const downloadExportFile = (filename, content, mime) => {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    // Table-row export: PSOP keeps the exact stored JSON; BPMN asks the
+    // backend to convert the retrieved PSOP on the fly.
+    const handleExportWorkflow = async (wf, format) => {
+        setExportMenuId(null);
+        setExportingId(wf.id);
+        try {
+            if (format === 'bpmn') {
+                const xml = await getWorkflowBpmn(wf.id);
+                downloadExportFile(`${sanitizeExportFilename(wf.name)}.bpmn`, xml, 'application/xml');
+            } else {
+                const res = await getWorkflowById(wf.id);
+                if (res?.status !== 'success') throw new Error(res?.message || 'export failed');
+                downloadExportFile(
+                    `${sanitizeExportFilename(wf.name)}.psop.json`,
+                    JSON.stringify(res.data, null, 2),
+                    'application/json'
+                );
+            }
+            setExportToast({ type: 'success', msg: t('orchestration.export_success') });
+        } catch (e) {
+            console.error('Workflow export failed:', e);
+            setExportToast({ type: 'error', msg: t('orchestration.export_failed') });
+        } finally {
+            setExportingId(null);
+        }
+    };
+
     useEffect(() => {
         let timer;
         if (loading) {
@@ -157,20 +226,27 @@ const OrchestrationCenter = ({ isDark, mode }) => {
         setLoading(true);
         setLoadingStatus(LOADING_STAGES.PARSING); // Phase 1
         try {
+            setGenerationError(null);
+            const catalog = generationBinding === 'role' ? await getRoleCatalog() : null;
             const contentData = await parsePdf(file);
-            const agentCards = await getAgentCards();
+            const agentCards = generationBinding === 'instance' ? await getAgentCards() : null;
             setLoadingStatus(LOADING_STAGES.PLANNING);
             const agentCardsList = agentCards?.data || agentCards || [];
-            const finalPlan = await handlePlan(contentData, agentCardsList);
+            const finalPlan = await handlePlan(contentData, generationBinding === 'instance' ? agentCardsList : undefined, {
+                binding: generationBinding, ...(catalog ? { catalog_version: catalog.catalog_version } : {}),
+            });
 
             setLoadingStatus(LOADING_STAGES.FINALIZING);
-            const { nodes: n, edges: e } = transformWorkflowToReactFlow(finalPlan);
+            const design = finalPlan?.data || finalPlan;
+            setCurrentWf({ id: design.id, name: design.name, rawText: design });
+            setSelectedId(design.id);
+            setSavedWorkflowId(null);
+            const { nodes: n, edges: e } = transformWorkflowToReactFlow(design);
             setNodes(n);
             setEdges(e);
             setActiveView('detail');
         } catch (error) {
-            const errorMsg = error.response?.data?.error || "Server response exception";
-            console.error("Upload failed:", errorMsg);
+            setGenerationError(generationErrorMessage(error));
         } finally {
             setLoading(false);
             setLoadingStatus(LOADING_STAGES.IDLE);
@@ -187,69 +263,32 @@ const OrchestrationCenter = ({ isDark, mode }) => {
         setLoading(true);
         setLoadingStatus(LOADING_STAGES.PARSING);
         try {
+            setGenerationError(null);
+            const catalog = generationBinding === 'role' ? await getRoleCatalog() : null;
             const contentData = await parsePdf(file);
-            const agentCards = await getAgentCards();
+            const agentCards = generationBinding === 'instance' ? await getAgentCards() : null;
             setLoadingStatus(LOADING_STAGES.PLANNING);
             const agentCardsList = agentCards?.data || agentCards || [];
-            const finalPlan = await handlePlan(contentData, agentCardsList);
+            const finalPlan = await handlePlan(contentData, generationBinding === 'instance' ? agentCardsList : undefined, {
+                binding: generationBinding, ...(catalog ? { catalog_version: catalog.catalog_version } : {}),
+            });
 
             setLoadingStatus(LOADING_STAGES.FINALIZING);
-            const { nodes: n, edges: e } = transformWorkflowToReactFlow(finalPlan);
+            const design = finalPlan?.data || finalPlan;
+            setCurrentWf({ id: design.id, name: design.name, rawText: design });
+            setSelectedId(design.id);
+            setSavedWorkflowId(null);
+            const { nodes: n, edges: e } = transformWorkflowToReactFlow(design);
             setNodes(n);
             setEdges(e);
             setActiveView('detail');
         } catch (error) {
-            const errorMsg = error.response?.data?.error || "Server response exception";
-            console.error("Upload failed:", errorMsg);
+            setGenerationError(generationErrorMessage(error));
         } finally {
             setLoading(false);
             setLoadingStatus(LOADING_STAGES.IDLE);
         }
     };
-
-    const handleExportWorkflow = async (wfId, fmt) => {
-        setExportMenuFor(null);
-        try {
-            if (fmt === 'bpmn') {
-                const res = await fetch(`/api/orchestrate/rest/v1/orchestrate/workflows/${wfId}/bpmn`, { credentials: 'include' });
-                if (!res.ok) throw new Error(`BPMN export failed: ${res.status}`);
-                const xml = await res.text();
-                const dispo = res.headers.get('content-disposition') || '';
-                const mm = String(dispo).match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-                const fname = mm ? decodeURIComponent(mm[1]) : `${wfId}.bpmn`;
-                const blob = new Blob([xml], { type: 'application/xml' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fname;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            } else {
-                const res = await getWorkflowById(wfId);
-                const data = res?.data ?? res;
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${wfId}.psop.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-        } catch (e) {
-            console.error('Export failed:', e);
-        }
-    };
-
-    useEffect(() => {
-        if (!exportMenuFor) return undefined;
-        const close = () => setExportMenuFor(null);
-        window.addEventListener('click', close);
-        return () => window.removeEventListener('click', close);
-    }, [exportMenuFor]);
 
     const fetchWorkflows = async () => {
         try {
@@ -299,6 +338,16 @@ const OrchestrationCenter = ({ isDark, mode }) => {
             }
         } catch (e) {
             console.error("Failed to refresh workflow meta:", e);
+        }
+    };
+
+    const acceptCanvasSave = (savedId, design, graph) => {
+        if (design && graph) {
+            setCurrentWf({ id: savedId, name: design.name, rawText: { ...design, id: savedId } });
+            setNodes(graph.nodes);
+            setEdges(graph.edges);
+        } else if (savedId) {
+            refreshWorkflowMeta(savedId);
         }
     };
 
@@ -587,38 +636,29 @@ const OrchestrationCenter = ({ isDark, mode }) => {
                                                     <td className="px-4 py-3 rounded-r-xl border-y border-r border-zinc-100 dark:border-zinc-800">
                                                         <div className="flex items-center gap-2">
                                                             <button
-                                                                onClick={() => { setSelectedId(wf.id); setBrowseMode('view'); setViewInitialMode('flow'); setActiveView('detail'); }}
+                                                                onClick={() => { setSelectedId(wf.id); setBrowseMode('view'); setActiveView('detail'); }}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors"
                                                             >
                                                                 <Eye size={12} />
                                                                 {t('orchestration.view_action')}
                                                             </button>
                                                             <button
-                                                                onClick={(e) => { e.stopPropagation(); setSelectedId(wf.id); setBrowseMode('view'); setViewInitialMode('swimlane'); setActiveView('detail'); }}
-                                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black border-indigo-300 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/40 dark:hover:bg-indigo-500/20 border-y border-l"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                                    setExportMenuPos({
+                                                                        top: rect.bottom + 6,
+                                                                        left: Math.max(8, Math.min(rect.left, window.innerWidth - 200)),
+                                                                    });
+                                                                    setExportMenuId(exportMenuId === wf.id ? null : wf.id);
+                                                                }}
+                                                                title={t('orchestration.export_title')}
+                                                                className="p-1.5 hover:bg-blue-50 hover:text-blue-500 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 text-zinc-400 rounded-lg transition-all"
                                                             >
-                                                                <Columns3 size={12} />
-                                                                {t('orchestration.view_swimlane_action')}
+                                                                {exportingId === wf.id
+                                                                    ? <Loader2 size={13} className="animate-spin" />
+                                                                    : <Download size={13} />}
                                                             </button>
-                                                            <div className="relative">
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setExportMenuFor(exportMenuFor === wf.id ? null : wf.id); }}
-                                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black border-emerald-300 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/40 dark:hover:bg-emerald-500/20 border-y border-l"
-                                                                >
-                                                                    <Download size={12} />
-                                                                    {t('orchestration.export_menu')}
-                                                                </button>
-                                                                {exportMenuFor === wf.id && (
-                                                                    <div className="absolute left-0 top-full mt-1 w-40 rounded-xl border shadow-xl z-50 overflow-hidden bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700">
-                                                                        <button onClick={(e) => { e.stopPropagation(); handleExportWorkflow(wf.id, 'bpmn'); }} className="w-full px-3 py-2 text-left text-[11px] font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
-                                                                            {t('orchestration.export_as_bpmn')}
-                                                                        </button>
-                                                                        <button onClick={(e) => { e.stopPropagation(); handleExportWorkflow(wf.id, 'psop'); }} className="w-full px-3 py-2 text-left text-[11px] font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border-t border-zinc-100 dark:border-zinc-800">
-                                                                            {t('orchestration.export_as_psop')}
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); setWfToDelete(wf); setShowDeleteConfirm(true); }}
                                                                 className="p-1.5 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 text-zinc-400 rounded-lg transition-all"
@@ -647,6 +687,24 @@ const OrchestrationCenter = ({ isDark, mode }) => {
                             )}
                         </div>
                     </div>
+                );
+
+            case 'packages':
+                return (
+                    <SolutionPackages
+                        onBack={() => setActiveView('welcome')}
+                        onImportPdf={handleImportPdfFromPackage}
+                        onViewWorkflow={(wfId) => {
+                            setOpenedFromPackage(true);
+                            setSelectedId(wfId);
+                            setBrowseMode('view');
+                            setActiveView('detail');
+                        }}
+                        loading={loading && loadingStatus !== LOADING_STAGES.IDLE}
+                        loadingStatus={loadingStatus}
+                        progress={progress}
+                        t={t}
+                    />
                 );
 
 case 'ai':
@@ -690,7 +748,8 @@ case 'ai':
                                             setLoading(true);
                                             setLoadingStatus(LOADING_STAGES.GENERATING);
                                             try {
-                                                const result = await generateWorkflowFromIntent(aiPrompt);
+                                                setGenerationError(null);
+                                                const result = await generateWorkflowFromIntent(aiPrompt, undefined, { binding: generationBinding });
                                                 const { nodes: n, edges: e } = transformWorkflowToReactFlow(result);
                                                 setNodes(n);
                                                 setEdges(e);
@@ -700,7 +759,7 @@ case 'ai':
                                                 setSavedWorkflowId(null);
                                                 setActiveView('editor');
                                             } catch (err) {
-                                                console.error("Generate failed:", err);
+                                                setGenerationError(generationErrorMessage(err));
                                             } finally {
                                                 setLoading(false);
                                                 setLoadingStatus(LOADING_STAGES.IDLE);
@@ -769,9 +828,19 @@ case 'ai':
                             >
                                 {showConfig ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
                             </button>
+                            {activeView === 'detail' && (
+                                <button
+                                    onClick={() => setShowSandbox(true)}
+                                    title={t('workflow.toolbar.sandbox')}
+                                    className="absolute right-4 top-8 -translate-y-1/2 z-[70] flex items-center gap-2 px-3 py-1.5 rounded-lg uppercase text-[11px] font-bold shadow-sm active:scale-95 transition-all bg-violet-600 hover:bg-violet-500 text-white"
+                                >
+                                    <FlaskConical size={13} />
+                                    <span>{t('workflow.toolbar.sandbox')}</span>
+                                </button>
+                            )}
                             <UnifiedWorkflow
                                 mode={activeView === 'detail' ? 'view' : 'edit'}
-                                initialViewMode={viewInitialMode}
+                                newWorkflowBinding={generationBinding}
                                 isDark={isDark}
                                 // Props for View mode
                                 nodes={nodes}
@@ -782,6 +851,7 @@ case 'ai':
                                 workflowId={selectedId || currentWf?.id || savedWorkflowId}
                                 workflowName={currentWf?.name}
                                 workflowDescription={currentWf?.rawText?.description}
+                                workflowMetadata={currentWf?.rawText}
                                 onCancel={() => {
                                     if (mode === 'manage') {
                                         // 工作流管理菜单：编辑器退出直接回管理表格
@@ -794,9 +864,9 @@ case 'ai':
                                         setActiveView(homeView);
                                     }
                                 }}
-                                onSaveSuccess={(savedId) => {
+                                onSaveSuccess={(savedId, design, graph) => {
                                     if (savedId && !selectedId) setSavedWorkflowId(savedId);
-                                    if (savedId) refreshWorkflowMeta(savedId);
+                                    acceptCanvasSave(savedId, design, graph);
                                     fetchWorkflows();
                                 }}
                                 onDirtyChange={setEditorDirty}
@@ -818,7 +888,21 @@ case 'ai':
                 <div
                     className="px-10 py-6 border-b border-zinc-50 dark:border-zinc-800 flex justify-between items-center  bg-white dark:bg-zinc-900 backdrop-blur-md shrink-0">
                     <div className="flex items-center gap-4">
-                        {(activeView === 'ai') && (
+                        {activeView === 'detail' && openedFromPackage && (
+                            <button
+                                onClick={() => {
+                                    setActiveView('packages');
+                                    setSelectedId(null);
+                                    setCurrentWf(null);
+                                    setOpenedFromPackage(false);
+                                }}
+                                className="group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                            >
+                                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                                {t('orchestration.back_to_packages')}
+                            </button>
+                        )}
+                        {(activeView === 'editor' || activeView === 'ai') && (
                             <button
                                 onClick={() => {
                                     if (activeView === 'editor' && editorDirty) {
@@ -862,35 +946,14 @@ case 'ai':
                                 <span>{t('orchestration.edit')}</span>
                             </button>
                         )}
-                        {activeView === 'detail' && (
-                            <button
-                                onClick={() => {
-                                    const psopData = transformReactFlowToPSOP(nodes, edges, {
-                                        id: selectedId || undefined,
-                                        name: currentWf?.name,
-                                        description: currentWf?.rawText?.description,
-                                    });
-                                    const blob = new Blob([JSON.stringify(psopData, null, 2)], { type: 'application/json' });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `${currentWf?.name || selectedId || 'workflow'}.psop.json`;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    URL.revokeObjectURL(url);
-                                }}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-md uppercase text-[12px] font-bold shadow-sm active:scale-95 active:shadow-inner bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-200"
-                                title={t('orchestration.export_workflow')}
-                            >
-                                <Download size={14} />
-                                <span>{t('orchestration.export_workflow')}</span>
-                            </button>
-                        )}
                     </div>
                 </div>
                 )}
 
+                {['welcome', 'ai', 'packages'].includes(activeView) && <div className="px-10 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                    <GenerationMode value={generationBinding} onChange={value => { setGenerationBinding(value); setGenerationError(null); }} disabled={loading} />
+                </div>}
+                {generationError && <p role="alert" className="px-10 py-3 text-sm text-rose-600">{generationError}</p>}
                 <div className="flex-1 relative overflow-hidden">
                     {renderContent()}
                 </div>
@@ -977,6 +1040,59 @@ case 'ai':
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Sandbox verification opened from the workflow view (detail)
+                page. Without a psop snapshot the backend verifies the saved
+                workflow by id, which is what the preview shows. */}
+            {showSandbox && (selectedId || currentWf?.id || savedWorkflowId) && (
+                <SandboxDialog
+                    workflowId={selectedId || currentWf?.id || savedWorkflowId}
+                    isDark={isDark}
+                    onClose={() => setShowSandbox(false)}
+                />
+            )}
+
+            {/* Export format dropdown (manage-view table, portaled to body so
+                the scrollable table container can't clip it) */}
+            {exportMenuId && createPortal(
+                <>
+                    <div
+                        className="fixed inset-0 z-[9998]"
+                        onClick={() => setExportMenuId(null)}
+                    />
+                    <div
+                        className="fixed z-[9999] w-48 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1.5 animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: exportMenuPos.top, left: exportMenuPos.left }}
+                    >
+                        <div className="px-3 pt-1 pb-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                            {t('orchestration.export_title')}
+                        </div>
+                        <button
+                            onClick={() => handleExportWorkflow(workflows.find(wf => wf.id === exportMenuId), 'psop')}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                            <FileJson size={13} />
+                            <span>{t('orchestration.export_psop')}</span>
+                        </button>
+                        <button
+                            onClick={() => handleExportWorkflow(workflows.find(wf => wf.id === exportMenuId), 'bpmn')}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                            <Network size={13} />
+                            <span>{t('orchestration.export_bpmn')}</span>
+                        </button>
+                    </div>
+                </>,
+                document.body
+            )}
+
+            {/* Export result toast (manage-view PSOP/BPMN download) */}
+            {exportToast && createPortal(
+                <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] px-5 py-2.5 rounded-xl text-xs font-bold shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200 ${exportToast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+                    {exportToast.msg}
+                </div>,
+                document.body
             )}
         </div>
     );

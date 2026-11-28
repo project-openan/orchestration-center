@@ -25,7 +25,9 @@ from uuid import NAMESPACE_URL, uuid5
 from loguru import logger
 
 from orchestrate.persistence.documents import FileDocuments
-from orchestrate.persistence.errors import StorageConflictError, StorageValidationError
+from orchestrate.persistence.errors import (
+    StorageConflictError, StorageError, StorageValidationError,
+)
 
 
 class SolutionPackageManager:
@@ -72,9 +74,16 @@ class SolutionPackageManager:
         for path in sorted(self.seed_dir.glob("*.json")):
             value = json.loads(path.read_text(encoding="utf-8"))
             key = path.stem
-            with self.documents.transaction():
-                if self.documents.get("solution_packages", key) is None:
-                    self.documents.save("solution_packages", key, value)
+            try:
+                with self.documents.transaction():
+                    if self.documents.get("solution_packages", key) is None:
+                        self.documents.save("solution_packages", key, value)
+            except StorageError as error:
+                # Demo seeding is best effort: another process may hold the write lock
+                # (or the store may be read-only). Importing the server must still work.
+                logger.warning("Could not seed demo solution packages ({}: {})",
+                               type(error).__name__, error)
+                return
 
     @staticmethod
     def _key(filename):

@@ -246,7 +246,10 @@ def test_live_http_https_auth_workflow_and_execution_apis(live_mysql, sample_pso
                 assert client.get(base + "/workflows").status_code == 401
                 assert client.post(base + "/auth/login", json={"username": "admin", "password": "wrong"}).status_code == 401
                 login = client.post(base + "/auth/login", json={"username": "admin", "password": "SmokeAdmin9!"})
-                assert login.status_code == 200 and login.json()["data"]["must_change_password"] is True
+                if login.status_code != 200:
+                    pytest.fail("admin login failed: " + login.text + "\n"
+                                + log_path.read_text(encoding="utf-8", errors="replace")[-3000:])
+                assert login.json()["data"]["must_change_password"] is True
                 changed = client.post(base + "/auth/change-password", json={"old_password": "SmokeAdmin9!", "new_password": "ChangedAdmin9!"})
                 assert changed.status_code == 200
                 assert client.get(base + "/workflows").status_code == 401

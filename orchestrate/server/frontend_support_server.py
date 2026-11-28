@@ -66,10 +66,20 @@ from orchestrate.core.bpmn_converter import psop_to_bpmn, bpmn_content_dispositi
 from orchestrate.core.persistence import WorkflowStorageError
 from orchestrate.server.external_api import router as external_router
 from orchestrate.server.account_api import router as account_router
+from orchestrate.runtime.instance_projection import bind_resolution_identity
+from orchestrate.server.role_execution_api import resolution_request_from_query
+from orchestrate.server.role_execution_api import router as role_execution_router
 from orchestrate.server.account_auth import AccountLogin, authenticate_account, verify_access_password
 from orchestrate.server.sandbox_api import sandbox_router, sandbox_service
 from orchestrate.core.psop_generator import PsopGenerator, WorkflowGeneratorError
 from orchestrate.core.intent_psop_generator import IntentPsopGenerator
+from orchestrate.persistence.errors import RoleReferenceError
+from orchestrate.core.role_generation import (
+    GenerationOptions, RoleGenerationError, RoleGenerationServiceError, load_generation_context,
+)
+from orchestrate.server.generation_support import (
+    generation_http_exception, prepare_generation, role_arguments, validate_before_save,
+)
 from orchestrate.core.workflow_search_result import WorkflowSearchResult
 from orchestrate.server.middleware import ConnectionLimitMiddleware, TimeoutMiddleware, RateLimiter, LoginRateLimiter
 from orchestrate.core.shared_handlers import SharedHandlers
@@ -79,6 +89,7 @@ from orchestrate.server.auth import (
     is_auth_enabled,
     get_session_store,
     auth_middleware,
+    create_account_session,
     require_admin,
     mark_must_change_password,
     clear_must_change_password,
@@ -236,14 +247,14 @@ app.middleware("http")(auth_middleware)
 
 # ──── Request models ────
 
-class PlanRequest(BaseModel):
+class PlanRequest(GenerationOptions):
     preflow: dict = Field(..., description="PreFlow model JSON")
-    agent_cards: List[dict] = Field(..., description="AgentCard list JSON")
+    agent_cards: List[dict] = Field(default_factory=list, description="AgentCard list JSON")
 
 class SavePSOPRequest(BaseModel):
     psop: dict = Field(..., description="PSOP model JSON")
 
-class IntentRequest(BaseModel):
+class IntentRequest(GenerationOptions):
     user_intent: str = Field(..., min_length=1, max_length=10000, description="Natural language intent description")
     workflow_name: Optional[str] = Field(None, description="Optional workflow name")
 
@@ -287,7 +298,7 @@ async def login(request: LoginRequest, response: Response, http_request: Request
         raise storage_http_exception(exc) from exc
     role = user.get("role", "user")
     must_change = user.get("must_change_password", False)
-    token, ttl = store.create(user["username"], role, login_revision=revision)
+    token, ttl = create_account_session(store, user, revision)
     if must_change:
         mark_must_change_password(user["username"])
     else:
@@ -334,8 +345,10 @@ async def logout(request: Request, response: Response):
 async def auth_check(request: Request):
     conf = get_conf()
     registration_enabled = _registration_enabled(conf)
+    single_account = not current_context().has_users
     if not is_auth_enabled():
-        return ok(data={"auth_required": False, "registration_enabled": registration_enabled})
+        return ok(data={"auth_required": False, "registration_enabled": registration_enabled,
+                        "single_account": single_account})
     token = extract_token(request)
     if token and get_session_store().validate(token):
         username = get_session_store().get_username(token)
@@ -343,9 +356,12 @@ async def auth_check(request: Request):
             "auth_required": True, "authenticated": True, "username": username,
             "role": get_session_store().get_role(token),
             "registration_enabled": registration_enabled,
+            "single_account": single_account,
             "must_change_password": username_must_change_password(username),
         })
-    return ok(data={"auth_required": True, "authenticated": False, "registration_enabled": registration_enabled})
+    return ok(data={"auth_required": True, "authenticated": False,
+                    "registration_enabled": registration_enabled,
+                    "single_account": single_account})
 
 @router.get("/auth/users")
 async def list_users_endpoint(_: Any = Depends(require_admin)):
@@ -464,16 +480,23 @@ all_psop_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_ALL_PSOPS,
 @router.get("/workflows")
 async def list_workflows(
     limit: int = Query(10, ge=1, le=100, description="Max workflows to return"),
+    offset: int = Query(0, ge=0, description="Number of workflows to skip"),
     _: Any = Depends(RateLimiter(config, "list_workflows"))
 ):
     acquired = False
     try:
         all_psop_semaphore.acquire_nowait()
         acquired = True
-        logger.info(f"Listing workflows: limit={limit}")
-        recent_workflows = SharedHandlers.retrieval().list_recent_workflows(limit=limit, workflow_type='psop')
+        logger.info(f"Listing workflows: limit={limit}, offset={offset}")
+        rows = SharedHandlers.retrieval().list_recent_workflows(
+            limit=limit + 1, workflow_type='psop', offset=offset)
+        has_more = len(rows) > limit
+        recent_workflows = rows[:limit]
         logger.info(f"Retrieved {len(recent_workflows)} workflows")
-        return ok(data=[wf.to_dict() for wf in recent_workflows])
+        return {
+            **ok(data=[wf.to_dict() for wf in recent_workflows]),
+            "pagination": {"offset": offset, "limit": limit, "has_more": has_more},
+        }
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
@@ -688,12 +711,25 @@ async def parse_pdf(
         )
         if not chapters_md:
             raise HTTPException(status_code=400, detail="No chapters found in PDF")
-        # 全量章节落库,供解决方案中心列表/详情使用
-        if not solution_package_manager.store_solution_package(filename, chapters_md):
-            logger.warning(f"Failed to store solution package for {filename}")
-        pre_md = chapters_md.get("5. Interaction Flow")
-        if not pre_md:
+        # The flow chapter is numbered by release ("5." and "6." both occur); only persist
+        # the package once the required chapter is present, so a rejected import leaves no
+        # partial record behind.
+        flow_title = next(
+            (title for title in chapters_md
+             if re.fullmatch(r"\d+\.\s*Interaction Flow", str(title).strip(), re.IGNORECASE)),
+            None,
+        )
+        if not flow_title:
             raise HTTPException(status_code=400, detail="Chapter '5. Interaction Flow' not found in PDF")
+        pre_md = chapters_md[flow_title]
+        try:
+            stored = solution_package_manager.store_solution_package(filename, chapters_md)
+        except StorageError as e:
+            logger.warning(f"Failed to store solution package for {filename}")
+            raise HTTPException(status_code=503, detail="Solution package storage unavailable") from e
+        if not stored:
+            logger.warning(f"Failed to store solution package for {filename}")
+            raise HTTPException(status_code=503, detail="Solution package storage unavailable")
 
         logger.info(f"PDF chapter extracted (markdown, {len(pre_md)} chars):\n{pre_md}")
 
@@ -762,23 +798,26 @@ async def generate_from_preflow(
         acquired = True
         preflow_name = request.preflow.get("name", "unknown")
         preflow_steps_md = request.preflow.get("steps_md", "")
-        logger.info(f"Generating PSOP from PreFlow: {preflow_name}, agents={len(request.agent_cards)}")
+        context = await anyio.to_thread.run_sync(partial(prepare_generation, request, "internal_preflow"))
+        cards = ([] if context is not None
+                 else [Parse(json.dumps(card), AgentCard()) for card in request.agent_cards])
+        logger.info(f"Generating PSOP from PreFlow: {preflow_name}, agents={len(cards)}")
         logger.info(f"PreFlow steps_md ({len(preflow_steps_md)} chars):\n{preflow_steps_md}")
 
         generator = PsopGenerator()
         # 串行多次同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
         workflow = await anyio.to_thread.run_sync(
-            generator.generate_psop_workflow,
-            PreFlow.model_validate(request.preflow),
-            [Parse(json.dumps(card), AgentCard()) for card in request.agent_cards],
+            partial(generator.generate_psop_workflow,
+                    PreFlow.model_validate(request.preflow), cards, **role_arguments(context)),
             abandon_on_cancel=False,
         )
         workflow.source = "solution_package"
+        await anyio.to_thread.run_sync(validate_before_save, workflow, context)
         SharedHandlers.save_psop().handle(workflow)
         logger.info(f"PSOP generated: id={workflow.id}, steps={len(workflow.steps)}")
         # 回链:方案包 → 本次生成的工作流,方案包列表页据此展示 Workflow 入口
         try:
-            solution_package_manager.link_workflow(preflow_name, workflow.id)
+            solution_package_manager.link_workflow(preflow_name, workflow.id, request.binding)
         except Exception as link_error:
             logger.warning(f"Failed to link workflow to solution package '{preflow_name}': {link_error}")
         audit_logger.audit({
@@ -793,6 +832,8 @@ async def generate_from_preflow(
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
         raise
+    except (RoleGenerationError, RoleGenerationServiceError) as error:
+        raise generation_http_exception(error) from error
     except WorkflowGeneratorError as e:
         # Business condition: the solution package references tasks no
         # registered agent can perform. 422 lets the UI show the unmatched
@@ -808,6 +849,25 @@ async def generate_from_preflow(
         if acquired:
             plan_semaphore.release()
 
+@router.get("/role-catalog")
+async def get_role_catalog(
+    catalog_version: str = Query(None, description="Exact approved catalog release"),
+    _: Any = Depends(RateLimiter(config, "role_catalog")),
+):
+    """Approved-only role/skill display projection for the designer."""
+    try:
+        context = await anyio.to_thread.run_sync(
+            partial(load_generation_context, catalog_version, entry="role_catalog"))
+        return ok(data=context.projection())
+    except RoleGenerationError as error:
+        raise generation_http_exception(error) from error
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Role catalog display failed: {e}")
+        raise HTTPException(status_code=500, detail="Role catalog unavailable")
+
+
 generate_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_GENERATE_PSOP, 10)))
 
 @router.post("/generate-from-intent")
@@ -821,9 +881,15 @@ async def generate_from_intent(
         acquired = True
         logger.info("Generating PSOP from intent (length={})", len(request.user_intent))
 
-        agent_cards_raw = [MessageToDict(card, preserving_proto_field_name=False) for card in await get_agent_cards()]
-        if not agent_cards_raw:
-            raise HTTPException(status_code=404, detail="No available AgentCards found")
+        context = await anyio.to_thread.run_sync(partial(prepare_generation, request, "internal_intent"))
+        if context is not None:
+            agent_cards = []
+        else:
+            agent_cards_raw = [MessageToDict(card, preserving_proto_field_name=False)
+                               for card in await get_agent_cards()]
+            if not agent_cards_raw:
+                raise HTTPException(status_code=404, detail="No available AgentCards found")
+            agent_cards = [Parse(json.dumps(agent), AgentCard()) for agent in agent_cards_raw]
 
         generator = IntentPsopGenerator()
         # 同步 LLM 调用(分钟级),卸载到线程避免阻塞事件循环
@@ -831,13 +897,17 @@ async def generate_from_intent(
             partial(
                 generator.generate_psop_from_intent,
                 user_intent=request.user_intent,
-                agent_cards=[Parse(json.dumps(agent), AgentCard()) for agent in agent_cards_raw],
+                agent_cards=agent_cards,
                 workflow_name=request.workflow_name,
+                **role_arguments(context),
             ),
             abandon_on_cancel=False,
         )
         psop.source = "ai_intent"
         logger.info(f"PSOP generated from intent: id={psop.id}, steps={len(psop.steps)}")
+
+        if context is not None:
+            await anyio.to_thread.run_sync(validate_before_save, psop, context)
 
         try:
             SharedHandlers.save_psop().handle(psop)
@@ -849,7 +919,15 @@ async def generate_from_intent(
                 'result': OperationResult.SUCCESS,
                 'details': {"id": psop.id, "name": psop.name, "steps_count": len(psop.steps)},
             })
+        except (RoleGenerationError, RoleGenerationServiceError) as save_error:
+            raise generation_http_exception(save_error) from save_error
+        except RoleReferenceError as save_error:
+            message = str(save_error)
+            code = message.split(":", 1)[0].strip() if message[:1].isupper() else "ROLE_REFERENCE_INVALID"
+            raise HTTPException(status_code=422, detail={"code": code, "message": message}) from save_error
         except Exception as save_error:
+            if context is not None:
+                raise
             logger.warning(f"Auto-save failed (non-fatal): {save_error}")
 
         return ok(data=psop.model_dump())
@@ -857,6 +935,8 @@ async def generate_from_intent(
         raise HTTPException(status_code=503, detail="Server is busy")
     except HTTPException:
         raise
+    except (RoleGenerationError, RoleGenerationServiceError) as error:
+        raise generation_http_exception(error) from error
     except WorkflowGeneratorError as e:
         # Business condition: the intent's tasks cannot be matched to any
         # registered agent skill.
@@ -1199,10 +1279,19 @@ execute_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_START_PROCE
 
 @router.get("/execute")
 async def execute_workflow(
+    request: Request,
     psop_id: str = Query(..., description="PSOP workflow ID to execute"),
     user_intent: str = Query(None, description="Runtime user intent for context injection"),
     target_agent: str = Query(None, description="Target host agent name to dispatch to"),
     lang: str = Query(None, description="Language for agent responses (zh/en)"),
+    scope: str = Query(None, description="Execution scope tenant/site/business_object for role resolution"),
+    authorized_instances: str = Query(None, description="Comma-separated instance IDs authorized for this execution"),
+    caller_id: str = Query(None, deprecated=True,
+                           description="Compatibility input, ignored; authenticated identity is recorded"),
+    task_overrides: str = Query(None, description="JSON object task_id -> instance_id for manual role re-selection"),
+    group_overrides: str = Query(
+        None, description="JSON object binding_group -> instance_id for manual group re-selection"),
+    tie_break: str = Query(None, description="Equal-priority policy: error (default) or instance_id"),
     _: Any = Depends(RateLimiter(config, "start_process_stream"))
 ):
     if not psop_id:
@@ -1218,9 +1307,14 @@ async def execute_workflow(
         agent_cards = await get_agent_cards()
 
         intent = user_intent or psop.name or psop_id
+        resolution_request = resolution_request_from_query(
+            scope, authorized_instances, caller_id, task_overrides, group_overrides, tie_break,
+        )
+        bind_resolution_identity(resolution_request, request)
         return await dispatch_intent_sse(
             agent_cards, intent, target_agent=target_agent, lang=lang,
             semaphore=execute_semaphore, psop=psop,
+            resolution_request=resolution_request, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -1236,6 +1330,7 @@ dispatch_semaphore = anyio.Semaphore(int(config.get(FLOW_CTL_PARALLEL_START_PROC
 
 @router.get("/dispatch")
 async def dispatch_to_agent(
+    request: Request,
     intent: str = Query(..., description="Natural language intent to dispatch"),
     agent_name: str = Query(..., description="Target host agent name (must be registered)"),
     lang: Optional[str] = Query(None, description="Language hint (zh/en)"),
@@ -1262,7 +1357,7 @@ async def dispatch_to_agent(
         logger.info(f"Dispatching to {agent_name} via OrchestrationEngine (slim channel)")
         return await dispatch_intent_sse(
             agent_cards, intent, target_agent=agent_name, lang=lang,
-            semaphore=dispatch_semaphore,
+            semaphore=dispatch_semaphore, select_template=False, request=request,
         )
     except anyio.WouldBlock:
         raise HTTPException(status_code=503, detail="Server is busy")
@@ -1330,6 +1425,7 @@ async def get_execution_record(execution_id: str):
 app.include_router(router)
 app.include_router(external_router)
 app.include_router(account_router)
+app.include_router(role_execution_router)
 app.include_router(sandbox_router, prefix="/rest/v1/orchestrate")
 
 

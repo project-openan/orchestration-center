@@ -33,11 +33,12 @@ conf["connection_config"] = json.loads(os.environ["OC_POSTGRES_SMOKE_CONFIG"])
 db_connection._database_verified = False
 
 from database.utils.table_creation import create_tables
-from database.utils.user_store import seed_admin_if_empty
 from orchestrate import start
 
 create_tables()
-seed_admin_if_empty("SmokeAdmin9!")
+# start.main seeds the first admin through the configured SQL backend; give it the
+# smoke password instead of seeding a fallback file store before the composition root.
+os.environ["OC_ADMIN_INITIAL_PASSWORD"] = "SmokeAdmin9!"
 if len(sys.argv) > 2:
     # Only replace the TLS transport launcher; start.main still runs the real
     # mode validation, security preflight, table init and user bootstrap.
